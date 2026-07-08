@@ -367,9 +367,17 @@ if 'pea' in st.query_params:
 
 # เมนูด้านข้าง (Sidebar)
 with st.sidebar:
+    import os
+    if os.path.exists("pea-logo.png"):
+        st.write("") # เว้นบรรทัด
+        _, col_img, _ = st.columns([1, 2, 1])
+        with col_img:
+            st.image("pea-logo.png", use_container_width=True)
+    else:
+        st.markdown('<div style="text-align:center; font-size:2.2rem; padding-top:1.2rem;">⚡</div>', unsafe_allow_html=True)
+
     st.markdown("""
-    <div style="text-align:center; padding: 1.2rem 0 0.8rem 0;">
-        <div style="font-size:2.2rem;">⚡</div>
+    <div style="text-align:center; padding: 0 0 0.8rem 0;">
         <div style="font-size:1.1rem; font-weight:700; color:#e94560; letter-spacing:1px;">PEA LOAD</div>
         <div style="font-size:0.7rem; color:rgba(255,255,255,0.5); margin-top:2px;">Transformer Monitor</div>
     </div>
