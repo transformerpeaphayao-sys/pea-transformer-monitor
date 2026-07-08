@@ -287,18 +287,19 @@ def init_connection():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
+    
+    # วิธีที่ 1: ลองอ่านจาก Streamlit Secrets (สำหรับ Cloud)
     try:
-        # 1. ลองอ่านจาก Streamlit Secrets (สำหรับตอนเอาขึ้น Cloud)
-        if "gcp_service_account" in st.secrets:
-            credentials = Credentials.from_service_account_info(
-                st.secrets["gcp_service_account"], scopes=scopes
-            )
-        # 2. ถ้าไม่มีใน Secrets ให้ลองอ่านจากไฟล์ credentials.json (สำหรับรันบนคอมพิวเตอร์ตัวเอง)
-        else:
-            credentials = Credentials.from_service_account_file(
-                "credentials.json", scopes=scopes
-            )
-            
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client = gspread.authorize(credentials)
+        return client
+    except Exception:
+        pass
+    
+    # วิธีที่ 2: ลองอ่านจากไฟล์ credentials.json (สำหรับรันบนคอมพิวเตอร์ตัวเอง)
+    try:
+        credentials = Credentials.from_service_account_file("credentials.json", scopes=scopes)
         client = gspread.authorize(credentials)
         return client
     except FileNotFoundError:
