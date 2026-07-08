@@ -555,12 +555,12 @@ if client:
                     </div>
                     """, unsafe_allow_html=True)
                     cols = st.columns(4)
-                    val_a = cols[0].number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A")
-                    val_b = cols[1].number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B")
-                    val_c = cols[2].number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C")
-                    val_n = cols[3].number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N")
+                    val_a = cols[0].number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A", value=None)
+                    val_b = cols[1].number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B", value=None)
+                    val_c = cols[2].number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C", value=None)
+                    val_n = cols[3].number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N", value=None)
                     note = st.text_input(f"💬 หมายเหตุ {f_name}", key=f"{f_name}_note", placeholder=f"หมายเหตุเฉพาะฟีดเดอร์ {f_name}...")
-                    feeder_inputs[f_name] = {"A": val_a, "B": val_b, "C": val_c, "N": val_n, "note": note}
+                    feeder_inputs[f_name] = {"A": val_a or 0.0, "B": val_b or 0.0, "C": val_c or 0.0, "N": val_n or 0.0, "note": note}
                 
                 # === Section 4: สรุปรวม ===
                 sum_a = sum(d["A"] for d in feeder_inputs.values())
@@ -587,10 +587,14 @@ if client:
                 else:
                     if total_checked:
                         tot_cols = st.columns(4)
-                        tot_a = tot_cols[0].number_input("รวม I_a (A)", min_value=0.0, step=0.1, key="tot_a_manual")
-                        tot_b = tot_cols[1].number_input("รวม I_b (A)", min_value=0.0, step=0.1, key="tot_b_manual")
-                        tot_c = tot_cols[2].number_input("รวม I_c (A)", min_value=0.0, step=0.1, key="tot_c_manual")
-                        tot_n = tot_cols[3].number_input("รวม I_n (A)", min_value=0.0, step=0.1, key="tot_n_manual")
+                        tot_a = tot_cols[0].number_input("รวม I_a (A)", min_value=0.0, step=0.1, key="tot_a_manual", value=None)
+                        tot_b = tot_cols[1].number_input("รวม I_b (A)", min_value=0.0, step=0.1, key="tot_b_manual", value=None)
+                        tot_c = tot_cols[2].number_input("รวม I_c (A)", min_value=0.0, step=0.1, key="tot_c_manual", value=None)
+                        tot_n = tot_cols[3].number_input("รวม I_n (A)", min_value=0.0, step=0.1, key="tot_n_manual", value=None)
+                        tot_a = tot_a or 0.0
+                        tot_b = tot_b or 0.0
+                        tot_c = tot_c or 0.0
+                        tot_n = tot_n or 0.0
                         tot_note = st.text_input("💬 หมายเหตุ (รวม)", key="tot_note_manual", placeholder="หมายเหตุรวม...")
                     else:
                         st.info("กรุณาเลือกฟีดเดอร์อย่างน้อย 1 รายการ หรือเลือก 'รวม'")
