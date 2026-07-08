@@ -388,7 +388,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"""
     <div style="text-align:center; padding: 0.5rem 0; opacity: 0.5; font-size: 0.7rem; color: white;">
-        📅 {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}
+        📅 {(datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M')}
     </div>
     """, unsafe_allow_html=True)
 
@@ -501,8 +501,9 @@ if client:
                 
                 col_pea1, col_pea2 = st.columns(2)
                 with col_pea1:
-                    record_date = st.date_input("📅 วันที่", datetime.date.today())
-                    record_time = st.time_input("🕐 เวลา", datetime.datetime.now().time())
+                    thai_time = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
+                    record_date = st.date_input("📅 วันที่", thai_time.date())
+                    record_time = st.time_input("🕐 เวลา", thai_time.time())
                 
                 with col_pea2:
                     pea_list = df_pending['PEANO หม้อแปลง'].astype(str).unique().tolist()
