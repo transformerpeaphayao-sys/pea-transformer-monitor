@@ -12,7 +12,7 @@ st.set_page_config(
     page_title="ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # --- CUSTOM CSS: Professional UX + Mobile Responsive ---
@@ -29,7 +29,6 @@ html, body, [class*="css"] {
 /* ===== Hide default Streamlit elements ===== */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header {visibility: hidden;}
 
 /* ===== Main container padding for mobile ===== */
 .block-container {
