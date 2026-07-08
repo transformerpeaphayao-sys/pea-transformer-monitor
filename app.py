@@ -683,8 +683,7 @@ if client:
                                     tot_note
                                 ])
                             
-                            for r in rows_to_insert:
-                                sheet_record.append_row(r)
+                            sheet_record.append_rows(rows_to_insert)
                             st.success("✅ บันทึกข้อมูลเรียบร้อยแล้ว!")
                             
                             st.session_state.page = "Map"
