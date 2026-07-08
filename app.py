@@ -1,0 +1,1009 @@
+import streamlit as st
+import gspread
+import pandas as pd
+import math
+import datetime
+from google.oauth2.service_account import Credentials
+import folium
+from streamlit_folium import st_folium
+
+# --- 1. ตั้งค่าหน้าเว็บ Streamlit ---
+st.set_page_config(
+    page_title="ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# --- CUSTOM CSS: Professional UX + Mobile Responsive ---
+st.markdown("""
+<style>
+/* ===== Google Fonts ===== */
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+
+/* ===== Global ===== */
+html, body, [class*="css"] {
+    font-family: 'Prompt', sans-serif !important;
+}
+
+/* ===== Hide default Streamlit elements ===== */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* ===== Main container padding for mobile ===== */
+.block-container {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    max-width: 100% !important;
+}
+
+/* ===== Sidebar ===== */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+    min-width: 240px !important;
+    max-width: 240px !important;
+}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 {
+    color: #ffffff !important;
+}
+[data-testid="stSidebar"] button[kind="secondary"],
+[data-testid="stSidebar"] button[kind="primary"] {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    color: #e0e0e0 !important;
+    border-radius: 10px !important;
+    padding: 0.6rem 1rem !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+    backdrop-filter: blur(5px) !important;
+    margin-bottom: 4px !important;
+    font-family: 'Prompt', sans-serif !important;
+}
+[data-testid="stSidebar"] button:hover {
+    background: rgba(255,255,255,0.18) !important;
+    border-color: #e94560 !important;
+    color: #ffffff !important;
+    transform: translateX(4px);
+}
+
+/* ===== Top header banner ===== */
+.app-header {
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 40%, #e94560 100%);
+    color: white;
+    padding: 1.2rem 1.5rem;
+    border-radius: 14px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(233,69,96,0.25);
+}
+.app-header .icon { font-size: 2rem; }
+.app-header .title { font-size: 1.4rem; font-weight: 700; margin: 0; }
+.app-header .subtitle { font-size: 0.85rem; opacity: 0.85; margin: 0; }
+
+/* ===== Section Card (glass effect) ===== */
+.section-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+/* ===== Dashboard Metric Cards ===== */
+.metric-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 1rem; }
+.metric-card {
+    flex: 1 1 140px;
+    border-radius: 14px;
+    padding: 1rem 1.2rem;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    transition: transform 0.2s ease;
+}
+.metric-card:hover { transform: translateY(-3px); }
+.metric-card .value { font-size: 2rem; font-weight: 700; margin: 0; }
+.metric-card .label { font-size: 0.8rem; font-weight: 500; margin: 0; opacity: 0.8; }
+.metric-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+.metric-done { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
+.metric-pending { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); color: #333; }
+
+/* ===== Progress bar ===== */
+.progress-wrapper { margin-bottom: 1.2rem; }
+.progress-bar-bg {
+    background: rgba(255,255,255,0.1);
+    border-radius: 99px;
+    height: 18px;
+    overflow: hidden;
+    position: relative;
+}
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+    transition: width 0.6s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* ===== Table header ===== */
+.table-header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: white;
+    display: flex;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+}
+.table-header > div { flex: 1; }
+.th-pea { flex: 2 !important; }
+.th-loc { flex: 3 !important; }
+.th-kva { flex: 1.5 !important; }
+.th-phase { flex: 1.5 !important; }
+
+/* ===== Info banner (transformer info) ===== */
+.tr-info-banner {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+    color: white;
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+    margin-bottom: 0.8rem;
+    box-shadow: 0 3px 12px rgba(15,52,96,0.3);
+}
+.tr-info-item { display: flex; align-items: center; gap: 6px; }
+.tr-info-item .lbl { opacity: 0.7; font-size: 0.8rem; }
+.tr-info-item .val { font-weight: 600; font-size: 0.95rem; }
+
+/* ===== Feeder card ===== */
+.feeder-card {
+    background: linear-gradient(135deg, rgba(15,52,96,0.08), rgba(233,69,96,0.04));
+    border: 1px solid rgba(15,52,96,0.12);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.8rem;
+}
+.feeder-card-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #0f3460;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ===== Summation card ===== */
+.sum-card {
+    background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+    color: white;
+    border-radius: 14px;
+    padding: 1.2rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.8rem;
+    box-shadow: 0 4px 18px rgba(15,52,96,0.3);
+}
+.sum-card-title {
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ===== Primary button override ===== */
+button[kind="primary"] {
+    background: linear-gradient(135deg, #e94560, #c62a40) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    padding: 0.6rem 1.5rem !important;
+    transition: all 0.3s ease !important;
+    font-family: 'Prompt', sans-serif !important;
+}
+button[kind="primary"]:hover {
+    box-shadow: 0 4px 16px rgba(233,69,96,0.4) !important;
+    transform: translateY(-2px);
+}
+
+/* ===== Tabs styling ===== */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 10px 10px 0 0;
+    padding: 8px 20px;
+    font-weight: 500;
+    font-family: 'Prompt', sans-serif !important;
+}
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #0f3460, #16213e) !important;
+    color: white !important;
+    border-radius: 10px 10px 0 0;
+}
+
+/* ===== Checkbox ===== */
+.stCheckbox label span {
+    font-weight: 500 !important;
+    font-family: 'Prompt', sans-serif !important;
+}
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+    .block-container {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    .app-header {
+        padding: 0.8rem 1rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 4px;
+    }
+    .app-header .icon { font-size: 1.6rem; }
+    .app-header .title { font-size: 1.1rem; }
+    .metric-row { gap: 8px; }
+    .metric-card { padding: 0.7rem 0.8rem; }
+    .metric-card .value { font-size: 1.5rem; }
+    .table-header { font-size: 0.72rem; padding: 8px 10px; }
+    .tr-info-banner { padding: 0.8rem; gap: 0.6rem; flex-direction: column; }
+    .feeder-card { padding: 0.8rem; }
+    .sum-card { padding: 0.8rem; }
+    
+    /* Stack columns on mobile */
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        min-width: 100% !important;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .metric-card .value { font-size: 1.6rem; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# --- 2. ฟังก์ชันสำหรับเชื่อมต่อ Google Sheets ---
+@st.cache_resource
+def init_connection():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    try:
+        # 1. ลองอ่านจาก Streamlit Secrets (สำหรับตอนเอาขึ้น Cloud)
+        if "gcp_service_account" in st.secrets:
+            credentials = Credentials.from_service_account_info(
+                st.secrets["gcp_service_account"], scopes=scopes
+            )
+        # 2. ถ้าไม่มีใน Secrets ให้ลองอ่านจากไฟล์ credentials.json (สำหรับรันบนคอมพิวเตอร์ตัวเอง)
+        else:
+            credentials = Credentials.from_service_account_file(
+                "credentials.json", scopes=scopes
+            )
+            
+        client = gspread.authorize(credentials)
+        return client
+    except FileNotFoundError:
+        st.error("ไม่พบข้อมูลการเชื่อมต่อ กรุณานำไฟล์ 'credentials.json' มาวาง หรือตั้งค่าใน Streamlit Secrets")
+        return None
+    except Exception as e:
+        st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ Google Sheets: {e}")
+        return None
+
+# --- 3. ฟังก์ชันสำหรับดึงข้อมูล MasterData ---
+@st.cache_data(ttl=600)
+def load_master_data(_client, spreadsheet_name="PEA_Transformer_DB"):
+    try:
+        sheet = _client.open(spreadsheet_name).worksheet("MasterData")
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
+        if 'LATITUDE' in df.columns and 'LONGITUDE' in df.columns:
+            df['LATITUDE'] = pd.to_numeric(df['LATITUDE'], errors='coerce')
+            df['LONGITUDE'] = pd.to_numeric(df['LONGITUDE'], errors='coerce')
+        return df
+    except gspread.exceptions.SpreadsheetNotFound:
+        st.error(f"ไม่พบไฟล์ Google Sheet ที่ชื่อ '{spreadsheet_name}' กรุณาตรวจสอบว่าแชร์ไฟล์ให้ Service Account แล้วหรือยัง")
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"ไม่สามารถโหลดข้อมูล MasterData ได้: {e}")
+        return pd.DataFrame()
+
+# --- 3.5. ฟังก์ชันสำหรับดึงข้อมูลที่บันทึกไปแล้ว ---
+@st.cache_data(ttl=60)
+def load_completed_data(_client, spreadsheet_name):
+    try:
+        sheet = _client.open(spreadsheet_name).worksheet("Record Data")
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+# --- Dialog: รายละเอียดหม้อแปลง (Summary Page) ---
+@st.dialog("รายละเอียดหม้อแปลง", width="large")
+def show_transformer_details(pea_no, df_m, df_r):
+    st.markdown(f"**⚡ ข้อมูลพื้นฐาน (Master Data): PEA {pea_no}**")
+    master_row = df_m[df_m['PEANO หม้อแปลง'].astype(str) == pea_no]
+    st.dataframe(master_row, use_container_width=True, hide_index=True)
+    
+    record_rows = df_r[df_r['PEA NO'].astype(str) == pea_no]
+    if not record_rows.empty:
+        st.markdown(f"**📝 ข้อมูลผลการวัดโหลด (Record Data)**")
+        st.dataframe(record_rows, use_container_width=True, hide_index=True)
+
+
+# --- 4. การจัดการสถานะ (Session State) ---
+if 'page' not in st.session_state:
+    st.session_state.page = "Map"
+if 'selected_pea_from_map' not in st.session_state:
+    st.session_state.selected_pea_from_map = None
+
+# ตรวจสอบว่ามาจากการคลิกปุ่ม Edit ในแผนที่หรือไม่ (ผ่าน URL)
+if 'pea' in st.query_params:
+    st.session_state.page = "Form"
+    st.session_state.selected_pea_from_map = st.query_params['pea']
+    st.query_params.clear()
+
+# เมนูด้านข้าง (Sidebar)
+with st.sidebar:
+    st.markdown("""
+    <div style="text-align:center; padding: 1.2rem 0 0.8rem 0;">
+        <div style="font-size:2.2rem;">⚡</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#e94560; letter-spacing:1px;">PEA LOAD</div>
+        <div style="font-size:0.7rem; color:rgba(255,255,255,0.5); margin-top:2px;">Transformer Monitor</div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("---")
+    
+    if st.button("🗺️  แผนที่หม้อแปลง", use_container_width=True):
+        st.session_state.page = "Map"
+    if st.button("📝  บันทึกข้อมูล", use_container_width=True):
+        st.session_state.page = "Form"
+    if st.button("📊  สรุปผลงาน", use_container_width=True):
+        st.session_state.page = "Summary"
+    if st.button("🔍  กรองข้อมูล/ประวัติ", use_container_width=True):
+        st.session_state.page = "Filter"
+    
+    st.markdown("---")
+    st.markdown(f"""
+    <div style="text-align:center; padding: 0.5rem 0; opacity: 0.5; font-size: 0.7rem; color: white;">
+        📅 {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- 5. Header Banner ---
+st.markdown("""
+<div class="app-header">
+    <div class="icon">⚡</div>
+    <div>
+        <p class="title">ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA</p>
+        <p class="subtitle">Transformer Load Monitoring System</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# --- 6. Main UI ---
+client = init_connection()
+
+if client:
+    SHEET_NAME = "วัดโหลดหม้อแปลง ตามแผนงาน"
+    df_master = load_master_data(client, SHEET_NAME)
+    
+    if not df_master.empty:
+        required_cols = ['PEANO หม้อแปลง', 'ค่าพิกัด kVA หม้อแปลง']
+        if all(col in df_master.columns for col in required_cols):
+            
+            df_record = load_completed_data(client, SHEET_NAME)
+            completed_peas = []
+            if not df_record.empty and 'PEA NO' in df_record.columns:
+                completed_peas = df_record['PEA NO'].astype(str).unique().tolist()
+            
+            df_pending = df_master[~df_master['PEANO หม้อแปลง'].astype(str).isin(completed_peas)]
+            
+            # ==============================
+            # หน้าที่ 1: MAP PAGE
+            # ==============================
+            if st.session_state.page == "Map":
+                st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
+                st.caption("💡 คลิกที่หมุดสีแดงเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง")
+                
+                if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
+                    map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
+                    
+                    if not map_data.empty:
+                        center_lat = map_data['LATITUDE'].mean()
+                        center_lon = map_data['LONGITUDE'].mean()
+                        
+                        m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
+                        
+                        @st.dialog("📍 ข้อมูลหม้อแปลง")
+                        def show_transformer_dialog(pea_no, row_data):
+                            phase_val = row_data.get('ระบบเฟส', '-')
+                            kva_val = row_data.get('ค่าพิกัด kVA หม้อแปลง', '-')
+                            location_val = row_data.get('สถานที่', '-')
+                            lat_val = row_data['LATITUDE']
+                            lon_val = row_data['LONGITUDE']
+                            
+                            # Transformer info banner
+                            st.markdown(f"""
+                            <div class="tr-info-banner">
+                                <div class="tr-info-item"><div class="lbl">📌 PEA NO</div><div class="val">{pea_no}</div></div>
+                                <div class="tr-info-item"><div class="lbl">⚡ เฟส</div><div class="val">{phase_val}</div></div>
+                                <div class="tr-info-item"><div class="lbl">🔋 kVA</div><div class="val">{kva_val}</div></div>
+                                <div class="tr-info-item"><div class="lbl">📍 สถานที่</div><div class="val">{location_val}</div></div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            col1, col2 = st.columns(2)
+                            google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={lat_val},{lon_val}"
+                            with col1:
+                                st.link_button("🚗 นำทาง", url=google_maps_url, use_container_width=True)
+                            with col2:
+                                if st.button("📝 บันทึกข้อมูล", type="primary", use_container_width=True):
+                                    st.session_state.page = "Form"
+                                    st.session_state.selected_pea_from_map = pea_no
+                                    st.rerun()
+
+                        # ปักหมุด
+                        for idx, row in map_data.iterrows():
+                            pea_no_str = str(row['PEANO หม้อแปลง'])
+                            folium.Marker(
+                                [row['LATITUDE'], row['LONGITUDE']],
+                                tooltip=pea_no_str,
+                                icon=folium.Icon(color="red", icon="info-sign")
+                            ).add_to(m)
+                        
+                        st_data = st_folium(m, width="100%", height=500, returned_objects=["last_object_clicked_tooltip"])
+                        
+                        if st_data and st_data.get("last_object_clicked_tooltip"):
+                            clicked_pea = st_data["last_object_clicked_tooltip"]
+                            if st.session_state.get("last_dialog_pea") != clicked_pea:
+                                st.session_state.last_dialog_pea = clicked_pea
+                                row_data = df_pending[df_pending['PEANO หม้อแปลง'].astype(str) == clicked_pea]
+                                if not row_data.empty:
+                                    show_transformer_dialog(clicked_pea, row_data.iloc[0])
+                    else:
+                        st.success("🎉 เยี่ยมมาก! คุณดำเนินการบันทึกโหลดหม้อแปลงครบทุกจุดแล้ว")
+                else:
+                    st.warning("ไม่พบคอลัมน์ 'LATITUDE' หรือ 'LONGITUDE' ในชีต MasterData")
+            
+            # ==============================
+            # หน้าที่ 2: FORM PAGE
+            # ==============================
+            elif st.session_state.page == "Form":
+                st.markdown("#### 📝 ฟอร์มบันทึกการวัดโหลดหม้อแปลง")
+                
+                # === Section 1: ข้อมูลทั่วไป ===
+                st.markdown('<div class="section-card">', unsafe_allow_html=True)
+                st.markdown("**📋 ข้อมูลทั่วไป**")
+                
+                col_pea1, col_pea2 = st.columns(2)
+                with col_pea1:
+                    record_date = st.date_input("📅 วันที่", datetime.date.today())
+                    record_time = st.time_input("🕐 เวลา", datetime.datetime.now().time())
+                
+                with col_pea2:
+                    pea_list = df_pending['PEANO หม้อแปลง'].astype(str).unique().tolist()
+                    default_idx = 0
+                    if st.session_state.selected_pea_from_map and st.session_state.selected_pea_from_map in pea_list:
+                        default_idx = pea_list.index(st.session_state.selected_pea_from_map)
+                    
+                    if pea_list:
+                        selected_pea = st.selectbox("🔍 ค้นหา/เลือก PEANO หม้อแปลง", options=pea_list, index=default_idx)
+                        if selected_pea:
+                            t_info = df_pending[df_pending['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
+                            phase = t_info.get('ระบบเฟส', '-')
+                            kva = t_info.get('ค่าพิกัด kVA หม้อแปลง', '-')
+                            loc = t_info.get('สถานที่', '-')
+                            st.markdown(f"""
+                            <div class="tr-info-banner">
+                                <div class="tr-info-item"><div class="lbl">⚡ ระบบเฟส</div><div class="val">{phase}</div></div>
+                                <div class="tr-info-item"><div class="lbl">🔋 พิกัด</div><div class="val">{kva} kVA</div></div>
+                                <div class="tr-info-item"><div class="lbl">📍 สถานที่</div><div class="val">{loc}</div></div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.info("ไม่มีหม้อแปลงคงเหลือให้เลือก")
+                        selected_pea = None
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                # === Section 2: เลือกฟีดเดอร์ ===
+                st.markdown('<div class="section-card">', unsafe_allow_html=True)
+                st.markdown("**📌 เลือกฟีดเดอร์ที่ต้องการบันทึก**")
+                chk_cols = st.columns(5)
+                f1_checked = chk_cols[0].checkbox("F1")
+                f2_checked = chk_cols[1].checkbox("F2")
+                f3_checked = chk_cols[2].checkbox("F3")
+                f4_checked = chk_cols[3].checkbox("F4")
+                total_checked = chk_cols[4].checkbox("รวม", help="กรณีวัดเมน หรือต้องการบันทึกค่ารวมแยกต่างหาก")
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                selected_feeders = []
+                if f1_checked: selected_feeders.append("F1")
+                if f2_checked: selected_feeders.append("F2")
+                if f3_checked: selected_feeders.append("F3")
+                if f4_checked: selected_feeders.append("F4")
+                
+                # === Section 3: กรอกข้อมูลแต่ละฟีดเดอร์ ===
+                feeder_inputs = {}
+                for f_name in selected_feeders:
+                    st.markdown(f"""
+                    <div class="feeder-card">
+                        <div class="feeder-card-title">⚡ ฟีดเดอร์ {f_name} — กระแสไฟฟ้า (Amp)</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    cols = st.columns(4)
+                    val_a = cols[0].number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A")
+                    val_b = cols[1].number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B")
+                    val_c = cols[2].number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C")
+                    val_n = cols[3].number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N")
+                    note = st.text_input(f"💬 หมายเหตุ {f_name}", key=f"{f_name}_note", placeholder=f"หมายเหตุเฉพาะฟีดเดอร์ {f_name}...")
+                    feeder_inputs[f_name] = {"A": val_a, "B": val_b, "C": val_c, "N": val_n, "note": note}
+                
+                # === Section 4: สรุปรวม ===
+                sum_a = sum(d["A"] for d in feeder_inputs.values())
+                sum_b = sum(d["B"] for d in feeder_inputs.values())
+                sum_c = sum(d["C"] for d in feeder_inputs.values())
+                sum_n = sum(d["N"] for d in feeder_inputs.values())
+                
+                tot_a = tot_b = tot_c = tot_n = 0.0
+                tot_note = ""
+                
+                st.markdown("""
+                <div class="sum-card">
+                    <div class="sum-card-title">📊 สรุปสถานะรวมของหม้อแปลงเครื่องนี้</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if len(selected_feeders) > 0:
+                    tot_cols = st.columns(4)
+                    tot_a = tot_cols[0].number_input("รวม I_a (A)", value=float(sum_a), disabled=True)
+                    tot_b = tot_cols[1].number_input("รวม I_b (A)", value=float(sum_b), disabled=True)
+                    tot_c = tot_cols[2].number_input("รวม I_c (A)", value=float(sum_c), disabled=True)
+                    tot_n = tot_cols[3].number_input("รวม I_n (A)", value=float(sum_n), disabled=True)
+                    tot_note = st.text_input("💬 หมายเหตุ (รวม)", key="tot_note_auto", placeholder="หมายเหตุรวม...")
+                else:
+                    if total_checked:
+                        tot_cols = st.columns(4)
+                        tot_a = tot_cols[0].number_input("รวม I_a (A)", min_value=0.0, step=0.1, key="tot_a_manual")
+                        tot_b = tot_cols[1].number_input("รวม I_b (A)", min_value=0.0, step=0.1, key="tot_b_manual")
+                        tot_c = tot_cols[2].number_input("รวม I_c (A)", min_value=0.0, step=0.1, key="tot_c_manual")
+                        tot_n = tot_cols[3].number_input("รวม I_n (A)", min_value=0.0, step=0.1, key="tot_n_manual")
+                        tot_note = st.text_input("💬 หมายเหตุ (รวม)", key="tot_note_manual", placeholder="หมายเหตุรวม...")
+                    else:
+                        st.info("กรุณาเลือกฟีดเดอร์อย่างน้อย 1 รายการ หรือเลือก 'รวม'")
+                
+                st.write("")
+                submitted = st.button("💾 บันทึกข้อมูลและตรวจสอบ", type="primary", use_container_width=True)
+                    
+                # --- ส่วนคำนวณและบันทึกลง Google Sheets ---
+                if submitted and selected_pea:
+                    # ดึงข้อมูลหม้อแปลงเฉพาะ PEA NO ที่ผู้ใช้เลือก
+                    transformer_info = df_pending[df_pending['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
+                    
+                    try:
+                        kva_value = float(transformer_info['ค่าพิกัด kVA หม้อแปลง'])
+                    except ValueError:
+                        st.error("ข้อมูล kVA ใน MasterData ไม่ใช่ตัวเลขที่ถูกต้อง!")
+                        st.stop()
+                    
+                    # 1. คำนวณพิกัดกระแสสูงสุด (I_max) ของหม้อแปลง
+                    i_max = (kva_value * 1000) / (math.sqrt(3) * 400)
+                    
+                    # หากระแสเฟสที่สูงที่สุด เพื่อใช้คิด % โหลด
+                    max_current_measured = max(tot_a, tot_b, tot_c)
+                    percent_load = (max_current_measured / i_max) * 100 if i_max > 0 else 0
+                    
+                    # 2. คำนวณ Load Unbalance (%)
+                    avg_current = (tot_a + tot_b + tot_c) / 3
+                    if avg_current > 0:
+                        dev_a = abs(tot_a - avg_current)
+                        dev_b = abs(tot_b - avg_current)
+                        dev_c = abs(tot_c - avg_current)
+                        max_dev = max(dev_a, dev_b, dev_c)
+                        percent_unbalance = (max_dev / avg_current) * 100
+                    else:
+                        percent_unbalance = 0.0
+                    
+                    # --- แสดงผลการคำนวณบนหน้าจอ ---
+                    st.write("---")
+                    st.markdown(f"**⚡ พิกัดหม้อแปลง:** {kva_value} kVA | **พิกัดกระแสสูงสุด (I_max):** {i_max:.2f} A")
+                    st.markdown(f"**📊 กระแสเฉลี่ย 3 เฟส:** {avg_current:.2f} A")
+                    
+                    col_alert1, col_alert2 = st.columns(2)
+                    
+                    # --- แจ้งเตือน % โหลด (ควบคุมไม่ให้เกิน 80%) ---
+                    with col_alert1:
+                        if percent_load > 100:
+                            st.error(f"🔴 **Overload!**\n\nโหลดใช้งาน {percent_load:.2f}%\n(กระแสเฟสสูงสุด {max_current_measured:.2f} A)")
+                        elif percent_load > 80:
+                            st.warning(f"🟡 **เกินเกณฑ์ 80%!**\n\nโหลดใช้งาน {percent_load:.2f}%\n(ควรวางแผนลดโหลด)")
+                        else:
+                            st.success(f"🟢 **โหลดปกติ**\n\nโหลดใช้งาน {percent_load:.2f}%")
+                            
+                    # --- แจ้งเตือน Load Unbalance ---
+                    with col_alert2:
+                        # สมมติเกณฑ์ Unbalance ที่ยอมรับได้คือ 20% (สามารถแก้ตัวเลข 20 ตรงนี้ได้ตามเกณฑ์ กฟภ. พื้นที่)
+                        if percent_unbalance > 30:
+                            st.error(f"🔴 **Unbalance สูงมาก!**\n\nความไม่สมดุล {percent_unbalance:.2f}%")
+                        elif percent_unbalance > 20:
+                            st.warning(f"🟡 **Unbalance เกินเกณฑ์!**\n\nความไม่สมดุล {percent_unbalance:.2f}%")
+                        else:
+                            st.success(f"🟢 **กระแสสมดุลดี**\n\nความไม่สมดุล {percent_unbalance:.2f}%")
+
+                    # ตรวจสอบการเลือกฟีดเดอร์ก่อนบันทึก
+                    if len(selected_feeders) == 0 and not total_checked:
+                        st.error("⚠️ กรุณาเลือกฟีดเดอร์ที่ต้องการบันทึกก่อนครับ")
+                        st.stop()
+
+                    with st.spinner("กำลังบันทึกข้อมูล..."):
+                        try:
+                            sheet_record = client.open(SHEET_NAME).worksheet("Record Data")
+                            
+                            rows_to_insert = []
+                            for f_name, data in feeder_inputs.items():
+                                rows_to_insert.append([
+                                    record_date.strftime("%d/%m/%Y"),
+                                    record_time.strftime("%H:%M:%S"),
+                                    selected_pea,
+                                    f_name,
+                                    data["A"], data["B"], data["C"], data["N"],
+                                    data["note"]
+                                ])
+                            
+                            if total_checked or len(selected_feeders) > 0:
+                                rows_to_insert.append([
+                                    record_date.strftime("%d/%m/%Y"),
+                                    record_time.strftime("%H:%M:%S"),
+                                    selected_pea,
+                                    "รวม",
+                                    tot_a, tot_b, tot_c, tot_n,
+                                    tot_note
+                                ])
+                            
+                            for r in rows_to_insert:
+                                sheet_record.append_row(r)
+                            st.success("✅ บันทึกข้อมูลเรียบร้อยแล้ว!")
+                            
+                            st.session_state.page = "Map"
+                            st.session_state.selected_pea_from_map = None
+                            if 'last_dialog_pea' in st.session_state:
+                                del st.session_state['last_dialog_pea']
+                            
+                            st.cache_data.clear()
+                            st.rerun()
+                            
+                        except gspread.exceptions.WorksheetNotFound:
+                            st.error("ไม่พบชีตชื่อ 'Record Data' ในไฟล์ Google Sheets ของคุณ")
+                        except Exception as e:
+                            st.error(f"❌ เกิดข้อผิดพลาด: {e}")
+            
+            # ==============================
+            # หน้าที่ 3: SUMMARY PAGE
+            # ==============================
+            elif st.session_state.page == "Summary":
+                st.markdown("#### 📊 สรุปผลการดำเนินงาน")
+                
+                total_transformers = len(df_master)
+                total_completed = len(completed_peas)
+                total_pending = total_transformers - total_completed
+                pct = (total_completed / total_transformers * 100) if total_transformers > 0 else 0
+                
+                # Dashboard Metric Cards
+                st.markdown(f"""
+                <div class="metric-row">
+                    <div class="metric-card metric-total">
+                        <p class="value">{total_transformers}</p>
+                        <p class="label">หม้อแปลงทั้งหมด (จุด)</p>
+                    </div>
+                    <div class="metric-card metric-done">
+                        <p class="value">{total_completed}</p>
+                        <p class="label">✅ ทำเสร็จแล้ว</p>
+                    </div>
+                    <div class="metric-card metric-pending">
+                        <p class="value">{total_pending}</p>
+                        <p class="label">⏳ ยังไม่ได้ทำ</p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Progress bar
+                st.markdown(f"""
+                <div class="progress-wrapper">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; opacity:0.7;">
+                        <span>ความคืบหน้า</span>
+                        <span>{pct:.1f}%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width:{pct}%">{pct:.0f}%</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                tab1, tab2 = st.tabs(["✅ ทำเสร็จแล้ว", "⏳ ยังไม่เสร็จ"])
+                
+                with tab1:
+                    search_completed = st.text_input("🔍 ค้นหาด้วย รหัส PEA หรือ สถานที่...", key="search_comp", placeholder="พิมพ์ค้นหา...")
+                    if completed_peas:
+                        df_completed_master = df_master[df_master['PEANO หม้อแปลง'].astype(str).isin(completed_peas)]
+                        
+                        mask = df_completed_master['PEANO หม้อแปลง'].astype(str).str.contains(search_completed, case=False, na=False) | \
+                               df_completed_master['สถานที่'].astype(str).str.contains(search_completed, case=False, na=False)
+                        filtered_df = df_completed_master[mask]
+                        
+                        st.markdown("""
+                        <div class="table-header">
+                            <div class="th-pea">PEA No.</div>
+                            <div class="th-loc">สถานที่ติดตั้ง</div>
+                            <div class="th-kva">ขนาด (kVA)</div>
+                            <div class="th-phase">ระบบเฟส</div>
+                            <div class="th-alert" style="flex: 2;">การแจ้งเตือน</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        for _, row in filtered_df.head(50).iterrows():
+                            pea = str(row['PEANO หม้อแปลง'])
+                            c1, c2, c3, c4, c5 = st.columns([2, 3, 1.5, 1.5, 2])
+                            
+                            with c1:
+                                if st.button(f"🔗 {pea}", key=f"btn_comp_{pea}", type="tertiary"):
+                                    show_transformer_details(pea, df_master, df_record)
+                            
+                            c2.write(row.get('สถานที่', '-'))
+                            
+                            kva_val = row.get('ค่าพิกัด kVA หม้อแปลง', '-')
+                            c3.write(kva_val)
+                            c4.write(row.get('ระบบเฟส', '-'))
+                            
+                            # --- คำนวณการแจ้งเตือน ---
+                            status_html = '<span style="color: gray;">-</span>'
+                            record_rows = df_record[df_record['PEA NO'].astype(str) == pea]
+                            if not record_rows.empty:
+                                # ใช้ชื่อคอลัมน์จาก Sheet จริง ("ฟิดเดอร์", "กระแส A" ฯลฯ)
+                                col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in record_rows.columns else "Feeder" if "Feeder" in record_rows.columns else record_rows.columns[3]
+                                col_a = "กระแส A" if "กระแส A" in record_rows.columns else "Ph A" if "Ph A" in record_rows.columns else record_rows.columns[4]
+                                col_b = "กระแส B" if "กระแส B" in record_rows.columns else "Ph B" if "Ph B" in record_rows.columns else record_rows.columns[5]
+                                col_c = "กระแส C" if "กระแส C" in record_rows.columns else "Ph C" if "Ph C" in record_rows.columns else record_rows.columns[6]
+                                
+                                sum_row = record_rows[record_rows[col_feeder].astype(str).str.strip() == 'รวม']
+                                if not sum_row.empty:
+                                    last_rec = sum_row.iloc[-1]
+                                    try:
+                                        tot_a, tot_b, tot_c = float(last_rec.get(col_a, 0)), float(last_rec.get(col_b, 0)), float(last_rec.get(col_c, 0))
+                                    except:
+                                        tot_a, tot_b, tot_c = 0, 0, 0
+                                else:
+                                    try:
+                                        tot_a = pd.to_numeric(record_rows[col_a], errors='coerce').sum()
+                                        tot_b = pd.to_numeric(record_rows[col_b], errors='coerce').sum()
+                                        tot_c = pd.to_numeric(record_rows[col_c], errors='coerce').sum()
+                                    except:
+                                        tot_a, tot_b, tot_c = 0, 0, 0
+                                
+                                try:
+                                    kva_float = float(kva_val)
+                                    i_max = (kva_float * 1000) / (math.sqrt(3) * 400)
+                                    max_i = max(tot_a, tot_b, tot_c)
+                                    pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
+                                    
+                                    avg_i = (tot_a + tot_b + tot_c) / 3
+                                    pct_unb = 0
+                                    if avg_i > 0:
+                                        max_dev = max(abs(tot_a - avg_i), abs(tot_b - avg_i), abs(tot_c - avg_i))
+                                        pct_unb = (max_dev / avg_i) * 100
+                                        
+                                    alerts = []
+                                    if pct_load > 100:
+                                        alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🔴 Overload {pct_load:.0f}%</span>')
+                                    elif pct_load > 80:
+                                        alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🟡 Load {pct_load:.0f}%</span>')
+                                        
+                                    if pct_unb > 30:
+                                        alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🔴 Unbalance {pct_unb:.0f}%</span>')
+                                    elif pct_unb > 20:
+                                        alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🟡 Unbalance {pct_unb:.0f}%</span>')
+                                        
+                                    if alerts:
+                                        status_html = "<div style='display:flex; flex-direction:column; gap:4px; align-items:flex-start;'>" + "".join(alerts) + "</div>"
+                                    else:
+                                        status_html = '<span style="background-color: #11998e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight:600;">🟢 ปกติ</span>'
+                                except:
+                                    status_html = '<span style="color: gray; font-size: 0.8rem;">ไม่สามารถคำนวณได้</span>'
+                                    
+                            c5.markdown(status_html, unsafe_allow_html=True)
+                            
+                            st.markdown("---")
+                            
+                        if len(filtered_df) > 50:
+                            st.info(f"แสดงผล 50 จาก {len(filtered_df)} รายการ")
+                    else:
+                        st.info("ยังไม่มีข้อมูลหม้อแปลงที่ทำเสร็จแล้ว")
+                
+                with tab2:
+                    search_pending = st.text_input("🔍 ค้นหาด้วย รหัส PEA หรือ สถานที่...", key="search_pend", placeholder="พิมพ์ค้นหา...")
+                    if not df_pending.empty:
+                        mask_p = df_pending['PEANO หม้อแปลง'].astype(str).str.contains(search_pending, case=False, na=False) | \
+                                 df_pending['สถานที่'].astype(str).str.contains(search_pending, case=False, na=False)
+                        filtered_df_p = df_pending[mask_p]
+                        
+                        st.markdown("""
+                        <div class="table-header">
+                            <div class="th-pea">PEA No.</div>
+                            <div class="th-loc">สถานที่ติดตั้ง</div>
+                            <div class="th-kva">ขนาด (kVA)</div>
+                            <div class="th-phase">ระบบเฟส</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        for _, row in filtered_df_p.head(50).iterrows():
+                            pea = str(row['PEANO หม้อแปลง'])
+                            c1, c2, c3, c4 = st.columns([2, 3, 1.5, 1.5])
+                            
+                            with c1:
+                                if st.button(f"🔗 {pea}", key=f"btn_pend_{pea}", type="tertiary"):
+                                    show_transformer_details(pea, df_master, df_record)
+                            
+                            c2.write(row.get('สถานที่', '-'))
+                            c3.write(row.get('ค่าพิกัด kVA หม้อแปลง', '-'))
+                            c4.write(row.get('ระบบเฟส', '-'))
+                            st.markdown("---")
+                            
+                        if len(filtered_df_p) > 50:
+                            st.info(f"แสดงผล 50 จาก {len(filtered_df_p)} รายการ")
+                    else:
+                        st.success("🎉 ทำเสร็จครบทุกจุดแล้วครับ!")
+
+            # ==============================
+            # หน้าที่ 4: FILTER PAGE
+            # ==============================
+            elif st.session_state.page == "Filter":
+                st.markdown("#### 🔍 กรองข้อมูลประวัติการวัดกระแส")
+                
+                if df_record.empty:
+                    st.info("ยังไม่มีข้อมูลประวัติการวัดกระแส")
+                else:
+                    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+                    st.markdown("**1. เลือกเงื่อนไขการค้นหา**")
+                    
+                    col_f1, col_f2, col_f3 = st.columns(3)
+                    
+                    with col_f1:
+                        pea_list = ["ทั้งหมด"] + sorted(df_record['PEA NO'].astype(str).unique().tolist())
+                        selected_pea = st.selectbox("PEA NO หม้อแปลง", options=pea_list)
+                    
+                    with col_f2:
+                        col_date = "วันที่" if "วันที่" in df_record.columns else df_record.columns[0]
+                        date_list = ["ทั้งหมด"] + sorted(df_record[col_date].astype(str).unique().tolist(), reverse=True)
+                        selected_date = st.selectbox("วันที่บันทึก", options=date_list)
+                    
+                    with col_f3:
+                        status_filter = st.selectbox("สถานะการแจ้งเตือน", options=["ทั้งหมด", "🔴 Overload", "🟡 ใกล้เกินพิกัด", "🔴 Unbalance", "🟡 Unbalance", "🟢 ปกติ"])
+                        
+                    st.markdown("**2. กรองตามกระแสของฟีดเดอร์**")
+                    col_f4, col_f5 = st.columns([1, 2])
+                    with col_f4:
+                        exclude_total = st.checkbox("✅ ไม่รวมแถวที่เป็นผล 'รวม'", value=True, help="แสดงเฉพาะข้อมูลของแต่ละฟีดเดอร์ (F1, F2,...)")
+                    with col_f5:
+                        min_amp, max_amp = st.slider("ช่วงกระแสที่ต้องการค้นหา (Amp)", min_value=0, max_value=1000, value=(0, 1000), step=5, help="ค้นหาหม้อแปลงที่มีกระแสเฟสใดเฟสหนึ่งอยู่ในช่วงนี้")
+                        
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # --- Data Processing ---
+                    filtered_df = df_record.copy()
+                    
+                    if selected_pea != "ทั้งหมด":
+                        filtered_df = filtered_df[filtered_df['PEA NO'].astype(str) == selected_pea]
+                    
+                    if selected_date != "ทั้งหมด":
+                        filtered_df = filtered_df[filtered_df[col_date].astype(str) == selected_date]
+                        
+                    col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
+                    col_a = "กระแส A" if "กระแส A" in filtered_df.columns else "Ph A" if "Ph A" in filtered_df.columns else filtered_df.columns[4]
+                    col_b = "กระแส B" if "กระแส B" in filtered_df.columns else "Ph B" if "Ph B" in filtered_df.columns else filtered_df.columns[5]
+                    col_c = "กระแส C" if "กระแส C" in filtered_df.columns else "Ph C" if "Ph C" in filtered_df.columns else filtered_df.columns[6]
+                    
+                    if exclude_total:
+                        filtered_df = filtered_df[filtered_df[col_feeder].astype(str).str.strip() != "รวม"]
+                        
+                    if min_amp > 0 or max_amp < 1000:
+                        a_vals = pd.to_numeric(filtered_df[col_a], errors='coerce').fillna(0)
+                        b_vals = pd.to_numeric(filtered_df[col_b], errors='coerce').fillna(0)
+                        c_vals = pd.to_numeric(filtered_df[col_c], errors='coerce').fillna(0)
+                        
+                        mask_a = (a_vals >= min_amp) & (a_vals <= max_amp)
+                        mask_b = (b_vals >= min_amp) & (b_vals <= max_amp)
+                        mask_c = (c_vals >= min_amp) & (c_vals <= max_amp)
+                        
+                        filtered_df = filtered_df[mask_a | mask_b | mask_c]
+
+                        
+                    def compute_status(row):
+                        try:
+                            pea = str(row['PEA NO'])
+                            master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == pea]
+                            if master_row.empty: return "⚪ ข้อมูล Master ไม่ครบ"
+                            kva_val = float(master_row.iloc[0].get('ค่าพิกัด kVA หม้อแปลง', 0))
+                            
+                            col_a = "กระแส A" if "กระแส A" in row else "Ph A" if "Ph A" in row else row.keys()[4]
+                            col_b = "กระแส B" if "กระแส B" in row else "Ph B" if "Ph B" in row else row.keys()[5]
+                            col_c = "กระแส C" if "กระแส C" in row else "Ph C" if "Ph C" in row else row.keys()[6]
+                            
+                            a = float(row.get(col_a, 0))
+                            b = float(row.get(col_b, 0))
+                            c = float(row.get(col_c, 0))
+                            
+                            i_max = (kva_val * 1000) / (math.sqrt(3) * 400)
+                            max_i = max(a, b, c)
+                            pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
+                            
+                            avg_i = (a + b + c) / 3
+                            pct_unb = 0
+                            if avg_i > 0:
+                                max_dev = max(abs(a - avg_i), abs(b - avg_i), abs(c - avg_i))
+                                pct_unb = (max_dev / avg_i) * 100
+                            
+                            alerts = []
+                            if pct_load > 100: alerts.append("🔴 Overload")
+                            elif pct_load > 80: alerts.append("🟡 ใกล้เกินพิกัด")
+                            
+                            if pct_unb > 30: alerts.append("🔴 Unbalance")
+                            elif pct_unb > 20: alerts.append("🟡 Unbalance")
+                            
+                            if alerts: return ", ".join(alerts)
+                            return "🟢 ปกติ"
+                        except:
+                            return "⚪ คำนวณไม่ได้"
+
+                    with st.spinner("กำลังประมวลผลข้อมูล..."):
+                        filtered_df['Status'] = filtered_df.apply(compute_status, axis=1)
+                        
+                        if status_filter != "ทั้งหมด":
+                            filtered_df = filtered_df[filtered_df['Status'].str.contains(status_filter)]
+                            
+                        st.markdown(f"**แสดงผลลัพธ์: {len(filtered_df)} รายการ**")
+                        st.dataframe(filtered_df, use_container_width=True)
+                        
+                        # Chart if PEA is selected
+                        if selected_pea != "ทั้งหมด" and len(filtered_df) > 0:
+                            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+                            st.markdown(f"**📈 กราฟแนวโน้มกระแส (A, B, C) ของ PEA {selected_pea}**")
+                            
+                            col_a = "กระแส A" if "กระแส A" in filtered_df.columns else "Ph A" if "Ph A" in filtered_df.columns else filtered_df.columns[4]
+                            col_b = "กระแส B" if "กระแส B" in filtered_df.columns else "Ph B" if "Ph B" in filtered_df.columns else filtered_df.columns[5]
+                            col_c = "กระแส C" if "กระแส C" in filtered_df.columns else "Ph C" if "Ph C" in filtered_df.columns else filtered_df.columns[6]
+                            col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
+                            col_time = "เวลา" if "เวลา" in filtered_df.columns else filtered_df.columns[1]
+                            
+                            chart_data = filtered_df.copy()
+                            chart_data['Label'] = chart_data[col_date].astype(str) + " " + chart_data[col_time].astype(str) + " (" + chart_data[col_feeder].astype(str) + ")"
+                            chart_data = chart_data.set_index('Label')
+                            chart_data = chart_data[[col_a, col_b, col_c]].apply(pd.to_numeric, errors='coerce')
+                            
+                            st.line_chart(chart_data)
+                            st.markdown('</div>', unsafe_allow_html=True)
+                            
+
+        else:
+            st.error("ข้อผิดพลาด: ชื่อหัวคอลัมน์ (บรรทัดแรกสุด) ในชีต MasterData ไม่ตรงกับที่ระบบต้องการครับ")
+            st.warning(f"📌 คอลัมน์ที่ระบบต้องการคือ: {required_cols}")
+            st.info(f"📄 คอลัมน์ที่มีอยู่ในชีตของคุณตอนนี้คือ: {df_master.columns.tolist()}")
+            st.write("วิธีแก้: รบกวนเปลี่ยนชื่อหัวคอลัมน์ใน Google Sheets ให้ตรงกับที่ระบบต้องการ (ระวังเรื่องการเว้นวรรค) หรือพิมพ์บอกผมว่าคุณใช้ชื่อคอลัมน์ว่าอะไร เพื่อให้ผมแก้โค้ดให้ตรงกันครับ")
