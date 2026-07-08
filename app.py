@@ -949,9 +949,16 @@ if client:
                             col_b = "กระแส B" if "กระแส B" in row else "Ph B" if "Ph B" in row else row.keys()[5]
                             col_c = "กระแส C" if "กระแส C" in row else "Ph C" if "Ph C" in row else row.keys()[6]
                             
-                            a = float(row.get(col_a, 0))
-                            b = float(row.get(col_b, 0))
-                            c = float(row.get(col_c, 0))
+                            def safe_float(val):
+                                try:
+                                    if pd.isna(val) or str(val).strip() == "": return 0.0
+                                    return float(val)
+                                except (ValueError, TypeError):
+                                    return 0.0
+                            
+                            a = safe_float(row.get(col_a, 0))
+                            b = safe_float(row.get(col_b, 0))
+                            c = safe_float(row.get(col_c, 0))
                             
                             i_max = (kva_val * 1000) / (math.sqrt(3) * 400)
                             max_i = max(a, b, c)
