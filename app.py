@@ -457,23 +457,9 @@ if client:
                             """, unsafe_allow_html=True)
                             
                             col1, col2 = st.columns(2)
-                            google_maps_url = f"https://www.google.com/maps/search/?api=1&query={lat_val},{lon_val}"
+                            google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={lat_val},{lon_val}"
                             with col1:
-                                st.markdown(f"""
-                                <a href="{google_maps_url}" target="_blank" style="
-                                    display: inline-block;
-                                    width: 100%;
-                                    text-align: center;
-                                    padding: 0.5rem 1rem;
-                                    background-color: rgba(255,255,255,0.08);
-                                    color: white;
-                                    border: 1px solid rgba(255,255,255,0.2);
-                                    border-radius: 8px;
-                                    text-decoration: none;
-                                    font-weight: 500;
-                                    transition: all 0.3s;
-                                ">🚗 นำทาง</a>
-                                """, unsafe_allow_html=True)
+                                st.link_button("🚗 นำทาง", url=google_maps_url, use_container_width=True)
                             with col2:
                                 if st.button("📝 บันทึกข้อมูล", type="primary", use_container_width=True):
                                     st.session_state.page = "Form"
