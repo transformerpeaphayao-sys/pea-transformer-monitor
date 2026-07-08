@@ -32,9 +32,12 @@ footer {visibility: hidden;}
 
 /* ===== Main container padding for mobile ===== */
 .block-container {
-    padding-top: 1rem !important;
+    padding-top: 3.5rem !important;
     padding-bottom: 1rem !important;
     max-width: 100% !important;
+}
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
 }
 
 /* ===== Sidebar ===== */
