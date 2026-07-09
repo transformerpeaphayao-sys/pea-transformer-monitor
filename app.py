@@ -922,137 +922,113 @@ if client:
             # หน้าที่ 4: FILTER PAGE
             # ==============================
             elif st.session_state.page == "Filter":
-                st.markdown("#### 🔍 กรองข้อมูลประวัติการวัดกระแส")
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #6a11cb, #2575fc); padding: 15px; border-radius: 10px; color: white; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h4 style="margin:0; color:white;">📋 ค้นหาประวัติหม้อแปลงไฟฟ้า (Transformer Profile)</h4>
+                </div>
+                """, unsafe_allow_html=True)
                 
-                if df_record.empty:
-                    st.info("ยังไม่มีข้อมูลประวัติการวัดกระแส")
-                else:
-                    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-                    st.markdown("**1. เลือกเงื่อนไขการค้นหา**")
+                search_pea = st.text_input("🔍 กรอกรหัส PEA No. เพื่อค้นหา...", placeholder="เช่น 59-5554")
+                
+                if search_pea:
+                    search_pea = search_pea.strip()
+                    master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == search_pea]
                     
-                    col_f1, col_f2, col_f3 = st.columns(3)
-                    
-                    with col_f1:
-                        pea_list = ["ทั้งหมด"] + sorted(df_record['PEA NO'].astype(str).unique().tolist())
-                        selected_pea = st.selectbox("PEA NO หม้อแปลง", options=pea_list)
-                    
-                    with col_f2:
-                        col_date = "วันที่" if "วันที่" in df_record.columns else df_record.columns[0]
-                        date_list = ["ทั้งหมด"] + sorted(df_record[col_date].astype(str).unique().tolist(), reverse=True)
-                        selected_date = st.selectbox("วันที่บันทึก", options=date_list)
-                    
-                    with col_f3:
-                        status_filter = st.selectbox("สถานะการแจ้งเตือน", options=["ทั้งหมด", "🔴 Overload", "🟡 ใกล้เกินพิกัด", "🔴 Unbalance", "🟡 Unbalance", "🟢 ปกติ"])
+                    if master_row.empty:
+                        st.warning(f"⚠️ ไม่พบประวัติหม้อแปลงรหัส {search_pea} ในระบบ (Master Data)")
+                    else:
+                        m_data = master_row.iloc[0]
+                        kva = m_data.get('ค่าพิกัด kVA หม้อแปลง', '-')
+                        loc = m_data.get('สถานที่', '-')
+                        lat = m_data.get('Lat', '-')
+                        lng = m_data.get('Lng', '-')
                         
-                    st.markdown("**2. กรองตามกระแสของฟีดเดอร์**")
-                    col_f4, col_f5 = st.columns([1, 2])
-                    with col_f4:
-                        exclude_total = st.checkbox("✅ ไม่รวมแถวที่เป็นผล 'รวม'", value=True, help="แสดงเฉพาะข้อมูลของแต่ละฟีดเดอร์ (F1, F2,...)")
-                    with col_f5:
-                        min_amp, max_amp = st.slider("ช่วงกระแสที่ต้องการค้นหา (Amp)", min_value=0, max_value=1000, value=(0, 1000), step=5, help="ค้นหาหม้อแปลงที่มีกระแสเฟสใดเฟสหนึ่งอยู่ในช่วงนี้")
+                        hist_df = df_record[df_record['PEA NO'].astype(str) == search_pea]
                         
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # --- Data Processing ---
-                    filtered_df = df_record.copy()
-                    
-                    if selected_pea != "ทั้งหมด":
-                        filtered_df = filtered_df[filtered_df['PEA NO'].astype(str) == selected_pea]
-                    
-                    if selected_date != "ทั้งหมด":
-                        filtered_df = filtered_df[filtered_df[col_date].astype(str) == selected_date]
+                        st.markdown("""
+                        <div style="background: #198754; padding: 10px 15px; border-radius: 8px 8px 0 0; color: white; font-weight: bold;">
+                            📂 ข้อมูลโปรไฟล์และประวัติการวัดโหลดที่ผ่านมา
+                        </div>
+                        """, unsafe_allow_html=True)
                         
-                    col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
-                    col_a = "กระแส A" if "กระแส A" in filtered_df.columns else "Ph A" if "Ph A" in filtered_df.columns else filtered_df.columns[4]
-                    col_b = "กระแส B" if "กระแส B" in filtered_df.columns else "Ph B" if "Ph B" in filtered_df.columns else filtered_df.columns[5]
-                    col_c = "กระแส C" if "กระแส C" in filtered_df.columns else "Ph C" if "Ph C" in filtered_df.columns else filtered_df.columns[6]
-                    
-                    if exclude_total:
-                        filtered_df = filtered_df[filtered_df[col_feeder].astype(str).str.strip() != "รวม"]
+                        st.markdown(f"""
+                        <div style="background: white; border: 1px solid #dee2e6; border-top: none; padding: 20px; border-radius: 0 0 8px 8px; color: #333; margin-bottom: 20px;">
+                            <h5 style="color: #198754; margin-top: 0;">🟢 พบประวัติหม้อแปลงในระบบ</h5>
+                            <div style="display:flex; justify-content: space-between; flex-wrap: wrap; gap: 15px; margin-top: 15px;">
+                                <div>
+                                    <span style="color: #6c757d;">PEA No:</span> <b>{search_pea}</b><br>
+                                    <span style="color: #6c757d;">ขนาด:</span> {kva} kVA
+                                </div>
+                                <div>
+                                    <span style="color: #6c757d;">สถานที่ติดตั้ง:</span> {loc}<br>
+                                    <span style="color: #6c757d;">พิกัด (Lat, Lng):</span> {lat}, {lng}
+                                </div>
+                                <div>
+                                    <span style="color: #6c757d;">ตรวจวัดมาแล้ว:</span> <b>{len(hist_df)}</b> ครั้ง
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                         
-                    if min_amp > 0 or max_amp < 1000:
-                        a_vals = pd.to_numeric(filtered_df[col_a], errors='coerce').fillna(0)
-                        b_vals = pd.to_numeric(filtered_df[col_b], errors='coerce').fillna(0)
-                        c_vals = pd.to_numeric(filtered_df[col_c], errors='coerce').fillna(0)
-                        
-                        mask_a = (a_vals >= min_amp) & (a_vals <= max_amp)
-                        mask_b = (b_vals >= min_amp) & (b_vals <= max_amp)
-                        mask_c = (c_vals >= min_amp) & (c_vals <= max_amp)
-                        
-                        filtered_df = filtered_df[mask_a | mask_b | mask_c]
-
-                        
-                    def compute_status(row):
-                        try:
-                            pea = str(row['PEA NO'])
-                            master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == pea]
-                            if master_row.empty: return "⚪ ข้อมูล Master ไม่ครบ"
-                            kva_val = float(master_row.iloc[0].get('ค่าพิกัด kVA หม้อแปลง', 0))
+                        if not hist_df.empty:
+                            st.markdown("##### 📑 ประวัติบันทึกข้อมูลโหลด:")
+                            st.dataframe(hist_df, use_container_width=True)
                             
-                            col_a = "กระแส A" if "กระแส A" in row else "Ph A" if "Ph A" in row else row.keys()[4]
-                            col_b = "กระแส B" if "กระแส B" in row else "Ph B" if "Ph B" in row else row.keys()[5]
-                            col_c = "กระแส C" if "กระแส C" in row else "Ph C" if "Ph C" in row else row.keys()[6]
+                            # --- Smart Alerts (คำนวณจาก Record ล่าสุด) ---
+                            try:
+                                latest = hist_df.iloc[0]
+                                kva_val = float(kva) if str(kva).replace('.','',1).isdigit() else 0
+                                
+                                col_a = "กระแส A" if "กระแส A" in latest else "Ph A" if "Ph A" in latest else latest.keys()[4]
+                                col_b = "กระแส B" if "กระแส B" in latest else "Ph B" if "Ph B" in latest else latest.keys()[5]
+                                col_c = "กระแส C" if "กระแส C" in latest else "Ph C" if "Ph C" in latest else latest.keys()[6]
+                                
+                                a = float(latest.get(col_a, 0)) if str(latest.get(col_a, 0)).replace('.','',1).isdigit() else 0
+                                b = float(latest.get(col_b, 0)) if str(latest.get(col_b, 0)).replace('.','',1).isdigit() else 0
+                                c = float(latest.get(col_c, 0)) if str(latest.get(col_c, 0)).replace('.','',1).isdigit() else 0
+                                
+                                avg_i = (a + b + c) / 3
+                                pct_unb = 0
+                                if avg_i > 0:
+                                    max_dev = max(abs(a - avg_i), abs(b - avg_i), abs(c - avg_i))
+                                    pct_unb = (max_dev / avg_i) * 100
+                                
+                                i_max = (kva_val * 1000) / (math.sqrt(3) * 400)
+                                max_i = max(a, b, c)
+                                pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
+                                
+                                alerts = []
+                                if pct_unb > 30:
+                                    alerts.append(f"<li>🚨 <b>Severe Unbalance:</b> ความไม่สมดุลขั้นวิกฤต ({pct_unb:.2f}%) อาจทำให้เกิดความร้อนสะสมและแรงดันตกหล่นรุนแรง</li>")
+                                elif pct_unb > 20:
+                                    alerts.append(f"<li>⚠️ <b>Warning Unbalance:</b> ความไม่สมดุล ({pct_unb:.2f}%) ควรเฝ้าระวัง</li>")
+                                    
+                                if pct_load > 100:
+                                    alerts.append(f"<li>🚨 <b>Overload:</b> โหลดเกินพิกัด ({pct_load:.2f}%) เสี่ยงต่อหม้อแปลงชำรุดหรือระเบิด</li>")
+                                elif pct_load > 80:
+                                    alerts.append(f"<li>⚠️ <b>High Load:</b> โหลดสูง ({pct_load:.2f}%) เข้าใกล้ขีดจำกัด</li>")
+                                    
+                                if alerts:
+                                    alert_html = f"""
+                                    <div style="background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                                        <h6 style="margin-top: 0; color: #842029;">🤖 ระบบวิเคราะห์อัตโนมัติ (Smart Alerts):</h6>
+                                        <ul style="margin-bottom: 0;">
+                                            {"".join(alerts)}
+                                        </ul>
+                                    </div>
+                                    """
+                                    st.markdown(alert_html, unsafe_allow_html=True)
+                            except Exception as e:
+                                pass
+                                
+                        else:
+                            st.info("ยังไม่มีประวัติการวัดโหลดสำหรับหม้อแปลงเครื่องนี้ในระบบ")
                             
-                            def safe_float(val):
-                                try:
-                                    if pd.isna(val) or str(val).strip() == "": return 0.0
-                                    return float(val)
-                                except (ValueError, TypeError):
-                                    return 0.0
-                            
-                            a = safe_float(row.get(col_a, 0))
-                            b = safe_float(row.get(col_b, 0))
-                            c = safe_float(row.get(col_c, 0))
-                            
-                            i_max = (kva_val * 1000) / (math.sqrt(3) * 400)
-                            max_i = max(a, b, c)
-                            pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
-                            
-                            avg_i = (a + b + c) / 3
-                            pct_unb = 0
-                            if avg_i > 0:
-                                max_dev = max(abs(a - avg_i), abs(b - avg_i), abs(c - avg_i))
-                                pct_unb = (max_dev / avg_i) * 100
-                            
-                            alerts = []
-                            if pct_load > 100: alerts.append("🔴 Overload")
-                            elif pct_load > 80: alerts.append("🟡 ใกล้เกินพิกัด")
-                            
-                            if pct_unb > 30: alerts.append("🔴 Unbalance")
-                            elif pct_unb > 20: alerts.append("🟡 Unbalance")
-                            
-                            if alerts: return ", ".join(alerts)
-                            return "🟢 ปกติ"
-                        except:
-                            return "⚪ คำนวณไม่ได้"
-
-                    with st.spinner("กำลังประมวลผลข้อมูล..."):
-                        filtered_df['Status'] = filtered_df.apply(compute_status, axis=1)
-                        
-                        if status_filter != "ทั้งหมด":
-                            filtered_df = filtered_df[filtered_df['Status'].str.contains(status_filter)]
-                            
-                        st.markdown(f"**แสดงผลลัพธ์: {len(filtered_df)} รายการ**")
-                        st.dataframe(filtered_df, use_container_width=True)
-                        
-                        # Chart if PEA is selected
-                        if selected_pea != "ทั้งหมด" and len(filtered_df) > 0:
-                            st.markdown('<div class="section-card">', unsafe_allow_html=True)
-                            st.markdown(f"**📈 กราฟแนวโน้มกระแส (A, B, C) ของ PEA {selected_pea}**")
-                            
-                            col_a = "กระแส A" if "กระแส A" in filtered_df.columns else "Ph A" if "Ph A" in filtered_df.columns else filtered_df.columns[4]
-                            col_b = "กระแส B" if "กระแส B" in filtered_df.columns else "Ph B" if "Ph B" in filtered_df.columns else filtered_df.columns[5]
-                            col_c = "กระแส C" if "กระแส C" in filtered_df.columns else "Ph C" if "Ph C" in filtered_df.columns else filtered_df.columns[6]
-                            col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
-                            col_time = "เวลา" if "เวลา" in filtered_df.columns else filtered_df.columns[1]
-                            
-                            chart_data = filtered_df.copy()
-                            chart_data['Label'] = chart_data[col_date].astype(str) + " " + chart_data[col_time].astype(str) + " (" + chart_data[col_feeder].astype(str) + ")"
-                            chart_data = chart_data.set_index('Label')
-                            chart_data = chart_data[[col_a, col_b, col_c]].apply(pd.to_numeric, errors='coerce')
-                            
-                            st.line_chart(chart_data)
-                            st.markdown('</div>', unsafe_allow_html=True)
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        if st.button("🩺 บันทึกการตรวจวัดโหลดรอบใหม่", type="primary", use_container_width=True):
+                            st.session_state.page = "Form"
+                            st.session_state.selected_pea_from_map = search_pea
+                            st.rerun()
                             
 
         else:
