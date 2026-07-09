@@ -374,6 +374,35 @@ def load_completed_data(_client, spreadsheet_name):
     except Exception:
         return pd.DataFrame()
 
+# --- 3.6. ฟังก์ชันจัดการ Task Data ---
+@st.cache_data(ttl=30)
+def load_task_data(_client, spreadsheet_name):
+    try:
+        sheet = _client.open(spreadsheet_name).worksheet("Task Data")
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
+        return df
+    except Exception:
+        return pd.DataFrame(columns=["PEA NO", "Status", "Date"])
+
+def add_task_to_sheet(client, spreadsheet_name, pea_no):
+    try:
+        sh = client.open(spreadsheet_name)
+        try:
+            sheet = sh.worksheet("Task Data")
+        except gspread.exceptions.WorksheetNotFound:
+            sheet = sh.add_worksheet(title="Task Data", rows="1000", cols="3")
+            sheet.append_row(["PEA NO", "Status", "Date"])
+        
+        now_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M:%S')
+        sheet.append_row([str(pea_no), "Pending", now_str])
+        
+        st.cache_data.clear()
+        return True
+    except Exception as e:
+        st.error(f"Error adding task: {e}")
+        return False
+
 # --- Dialog: รายละเอียดหม้อแปลง (Summary Page) ---
 @st.dialog("รายละเอียดหม้อแปลง", width="large")
 def show_transformer_details(pea_no, df_m, df_r):
@@ -469,18 +498,57 @@ if client:
         if all(col in df_master.columns for col in required_cols):
             
             df_record = load_completed_data(client, SHEET_NAME)
-            completed_peas = []
-            if not df_record.empty and 'PEA NO' in df_record.columns:
-                completed_peas = df_record['PEA NO'].astype(str).unique().tolist()
+            df_task = load_task_data(client, SHEET_NAME)
             
-            df_pending = df_master[~df_master['PEANO หม้อแปลง'].astype(str).isin(completed_peas)]
+            # คำนวณสถานะหมุดแต่ละเครื่อง
+            # 1. หารายการล่าสุดที่ถูกบันทึก (Record Data)
+            record_latest = {}
+            if not df_record.empty and 'PEA NO' in df_record.columns:
+                # พยายามหาวันที่/เวลา เพื่อเปรียบเทียบ (ถ้าไม่มี ให้ถือว่าบันทึกแล้วก็พอ)
+                for _, row in df_record.iterrows():
+                    pea = str(row.get('PEA NO', '')).strip()
+                    record_latest[pea] = True
+            
+            # 2. หารายการล่าสุดที่ถูกสั่งงาน (Task Data)
+            task_pending = {}
+            if not df_task.empty and 'PEA NO' in df_task.columns:
+                for _, row in df_task.iterrows():
+                    pea = str(row.get('PEA NO', '')).strip()
+                    status = str(row.get('Status', '')).strip()
+                    if status == "Pending":
+                        task_pending[pea] = True
+                    elif status == "Done":
+                        if pea in task_pending:
+                            del task_pending[pea]
+            
+            # สร้าง df_map เพื่อแสดงผลบนแผนที่ (ตัดพวกที่ตรวจแล้วและไม่มีงานออกไป)
+            map_markers = []
+            for _, row in df_master.iterrows():
+                pea = str(row.get('PEANO หม้อแปลง', '')).strip()
+                if pea in task_pending:
+                    # ถ้ามีคำสั่งตรวจสอบซ้ำ -> สีส้ม
+                    row_dict = row.to_dict()
+                    row_dict['MarkerColor'] = 'orange'
+                    map_markers.append(row_dict)
+                elif pea not in record_latest:
+                    # ถ้ายังไม่เคยตรวจเลย -> สีแดง
+                    row_dict = row.to_dict()
+                    row_dict['MarkerColor'] = 'red'
+                    map_markers.append(row_dict)
+                else:
+                    # ตรวจแล้ว และไม่มีคำสั่งซ้ำ -> ซ่อน (ไม่เพิ่มลงใน map_markers)
+                    pass
+            
+            df_map = pd.DataFrame(map_markers)
+            
+            df_pending = df_map.copy() if not df_map.empty else pd.DataFrame(columns=df_master.columns)
             
             # ==============================
             # หน้าที่ 1: MAP PAGE
             # ==============================
             if st.session_state.page == "Map":
                 st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
-                st.caption("💡 คลิกที่หมุดสีแดงเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง")
+                st.caption("💡 คลิกที่หมุดเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง (🔴=ยังไม่ตรวจ, 🟠=สั่งตรวจสอบซ้ำ)")
                 
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
@@ -499,7 +567,6 @@ if client:
                             lat_val = row_data['LATITUDE']
                             lon_val = row_data['LONGITUDE']
                             
-                            # Transformer info banner
                             st.markdown(f"""
                             <div class="tr-info-banner">
                                 <div class="tr-info-item"><div class="lbl">📌 PEA NO</div><div class="val">{pea_no}</div></div>
@@ -522,10 +589,11 @@ if client:
                         # ปักหมุด
                         for idx, row in map_data.iterrows():
                             pea_no_str = str(row['PEANO หม้อแปลง'])
+                            color = row.get('MarkerColor', 'red')
                             folium.Marker(
                                 [row['LATITUDE'], row['LONGITUDE']],
                                 tooltip=pea_no_str,
-                                icon=folium.Icon(color="red", icon="info-sign")
+                                icon=folium.Icon(color=color, icon="info-sign")
                             ).add_to(m)
                         
                         st_data = st_folium(m, width="100%", height=500, returned_objects=["last_object_clicked_tooltip"])
@@ -742,6 +810,15 @@ if client:
                                 ])
                             
                             sheet_record.append_rows(rows_to_insert)
+                            
+                            # หากเป็นการตรวจงานซ้ำ ให้บันทึกสถานะ Done
+                            try:
+                                sheet_task = client.open(SHEET_NAME).worksheet("Task Data")
+                                now_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M:%S')
+                                sheet_task.append_row([selected_pea, "Done", now_str])
+                            except Exception:
+                                pass
+                            
                             st.success("✅ บันทึกข้อมูลเรียบร้อยแล้ว!")
                             
                             st.session_state.page = "Map"
@@ -1181,10 +1258,27 @@ if client:
                             st.info("ยังไม่มีประวัติการวัดโหลดสำหรับหม้อแปลงเครื่องนี้ในระบบ")
                             
                         st.markdown("<br>", unsafe_allow_html=True)
-                        if st.button("🩺 บันทึกการตรวจวัดโหลดรอบใหม่", type="primary", use_container_width=True):
-                            st.session_state.page = "Form"
-                            st.session_state.selected_pea_from_map = search_pea
-                            st.rerun()
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            if st.button("🩺 บันทึกการตรวจวัดโหลดรอบใหม่", type="primary", use_container_width=True):
+                                st.session_state.page = "Form"
+                                st.session_state.selected_pea_from_map = search_pea
+                                st.rerun()
+                        with col_btn2:
+                            is_pending = False
+                            if not df_task.empty and 'PEA NO' in df_task.columns:
+                                task_rows = df_task[df_task['PEA NO'].astype(str) == search_pea]
+                                if not task_rows.empty and str(task_rows.iloc[-1].get('Status', '')).strip() == 'Pending':
+                                    is_pending = True
+                            
+                            if is_pending:
+                                st.button("✅ สั่งงานตรวจสอบซ้ำแล้ว", disabled=True, use_container_width=True)
+                            else:
+                                if st.button("🚩 Add งาน (สั่งตรวจสอบซ้ำ)", use_container_width=True):
+                                    with st.spinner("กำลังบันทึกสั่งงาน..."):
+                                        if add_task_to_sheet(client, SHEET_NAME, search_pea):
+                                            st.success("บันทึกคำสั่งงานเรียบร้อยแล้ว หมุดบนแผนที่จะกลายเป็นสีส้ม!")
+                                            st.rerun()
                             
 
         else:
