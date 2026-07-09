@@ -373,6 +373,20 @@ def add_master_data_to_sheet(client, spreadsheet_name, row_data):
         st.error(f"Error adding master data: {e}")
         return False
 
+def delete_master_data_from_sheet(client, spreadsheet_name, pea_no):
+    try:
+        sheet = client.open(spreadsheet_name).worksheet("MasterData")
+        records = sheet.get_all_records()
+        for idx, row in enumerate(records):
+            if str(row.get('PEANO หม้อแปลง', '')).strip() == str(pea_no).strip():
+                sheet.delete_rows(idx + 2)
+                st.cache_data.clear()
+                return True
+        return False
+    except Exception as e:
+        st.error(f"Error deleting master data: {e}")
+        return False
+
 # --- 3.5. ฟังก์ชันสำหรับดึงข้อมูลที่บันทึกไปแล้ว ---
 @st.cache_data(ttl=60)
 def load_completed_data(_client, spreadsheet_name):
@@ -1393,7 +1407,7 @@ if client:
                             st.info("ยังไม่มีประวัติการวัดโหลดสำหรับหม้อแปลงเครื่องนี้ในระบบ")
                             
                         st.markdown("<br>", unsafe_allow_html=True)
-                        col_btn1, col_btn2 = st.columns(2)
+                        col_btn1, col_btn2, col_btn3 = st.columns(3)
                         with col_btn1:
                             if st.button("🩺 บันทึกการตรวจวัดโหลดรอบใหม่", type="primary", use_container_width=True):
                                 st.session_state.page = "Form"
@@ -1414,6 +1428,13 @@ if client:
                                         if add_task_to_sheet(client, SHEET_NAME, search_pea):
                                             st.success("บันทึกคำสั่งงานเรียบร้อยแล้ว หมุดบนแผนที่จะกลายเป็นสีส้ม!")
                                             st.rerun()
+                        with col_btn3:
+                            if st.button("🗑️ ลบข้อมูลหม้อแปลงนี้", use_container_width=True):
+                                with st.spinner("กำลังลบข้อมูลจาก MasterData..."):
+                                    if delete_master_data_from_sheet(client, SHEET_NAME, search_pea):
+                                        st.success(f"ลบข้อมูลหม้อแปลง {search_pea} ออกจากระบบเรียบร้อยแล้ว!")
+                                        st.session_state.selected_pea_for_profile = None
+                                        st.rerun()
                             
             # ==============================
             # หน้าที่ 6: REGISTER PAGE
