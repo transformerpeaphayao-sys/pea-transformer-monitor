@@ -57,8 +57,11 @@ header[data-testid="stHeader"] {
 /* ===== Sidebar ===== */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
-    min-width: 240px !important;
-    max-width: 240px !important;
+    min-width: 220px !important;
+    max-width: 220px !important;
+}
+[data-testid="stSidebar"] .block-container {
+    padding-top: 0.5rem !important;
 }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
@@ -66,17 +69,24 @@ header[data-testid="stHeader"] {
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 {
     color: #ffffff !important;
 }
+/* Sidebar logo size */
+[data-testid="stSidebar"] [data-testid="stImage"] {
+    max-width: 80px !important;
+    margin: 0 auto !important;
+    display: block !important;
+}
 [data-testid="stSidebar"] button[kind="secondary"],
 [data-testid="stSidebar"] button[kind="primary"] {
     background: rgba(255,255,255,0.08) !important;
     border: 1px solid rgba(255,255,255,0.15) !important;
     color: #e0e0e0 !important;
     border-radius: 10px !important;
-    padding: 0.6rem 1rem !important;
+    padding: 0.5rem 0.8rem !important;
     font-weight: 500 !important;
+    font-size: 0.85rem !important;
     transition: all 0.3s ease !important;
     backdrop-filter: blur(5px) !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 3px !important;
     font-family: 'Prompt', sans-serif !important;
 }
 [data-testid="stSidebar"] button:hover {
@@ -263,6 +273,14 @@ button[kind="primary"]:hover {
     .block-container {
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
+        padding-top: 2.5rem !important;
+    }
+    [data-testid="stSidebar"] {
+        min-width: 200px !important;
+        max-width: 200px !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stImage"] {
+        max-width: 65px !important;
     }
     .app-header {
         padding: 0.8rem 1rem;
@@ -271,10 +289,12 @@ button[kind="primary"]:hover {
         gap: 4px;
     }
     .app-header .icon { font-size: 1.6rem; }
-    .app-header .title { font-size: 1.1rem; }
-    .metric-row { gap: 8px; }
-    .metric-card { padding: 0.7rem 0.8rem; }
-    .metric-card .value { font-size: 1.5rem; }
+    .app-header .title { font-size: 1rem; }
+    .app-header .subtitle { font-size: 0.75rem; }
+    .metric-row { gap: 6px; }
+    .metric-card { padding: 0.6rem 0.7rem; }
+    .metric-card .value { font-size: 1.4rem; }
+    .metric-card .label { font-size: 0.7rem; }
     .table-header { font-size: 0.72rem; padding: 8px 10px; }
     .tr-info-banner { padding: 0.8rem; gap: 0.6rem; flex-direction: column; }
     .feeder-card { padding: 0.8rem; }
@@ -383,17 +403,14 @@ if 'pea' in st.query_params:
 with st.sidebar:
     import os
     if os.path.exists("pea-logo.png"):
-        st.write("") # เว้นบรรทัด
-        _, col_img, _ = st.columns([1, 2, 1])
-        with col_img:
-            st.image("pea-logo.png", use_container_width=True)
+        st.image("pea-logo.png", width=80)
     else:
-        st.markdown('<div style="text-align:center; font-size:2.2rem; padding-top:1.2rem;">⚡</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:2rem; padding-top:0.5rem;">⚡</div>', unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="text-align:center; padding: 0 0 0.8rem 0;">
-        <div style="font-size:1.1rem; font-weight:700; color:#e94560; letter-spacing:1px;">PEA LOAD</div>
-        <div style="font-size:0.7rem; color:rgba(255,255,255,0.5); margin-top:2px;">Transformer Monitor</div>
+    <div style="text-align:center; padding: 0.2rem 0 0.5rem 0;">
+        <div style="font-size:1rem; font-weight:700; color:#e94560; letter-spacing:1px;">PEA LOAD</div>
+        <div style="font-size:0.65rem; color:rgba(255,255,255,0.5); margin-top:1px;">Transformer Monitor</div>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("---")
