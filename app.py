@@ -1078,10 +1078,16 @@ if client:
                         m_data = master_row.iloc[0]
                         kva = m_data.get('ค่าพิกัด kVA หม้อแปลง', '-')
                         loc = m_data.get('สถานที่', '-')
-                        lat = m_data.get('Lat', '-')
-                        lng = m_data.get('Lng', '-')
+                        lat = m_data.get('LATITUDE', '-')
+                        lng = m_data.get('LONGITUDE', '-')
                         
                         hist_df = df_record[df_record['PEA NO'].astype(str) == search_pea]
+                        
+                        unique_sessions = 0
+                        if not hist_df.empty:
+                            col_date = "วันที่" if "วันที่" in hist_df.columns else hist_df.columns[0]
+                            col_time = "เวลา" if "เวลา" in hist_df.columns else hist_df.columns[1]
+                            unique_sessions = len(hist_df.drop_duplicates(subset=[col_date, col_time]))
                         
                         st.markdown("""
                         <div style="background: #198754; padding: 10px 15px; border-radius: 8px 8px 0 0; color: white; font-weight: bold;">
@@ -1102,7 +1108,7 @@ if client:
                                     <span style="color: #6c757d;">พิกัด (Lat, Lng):</span> {lat}, {lng}
                                 </div>
                                 <div>
-                                    <span style="color: #6c757d;">ตรวจวัดมาแล้ว:</span> <b>{len(hist_df)}</b> ครั้ง
+                                    <span style="color: #6c757d;">ตรวจวัดมาแล้ว:</span> <b>{unique_sessions}</b> ครั้ง
                                 </div>
                             </div>
                         </div>
