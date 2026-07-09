@@ -403,7 +403,9 @@ if 'pea' in st.query_params:
 with st.sidebar:
     import os
     if os.path.exists("pea-logo.png"):
-        st.image("pea-logo.png", width=80)
+        col1, col2, col3 = st.columns([1, 1.5, 1])
+        with col2:
+            st.image("pea-logo.png", use_container_width=True)
     else:
         st.markdown('<div style="text-align:center; font-size:2rem; padding-top:0.5rem;">⚡</div>', unsafe_allow_html=True)
 
@@ -434,9 +436,16 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # --- 5. Header Banner ---
-st.markdown("""
-<div class="app-header">
-    <div class="icon">⚡</div>
+import base64
+icon_html = '<div class="icon">⚡</div>'
+if os.path.exists("pea-logo.png"):
+    with open("pea-logo.png", "rb") as img_file:
+        logo_base64 = base64.b64encode(img_file.read()).decode('utf-8')
+        icon_html = f'<img src="data:image/png;base64,{logo_base64}" style="width:45px; height:45px; object-fit:contain; margin-right:15px;">'
+
+st.markdown(f"""
+<div class="app-header" style="display:flex; align-items:center;">
+    {icon_html}
     <div>
         <p class="title">ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA</p>
         <p class="subtitle">Transformer Load Monitoring System</p>
