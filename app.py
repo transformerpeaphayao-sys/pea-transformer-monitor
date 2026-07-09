@@ -373,18 +373,45 @@ def add_master_data_to_sheet(client, spreadsheet_name, row_data):
         st.error(f"Error adding master data: {e}")
         return False
 
-def delete_master_data_from_sheet(client, spreadsheet_name, pea_no):
+def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
     try:
-        sheet = client.open(spreadsheet_name).worksheet("MasterData")
-        records = sheet.get_all_records()
-        for idx, row in enumerate(records):
-            if str(row.get('PEANO หม้อแปลง', '')).strip() == str(pea_no).strip():
-                sheet.delete_rows(idx + 2)
-                st.cache_data.clear()
-                return True
-        return False
+        sh = client.open(spreadsheet_name)
+        
+        # ลบจาก MasterData
+        try:
+            sheet_master = sh.worksheet("MasterData")
+            records = sheet_master.get_all_records()
+            for idx, row in enumerate(records):
+                if str(row.get('PEANO หม้อแปลง', '')).strip() == str(pea_no).strip():
+                    sheet_master.delete_row(idx + 2)
+                    break
+        except Exception:
+            pass
+
+        # ลบจาก Record Data (ลบย้อนกลับจากล่างขึ้นบน เพื่อไม่ให้ index เลื่อน)
+        try:
+            sheet_record = sh.worksheet("Record Data")
+            records = sheet_record.get_all_records()
+            for idx in range(len(records) - 1, -1, -1):
+                if str(records[idx].get('PEA NO', '')).strip() == str(pea_no).strip():
+                    sheet_record.delete_row(idx + 2)
+        except Exception:
+            pass
+            
+        # ลบจาก Task Data (ลบย้อนกลับจากล่างขึ้นบน)
+        try:
+            sheet_task = sh.worksheet("Task Data")
+            records = sheet_task.get_all_records()
+            for idx in range(len(records) - 1, -1, -1):
+                if str(records[idx].get('PEA NO', '')).strip() == str(pea_no).strip():
+                    sheet_task.delete_row(idx + 2)
+        except Exception:
+            pass
+
+        st.cache_data.clear()
+        return True
     except Exception as e:
-        st.error(f"Error deleting master data: {e}")
+        st.error(f"Error deleting from sheets: {e}")
         return False
 
 # --- 3.5. ฟังก์ชันสำหรับดึงข้อมูลที่บันทึกไปแล้ว ---
@@ -1435,8 +1462,8 @@ if client:
                             col_y, col_n = st.columns(2)
                             with col_y:
                                 if st.button("✔️ ยืนยัน (ลบ)", type="primary", use_container_width=True):
-                                    with st.spinner("กำลังลบข้อมูลจาก MasterData..."):
-                                        if delete_master_data_from_sheet(client, SHEET_NAME, pea_no):
+                                    with st.spinner("กำลังลบข้อมูลจาก MasterData และประวัติที่เกี่ยวข้องทั้งหมด..."):
+                                        if delete_transformer_from_all_sheets(client, SHEET_NAME, pea_no):
                                             st.success(f"ลบข้อมูลหม้อแปลง {pea_no} สำเร็จ!")
                                             st.session_state.selected_pea_for_profile = None
                                             st.rerun()
