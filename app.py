@@ -438,6 +438,11 @@ if 'pea' in st.query_params:
     st.session_state.selected_pea_from_map = st.query_params['pea']
     st.query_params.clear()
 
+if 'profile_pea' in st.query_params:
+    st.session_state.page = "Profile"
+    st.session_state.selected_pea_for_profile = st.query_params['profile_pea']
+    st.query_params.clear()
+
 # เมนูด้านข้าง (Sidebar)
 with st.sidebar:
     import os
@@ -1139,22 +1144,46 @@ if client:
                             filtered_df = filtered_df[filtered_df['Status'].str.contains(status_filter)]
                             
                         st.markdown(f"**แสดงผลลัพธ์: {len(filtered_df)} รายการ**")
+                        st.caption("💡 คลิกที่เลข PEA NO (ตัวอักษรสีน้ำเงิน) เพื่อดูประวัติหม้อแปลงเครื่องนั้นได้ทันที")
                         
-                        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
-                        
-                        # --- Quick Navigate to Profile ---
                         if len(filtered_df) > 0:
-                            unique_peas = sorted(filtered_df['PEA NO'].astype(str).unique().tolist())
-                            st.markdown("---")
-                            st.markdown("**🔗 ดูประวัติหม้อแปลง:**")
-                            col_nav1, col_nav2 = st.columns([3, 1])
-                            with col_nav1:
-                                nav_pea = st.selectbox("เลือก PEA NO ที่ต้องการดูประวัติ", options=unique_peas, label_visibility="collapsed")
-                            with col_nav2:
-                                if st.button("📋 ดูประวัติ", type="primary", use_container_width=True):
-                                    st.session_state.page = "Profile"
-                                    st.session_state.selected_pea_for_profile = nav_pea
-                                    st.rerun()
+                            # สร้าง HTML Table พร้อม PEA NO เป็นลิงก์คลิกได้
+                            th_s = "background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:10px 8px;text-align:center;font-weight:600;font-size:0.78rem;"
+                            td_s = "padding:8px 6px;text-align:center;border-bottom:1px solid #e9ecef;color:#333;font-size:0.82rem;"
+                            
+                            col_date_f = "วันที่" if "วันที่" in filtered_df.columns else filtered_df.columns[0]
+                            col_time_f = "เวลา" if "เวลา" in filtered_df.columns else filtered_df.columns[1]
+                            col_feeder_f = "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
+                            col_a_f = "กระแส A" if "กระแส A" in filtered_df.columns else "Ph A" if "Ph A" in filtered_df.columns else filtered_df.columns[4]
+                            col_b_f = "กระแส B" if "กระแส B" in filtered_df.columns else "Ph B" if "Ph B" in filtered_df.columns else filtered_df.columns[5]
+                            col_c_f = "กระแส C" if "กระแส C" in filtered_df.columns else "Ph C" if "Ph C" in filtered_df.columns else filtered_df.columns[6]
+                            col_n_f = "กระแส N" if "กระแส N" in filtered_df.columns else "N" if "N" in filtered_df.columns else filtered_df.columns[7] if len(filtered_df.columns) > 7 else ""
+                            col_note_f = "หมายเหตุ" if "หมายเหตุ" in filtered_df.columns else "Note" if "Note" in filtered_df.columns else filtered_df.columns[8] if len(filtered_df.columns) > 8 else ""
+                            
+                            rows_f = ""
+                            for i, (_, row) in enumerate(filtered_df.iterrows()):
+                                bg = "#ffffff" if i % 2 == 0 else "#f8f9fa"
+                                pea_val = str(row.get('PEA NO', '-'))
+                                pea_link = f"<a href='?profile_pea={pea_val}' target='_self' style='color:#2575fc;font-weight:700;text-decoration:none;'>{pea_val}</a>"
+                                
+                                status_val = str(row.get('Status', ''))
+                                
+                                rows_f += f"<tr style='background:{bg};'>"
+                                rows_f += f"<td style='{td_s}'>{row.get(col_date_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}'>{row.get(col_time_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}'>{pea_link}</td>"
+                                rows_f += f"<td style='{td_s}'>{row.get(col_feeder_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}'>{row.get(col_a_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}'>{row.get(col_b_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}'>{row.get(col_c_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}'>{row.get(col_n_f, '-') if col_n_f else '-'}</td>"
+                                rows_f += f"<td style='{td_s}text-align:left;font-size:0.78rem;color:#6c757d;'>{row.get(col_note_f, '') if col_note_f else ''}</td>"
+                                rows_f += f"<td style='{td_s}font-size:0.78rem;'>{status_val}</td>"
+                                rows_f += "</tr>"
+                            
+                            filter_table = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="{th_s}">📅 วันที่</th><th style="{th_s}">🕐 เวลา</th><th style="{th_s}">PEA NO</th><th style="{th_s}">ฟีดเดอร์</th><th style="{th_s}">กระแส A</th><th style="{th_s}">กระแส B</th><th style="{th_s}">กระแส C</th><th style="{th_s}">กระแส N</th><th style="{th_s}">หมายเหตุ</th><th style="{th_s}">Status</th></tr></thead><tbody>{rows_f}</tbody></table></div>"""
+                            
+                            st.markdown(filter_table, unsafe_allow_html=True)
                         # Chart if PEA is selected
                         if selected_pea != "ทั้งหมด" and len(filtered_df) > 0:
                             st.markdown('<div class="section-card">', unsafe_allow_html=True)
