@@ -971,7 +971,9 @@ if client:
                             
                             with c1:
                                 if st.button(f"🔗 {pea}", key=f"btn_comp_{pea}", type="tertiary"):
-                                    show_transformer_details(pea, df_master, df_record)
+                                    st.session_state.page = "Profile"
+                                    st.session_state.selected_pea_for_profile = pea
+                                    st.rerun()
                             
                             c2.write(row.get('สถานที่', '-'))
                             
@@ -1065,7 +1067,9 @@ if client:
                             
                             with c1:
                                 if st.button(f"🔗 {pea}", key=f"btn_pend_{pea}", type="tertiary"):
-                                    show_transformer_details(pea, df_master, df_record)
+                                    st.session_state.page = "Profile"
+                                    st.session_state.selected_pea_for_profile = pea
+                                    st.rerun()
                             
                             c2.write(row.get('สถานที่', '-'))
                             c3.write(row.get('ค่าพิกัด kVA หม้อแปลง', '-'))
