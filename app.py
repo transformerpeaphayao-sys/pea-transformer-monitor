@@ -15,6 +15,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- Offline Protection ---
+import streamlit.components.v1 as components
+components.html("""
+<script>
+    window.addEventListener('offline', function(e) {
+        alert('⚠️ สัญญาณอินเทอร์เน็ตขาดหาย! โปรดหาพื้นที่ที่มีสัญญาณก่อนกรอกหรือบันทึกข้อมูล เพื่อป้องกันข้อมูลสูญหาย');
+    });
+    
+    window.addEventListener('online', function(e) {
+        alert('✅ กลับมาออนไลน์แล้ว สามารถใช้งานและบันทึกข้อมูลต่อได้ตามปกติครับ');
+    });
+</script>
+""", height=0)
+
 # --- CUSTOM CSS: Professional UX + Mobile Responsive ---
 st.markdown("""
 <style>
