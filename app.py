@@ -1246,31 +1246,20 @@ if client:
                             col_date = "วันที่" if "วันที่" in hist_df.columns else hist_df.columns[0]
                             col_time = "เวลา" if "เวลา" in hist_df.columns else hist_df.columns[1]
                             col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in hist_df.columns else "Feeder" if "Feeder" in hist_df.columns else hist_df.columns[3]
-                            
-                            session_colors = ["#f0f7ff", "#fff8f0"]
-                            session_idx = 0
-                            prev_session = None
-                            
-                            table_html = """
-                            <style>
-                                .history-table { width:100%; border-collapse:collapse; font-size:0.85rem; border-radius:10px; overflow:hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-                                .history-table thead th { background: linear-gradient(135deg, #1a1a2e, #16213e); color:#fff; padding:10px 12px; text-align:center; font-weight:600; font-size:0.8rem; border:none; }
-                                .history-table tbody td { padding:8px 12px; text-align:center; border-bottom:1px solid #e9ecef; color:#333; }
-                                .history-table .row-total td { font-weight:700; border-bottom:3px solid #dee2e6; }
-                            </style>
-                            <table class="history-table">
-                                <thead><tr>
-                                    <th>📅 วันที่</th><th>🕐 เวลา</th><th>🔌 ฟีดเดอร์</th>
-                                    <th>กระแส A</th><th>กระแส B</th><th>กระแส C</th><th>กระแส N</th><th>📝 หมายเหตุ</th>
-                                </tr></thead><tbody>
-                            """
-                            
                             col_a_h = "กระแส A" if "กระแส A" in hist_df.columns else "Ph A" if "Ph A" in hist_df.columns else hist_df.columns[4]
                             col_b_h = "กระแส B" if "กระแส B" in hist_df.columns else "Ph B" if "Ph B" in hist_df.columns else hist_df.columns[5]
                             col_c_h = "กระแส C" if "กระแส C" in hist_df.columns else "Ph C" if "Ph C" in hist_df.columns else hist_df.columns[6]
                             col_n_h = "กระแส N" if "กระแส N" in hist_df.columns else "N" if "N" in hist_df.columns else hist_df.columns[7] if len(hist_df.columns) > 7 else ""
                             col_note_h = "หมายเหตุ" if "หมายเหตุ" in hist_df.columns else "Note" if "Note" in hist_df.columns else hist_df.columns[8] if len(hist_df.columns) > 8 else ""
                             
+                            session_colors = ["#f0f7ff", "#fff8f0"]
+                            session_idx = 0
+                            prev_session = None
+                            
+                            th_style = "background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:10px 12px;text-align:center;font-weight:600;font-size:0.8rem;"
+                            td_style = "padding:8px 12px;text-align:center;border-bottom:1px solid #e9ecef;color:#333;font-size:0.85rem;"
+                            
+                            rows_html = ""
                             for _, row in hist_df.iterrows():
                                 current_session = f"{row.get(col_date, '')}-{row.get(col_time, '')}"
                                 if current_session != prev_session:
@@ -1280,7 +1269,6 @@ if client:
                                 bg = session_colors[session_idx % 2]
                                 feeder_val = str(row.get(col_feeder, '-'))
                                 is_total = feeder_val.strip() == "รวม"
-                                row_class = 'row-total' if is_total else ''
                                 
                                 a_val = row.get(col_a_h, '-')
                                 b_val = row.get(col_b_h, '-')
@@ -1288,19 +1276,16 @@ if client:
                                 n_val = row.get(col_n_h, '-') if col_n_h else '-'
                                 note_val = row.get(col_note_h, '') if col_note_h else ''
                                 
-                                feeder_display = f"<b style='color:#e94560;'>⚡ {feeder_val}</b>" if is_total else feeder_val
-                                
-                                table_html += f"""
-                                <tr class="{row_class}" style="background:{bg};">
-                                    <td>{row.get(col_date, '-')}</td>
-                                    <td>{row.get(col_time, '-')}</td>
-                                    <td>{feeder_display}</td>
-                                    <td>{a_val}</td><td>{b_val}</td><td>{c_val}</td><td>{n_val}</td>
-                                    <td style="text-align:left; font-size:0.8rem; color:#6c757d;">{note_val}</td>
-                                </tr>"""
+                                if is_total:
+                                    td_total = td_style + "font-weight:700;border-bottom:3px solid #adb5bd;"
+                                    feeder_display = f"<b style='color:#e94560;'>⚡ {feeder_val}</b>"
+                                    rows_html += f"<tr style='background:{bg};'><td style='{td_total}'>{row.get(col_date, '-')}</td><td style='{td_total}'>{row.get(col_time, '-')}</td><td style='{td_total}'>{feeder_display}</td><td style='{td_total}'>{a_val}</td><td style='{td_total}'>{b_val}</td><td style='{td_total}'>{c_val}</td><td style='{td_total}'>{n_val}</td><td style='{td_total}text-align:left;color:#6c757d;'>{note_val}</td></tr>"
+                                else:
+                                    rows_html += f"<tr style='background:{bg};'><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style}'>{feeder_val}</td><td style='{td_style}'>{a_val}</td><td style='{td_style}'>{b_val}</td><td style='{td_style}'>{c_val}</td><td style='{td_style}'>{n_val}</td><td style='{td_style}text-align:left;color:#6c757d;'>{note_val}</td></tr>"
                             
-                            table_html += "</tbody></table>"
-                            st.markdown(table_html, unsafe_allow_html=True)
+                            full_html = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="{th_style}">📅 วันที่</th><th style="{th_style}">🕐 เวลา</th><th style="{th_style}">🔌 ฟีดเดอร์</th><th style="{th_style}">กระแส A</th><th style="{th_style}">กระแส B</th><th style="{th_style}">กระแส C</th><th style="{th_style}">กระแส N</th><th style="{th_style}">📝 หมายเหตุ</th></tr></thead><tbody>{rows_html}</tbody></table></div>"""
+                            
+                            st.markdown(full_html, unsafe_allow_html=True)
                             st.markdown("<br>", unsafe_allow_html=True)
                             
                             # --- Smart Alerts (คำนวณจาก Record ล่าสุด) ---
