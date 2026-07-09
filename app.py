@@ -509,6 +509,8 @@ if client:
                     pea = str(row.get('PEA NO', '')).strip()
                     record_latest[pea] = True
             
+            completed_peas = list(record_latest.keys())
+            
             # 2. หารายการล่าสุดที่ถูกสั่งงาน (Task Data)
             task_pending = {}
             if not df_task.empty and 'PEA NO' in df_task.columns:
