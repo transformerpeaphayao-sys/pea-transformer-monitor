@@ -527,6 +527,10 @@ with st.sidebar:
         st.session_state.page = "Register"
     
     st.markdown("---")
+    if st.button("🔄 ดึงข้อมูลล่าสุด (Refresh)", use_container_width=True, type="secondary"):
+        st.cache_data.clear()
+        st.rerun()
+    st.markdown("---")
     st.markdown(f"""
     <div style="text-align:center; padding: 0.5rem 0; opacity: 0.5; font-size: 0.7rem; color: white;">
         📅 {(datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M')}
