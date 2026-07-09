@@ -1312,8 +1312,11 @@ if client:
                         lat = m_data.get('LATITUDE', '-')
                         lng = m_data.get('LONGITUDE', '-')
                         
-                        hist_df = df_record[df_record['PEA NO'].astype(str) == search_pea]
-                        
+                        if not df_record.empty and 'PEA NO' in df_record.columns:
+                            hist_df = df_record[df_record['PEA NO'].astype(str) == search_pea]
+                        else:
+                            hist_df = pd.DataFrame()
+                            
                         unique_sessions = 0
                         if not hist_df.empty:
                             col_date = "วันที่" if "วันที่" in hist_df.columns else hist_df.columns[0]
