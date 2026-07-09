@@ -248,18 +248,36 @@ button[kind="primary"]:hover {
 
 /* ===== Tabs styling ===== */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 4px;
+    gap: 8px;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0px;
 }
 .stTabs [data-baseweb="tab"] {
-    border-radius: 10px 10px 0 0;
-    padding: 8px 20px;
-    font-weight: 500;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 10px 24px !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
     font-family: 'Prompt', sans-serif !important;
+    color: #6c757d !important;
+    background-color: #f8f9fa !important;
+    border: 1px solid #e9ecef !important;
+    border-bottom: none !important;
+    transition: all 0.3s ease !important;
+    margin-bottom: -2px; /* Pull down to cover border */
+}
+.stTabs [data-baseweb="tab"]:hover {
+    background-color: #e9ecef !important;
+    color: #333 !important;
 }
 .stTabs [aria-selected="true"] {
     background: linear-gradient(135deg, #0f3460, #16213e) !important;
     color: white !important;
-    border-radius: 10px 10px 0 0;
+    border-color: #0f3460 !important;
+    box-shadow: 0 -2px 10px rgba(15, 52, 96, 0.15) !important;
+}
+/* ซ่อนเส้นขีดล่างสีแดงของ Streamlit แบบดั้งเดิม */
+.stTabs [data-baseweb="tab-highlight"] {
+    display: none !important;
 }
 
 /* ===== Checkbox ===== */
