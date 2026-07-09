@@ -1139,16 +1139,22 @@ if client:
                             filtered_df = filtered_df[filtered_df['Status'].str.contains(status_filter)]
                             
                         st.markdown(f"**แสดงผลลัพธ์: {len(filtered_df)} รายการ**")
-                        st.caption("💡 เคล็ดลับ: สามารถคลิกที่แถวข้อมูลในตาราง (คลิกที่คอลัมน์แรก) เพื่อไปดูประวัติหม้อแปลงของเครื่องนั้นได้ทันที")
                         
-                        event = st.dataframe(filtered_df, use_container_width=True, on_select="rerun", selection_mode="single-row")
+                        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
                         
-                        if len(event.selection.rows) > 0:
-                            selected_index = event.selection.rows[0]
-                            pea_to_profile = str(filtered_df.iloc[selected_index]['PEA NO'])
-                            st.session_state.page = "Profile"
-                            st.session_state.selected_pea_for_profile = pea_to_profile
-                            st.rerun()
+                        # --- Quick Navigate to Profile ---
+                        if len(filtered_df) > 0:
+                            unique_peas = sorted(filtered_df['PEA NO'].astype(str).unique().tolist())
+                            st.markdown("---")
+                            st.markdown("**🔗 ดูประวัติหม้อแปลง:**")
+                            col_nav1, col_nav2 = st.columns([3, 1])
+                            with col_nav1:
+                                nav_pea = st.selectbox("เลือก PEA NO ที่ต้องการดูประวัติ", options=unique_peas, label_visibility="collapsed")
+                            with col_nav2:
+                                if st.button("📋 ดูประวัติ", type="primary", use_container_width=True):
+                                    st.session_state.page = "Profile"
+                                    st.session_state.selected_pea_for_profile = nav_pea
+                                    st.rerun()
                         # Chart if PEA is selected
                         if selected_pea != "ทั้งหมด" and len(filtered_df) > 0:
                             st.markdown('<div class="section-card">', unsafe_allow_html=True)
