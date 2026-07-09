@@ -469,6 +469,7 @@ with st.sidebar:
         st.session_state.page = "Filter"
     if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
         st.session_state.page = "Profile"
+        st.session_state.selected_pea_for_profile = None
     if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
         st.session_state.page = "Register"
     
