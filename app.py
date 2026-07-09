@@ -363,6 +363,16 @@ def load_master_data(_client, spreadsheet_name="PEA_Transformer_DB"):
         st.error(f"ไม่สามารถโหลดข้อมูล MasterData ได้: {e}")
         return pd.DataFrame()
 
+def add_master_data_to_sheet(client, spreadsheet_name, row_data):
+    try:
+        sheet = client.open(spreadsheet_name).worksheet("MasterData")
+        sheet.append_row(row_data)
+        st.cache_data.clear()
+        return True
+    except Exception as e:
+        st.error(f"Error adding master data: {e}")
+        return False
+
 # --- 3.5. ฟังก์ชันสำหรับดึงข้อมูลที่บันทึกไปแล้ว ---
 @st.cache_data(ttl=60)
 def load_completed_data(_client, spreadsheet_name):
@@ -459,6 +469,8 @@ with st.sidebar:
         st.session_state.page = "Filter"
     if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
         st.session_state.page = "Profile"
+    if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
+        st.session_state.page = "Register"
     
     st.markdown("---")
     st.markdown(f"""
@@ -1282,6 +1294,56 @@ if client:
                                             st.success("บันทึกคำสั่งงานเรียบร้อยแล้ว หมุดบนแผนที่จะกลายเป็นสีส้ม!")
                                             st.rerun()
                             
+            # ==============================
+            # หน้าที่ 6: REGISTER PAGE
+            # ==============================
+            elif st.session_state.page == "Register":
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #11998e, #38ef7d); padding: 15px; border-radius: 10px; color: white; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h4 style="margin:0; color:white;">➕ ลงทะเบียนหม้อแปลงใหม่</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.info("💡 ข้อมูลทุกช่องไม่จำเป็นต้องกรอก (Optional) สามารถเว้นว่างไว้ได้ครับ")
+                
+                with st.form("register_transformer_form"):
+                    reg_pea = st.text_input("PEANO หม้อแปลง (รหัส กฟภ.)", placeholder="เช่น 59-5554")
+                    reg_kva = st.text_input("ค่าพิกัด kVA หม้อแปลง", placeholder="เช่น 50, 100, 160")
+                    reg_loc = st.text_input("สถานที่ติดตั้ง", placeholder="เช่น บ้านหนองหอย ม.3")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        reg_lat = st.text_input("พิกัด LATITUDE", placeholder="เช่น 18.788")
+                    with col2:
+                        reg_lng = st.text_input("พิกัด LONGITUDE", placeholder="เช่น 98.985")
+                        
+                    reg_phase = st.text_input("ระบบเฟส", placeholder="เช่น 1 เฟส, 3 เฟส")
+                    
+                    submitted = st.form_submit_button("💾 บันทึกข้อมูลหม้อแปลง", type="primary", use_container_width=True)
+                    
+                    if submitted:
+                        with st.spinner("กำลังบันทึกข้อมูลลงฐานข้อมูลหลัก (MasterData)..."):
+                            new_row = []
+                            for col in df_master.columns:
+                                col_str = str(col).strip()
+                                if col_str == "PEANO หม้อแปลง":
+                                    new_row.append(reg_pea)
+                                elif col_str == "ค่าพิกัด kVA หม้อแปลง":
+                                    new_row.append(reg_kva)
+                                elif col_str == "สถานที่":
+                                    new_row.append(reg_loc)
+                                elif col_str == "LATITUDE":
+                                    new_row.append(reg_lat)
+                                elif col_str == "LONGITUDE":
+                                    new_row.append(reg_lng)
+                                elif col_str == "ระบบเฟส":
+                                    new_row.append(reg_phase)
+                                else:
+                                    new_row.append("")
+                                    
+                            if add_master_data_to_sheet(client, SHEET_NAME, new_row):
+                                st.success(f"🎉 ลงทะเบียนหม้อแปลงสำเร็จแล้ว!")
+                                st.rerun()
 
         else:
             st.error("ข้อผิดพลาด: ชื่อหัวคอลัมน์ (บรรทัดแรกสุด) ในชีต MasterData ไม่ตรงกับที่ระบบต้องการครับ")
