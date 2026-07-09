@@ -963,7 +963,7 @@ if client:
                     with col_f4:
                         exclude_total = st.checkbox("✅ ไม่รวมแถวที่เป็นผล 'รวม'", value=True, help="แสดงเฉพาะข้อมูลของแต่ละฟีดเดอร์ (F1, F2,...)")
                     with col_f5:
-                        min_amp, max_amp = st.slider("ช่วงกระแสที่ต้องการค้นหา (Amp)", min_value=0, max_value=1000, value=(0, 1000), step=5, help="ค้นหาหม้อแปลงที่มีกระแสเฟสใดเฟสหนึ่งอยู่ในช่วงนี้")
+                        min_amp, max_amp = st.slider("ช่วงกระแสที่ต้องการค้นหา (Amp)", min_value=0, max_value=250, value=(0, 250), step=5, help="ค้นหาหม้อแปลงที่มีกระแสเฟสใดเฟสหนึ่งอยู่ในช่วงนี้")
                         
                     st.markdown('</div>', unsafe_allow_html=True)
                     
@@ -984,7 +984,7 @@ if client:
                     if exclude_total:
                         filtered_df = filtered_df[filtered_df[col_feeder].astype(str).str.strip() != "รวม"]
                         
-                    if min_amp > 0 or max_amp < 1000:
+                    if min_amp > 0 or max_amp < 250:
                         a_vals = pd.to_numeric(filtered_df[col_a], errors='coerce').fillna(0)
                         b_vals = pd.to_numeric(filtered_df[col_b], errors='coerce').fillna(0)
                         c_vals = pd.to_numeric(filtered_df[col_c], errors='coerce').fillna(0)
