@@ -1140,7 +1140,7 @@ if client:
                         st.markdown(f"**แสดงผลลัพธ์: {len(filtered_df)} รายการ**")
                         st.caption("💡 เคล็ดลับ: สามารถคลิกที่แถวข้อมูลในตาราง (คลิกที่คอลัมน์แรก) เพื่อไปดูประวัติหม้อแปลงของเครื่องนั้นได้ทันที")
                         
-                        event = st.dataframe(filtered_df, use_container_width=True, on_select="rerun", selection_mode="single_row")
+                        event = st.dataframe(filtered_df, use_container_width=True, on_select="rerun", selection_mode="single-row")
                         
                         if len(event.selection.rows) > 0:
                             selected_index = event.selection.rows[0]
