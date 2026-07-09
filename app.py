@@ -1240,7 +1240,7 @@ if client:
                         
                         if not hist_df.empty:
                             st.markdown("##### 📑 ประวัติบันทึกข้อมูลโหลด:")
-                            st.dataframe(hist_df, use_container_width=True)
+                            st.dataframe(hist_df, use_container_width=True, hide_index=True)
                             
                             # --- Smart Alerts (คำนวณจาก Record ล่าสุด) ---
                             try:
