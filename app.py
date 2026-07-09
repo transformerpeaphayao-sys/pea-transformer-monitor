@@ -376,37 +376,44 @@ def add_master_data_to_sheet(client, spreadsheet_name, row_data):
 def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
     try:
         sh = client.open(spreadsheet_name)
+        pea_str = str(pea_no).strip()
         
         # ลบจาก MasterData
         try:
             sheet_master = sh.worksheet("MasterData")
             records = sheet_master.get_all_records()
             for idx, row in enumerate(records):
-                if str(row.get('PEANO หม้อแปลง', '')).strip() == str(pea_no).strip():
-                    sheet_master.delete_row(idx + 2)
+                if str(row.get('PEANO หม้อแปลง', '')).strip() == pea_str:
+                    sheet_master.delete_rows(idx + 2)
                     break
-        except Exception:
-            pass
+        except Exception as e:
+            st.warning(f"ลบ MasterData: {e}")
 
         # ลบจาก Record Data (ลบย้อนกลับจากล่างขึ้นบน เพื่อไม่ให้ index เลื่อน)
         try:
             sheet_record = sh.worksheet("Record Data")
             records = sheet_record.get_all_records()
-            for idx in range(len(records) - 1, -1, -1):
-                if str(records[idx].get('PEA NO', '')).strip() == str(pea_no).strip():
-                    sheet_record.delete_row(idx + 2)
-        except Exception:
-            pass
+            rows_to_delete = []
+            for idx, row in enumerate(records):
+                if str(row.get('PEA NO', '')).strip() == pea_str:
+                    rows_to_delete.append(idx + 2)
+            for row_idx in reversed(rows_to_delete):
+                sheet_record.delete_rows(row_idx)
+        except Exception as e:
+            st.warning(f"ลบ Record Data: {e}")
             
         # ลบจาก Task Data (ลบย้อนกลับจากล่างขึ้นบน)
         try:
             sheet_task = sh.worksheet("Task Data")
             records = sheet_task.get_all_records()
-            for idx in range(len(records) - 1, -1, -1):
-                if str(records[idx].get('PEA NO', '')).strip() == str(pea_no).strip():
-                    sheet_task.delete_row(idx + 2)
-        except Exception:
-            pass
+            rows_to_delete = []
+            for idx, row in enumerate(records):
+                if str(row.get('PEA NO', '')).strip() == pea_str:
+                    rows_to_delete.append(idx + 2)
+            for row_idx in reversed(rows_to_delete):
+                sheet_task.delete_rows(row_idx)
+        except Exception as e:
+            st.warning(f"ลบ Task Data: {e}")
 
         st.cache_data.clear()
         return True
