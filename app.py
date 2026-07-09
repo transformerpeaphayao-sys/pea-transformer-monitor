@@ -1428,13 +1428,25 @@ if client:
                                         if add_task_to_sheet(client, SHEET_NAME, search_pea):
                                             st.success("บันทึกคำสั่งงานเรียบร้อยแล้ว หมุดบนแผนที่จะกลายเป็นสีส้ม!")
                                             st.rerun()
+                        @st.dialog("⚠️ ยืนยันการลบข้อมูล")
+                        def confirm_delete_dialog(pea_no):
+                            st.error(f"คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลหม้อแปลง **PEA {pea_no}** ออกจากระบบ?\n\n**หมายเหตุ:** การกระทำนี้ไม่สามารถย้อนกลับได้!")
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            col_y, col_n = st.columns(2)
+                            with col_y:
+                                if st.button("✔️ ยืนยัน (ลบ)", type="primary", use_container_width=True):
+                                    with st.spinner("กำลังลบข้อมูลจาก MasterData..."):
+                                        if delete_master_data_from_sheet(client, SHEET_NAME, pea_no):
+                                            st.success(f"ลบข้อมูลหม้อแปลง {pea_no} สำเร็จ!")
+                                            st.session_state.selected_pea_for_profile = None
+                                            st.rerun()
+                            with col_n:
+                                if st.button("❌ ยกเลิก", use_container_width=True):
+                                    st.rerun()
+
                         with col_btn3:
                             if st.button("🗑️ ลบข้อมูลหม้อแปลงนี้", use_container_width=True):
-                                with st.spinner("กำลังลบข้อมูลจาก MasterData..."):
-                                    if delete_master_data_from_sheet(client, SHEET_NAME, search_pea):
-                                        st.success(f"ลบข้อมูลหม้อแปลง {search_pea} ออกจากระบบเรียบร้อยแล้ว!")
-                                        st.session_state.selected_pea_for_profile = None
-                                        st.rerun()
+                                confirm_delete_dialog(search_pea)
                             
             # ==============================
             # หน้าที่ 6: REGISTER PAGE
