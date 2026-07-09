@@ -446,13 +446,13 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     st.markdown("---")
     
-    st.markdown("<div style='font-size:0.85rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; padding-left:5px;'>📱 สำหรับหน้างาน (Field Work)</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>📱 สำหรับหน้างาน (Field Work)</div>", unsafe_allow_html=True)
     if st.button("🗺️  แผนที่หม้อแปลง", use_container_width=True):
         st.session_state.page = "Map"
     if st.button("📝  บันทึกข้อมูล", use_container_width=True):
         st.session_state.page = "Form"
         
-    st.markdown("<div style='font-size:0.85rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; margin-top:15px; padding-left:5px;'>💻 สำหรับหลังบ้าน (Back Office)</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; margin-top:15px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>💻 สำหรับหลังบ้าน (Back Office)</div>", unsafe_allow_html=True)
     if st.button("📊  สรุปผลงาน", use_container_width=True):
         st.session_state.page = "Summary"
     if st.button("🔍  กรองข้อมูล (Filter)", use_container_width=True):
