@@ -1148,8 +1148,8 @@ if client:
                         
                         if len(filtered_df) > 0:
                             # สร้าง HTML Table พร้อม PEA NO เป็นลิงก์คลิกได้
-                            th_s = "background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:10px 8px;text-align:center;font-weight:600;font-size:0.78rem;"
-                            td_s = "padding:8px 6px;text-align:center;border-bottom:1px solid #e9ecef;color:#333;font-size:0.82rem;"
+                            th_s = "background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:12px 8px;text-align:center;font-weight:600;font-size:0.78rem;white-space:nowrap;"
+                            td_s = "padding:10px 8px;text-align:center;border-bottom:1px solid #e9ecef;color:#333;font-size:0.82rem;"
                             
                             col_date_f = "วันที่" if "วันที่" in filtered_df.columns else filtered_df.columns[0]
                             col_time_f = "เวลา" if "เวลา" in filtered_df.columns else filtered_df.columns[1]
@@ -1160,28 +1160,47 @@ if client:
                             col_n_f = "กระแส N" if "กระแส N" in filtered_df.columns else "N" if "N" in filtered_df.columns else filtered_df.columns[7] if len(filtered_df.columns) > 7 else ""
                             col_note_f = "หมายเหตุ" if "หมายเหตุ" in filtered_df.columns else "Note" if "Note" in filtered_df.columns else filtered_df.columns[8] if len(filtered_df.columns) > 8 else ""
                             
+                            # สลับสีตามกลุ่ม PEA NO
+                            group_colors = ["#f0f7ff", "#fff8f0"]
+                            group_idx = 0
+                            prev_pea = None
+                            
                             rows_f = ""
                             for i, (_, row) in enumerate(filtered_df.iterrows()):
-                                bg = "#ffffff" if i % 2 == 0 else "#f8f9fa"
                                 pea_val = str(row.get('PEA NO', '-'))
-                                pea_link = f"<a href='?profile_pea={pea_val}' target='_self' style='color:#2575fc;font-weight:700;text-decoration:none;'>{pea_val}</a>"
+                                if pea_val != prev_pea:
+                                    group_idx += 1
+                                    prev_pea = pea_val
                                 
+                                bg = group_colors[group_idx % 2]
+                                border_accent = "#2575fc" if group_idx % 2 == 1 else "#e94560"
+                                pea_link = f"<a href='?profile_pea={pea_val}' target='_self' style='color:#2575fc;font-weight:700;text-decoration:none;border-bottom:2px dashed #2575fc;padding-bottom:1px;'>{pea_val}</a>"
+                                
+                                # Status badge
                                 status_val = str(row.get('Status', ''))
+                                if 'Overload' in status_val or '🔴' in status_val:
+                                    status_badge = f"<span style='background:#f8d7da;color:#842029;padding:3px 8px;border-radius:12px;font-size:0.72rem;white-space:nowrap;'>{status_val}</span>"
+                                elif '🟡' in status_val:
+                                    status_badge = f"<span style='background:#fff3cd;color:#664d03;padding:3px 8px;border-radius:12px;font-size:0.72rem;white-space:nowrap;'>{status_val}</span>"
+                                elif 'ปกติ' in status_val or '🟢' in status_val:
+                                    status_badge = f"<span style='background:#d1e7dd;color:#0f5132;padding:3px 8px;border-radius:12px;font-size:0.72rem;white-space:nowrap;'>{status_val}</span>"
+                                else:
+                                    status_badge = f"<span style='background:#e2e3e5;color:#41464b;padding:3px 8px;border-radius:12px;font-size:0.72rem;white-space:nowrap;'>{status_val}</span>"
                                 
-                                rows_f += f"<tr style='background:{bg};'>"
-                                rows_f += f"<td style='{td_s}'>{row.get(col_date_f, '-')}</td>"
+                                rows_f += f"<tr style='background:{bg};' onmouseover=\"this.style.background='#e8f0fe'\" onmouseout=\"this.style.background='{bg}'\">"
+                                rows_f += f"<td style='{td_s}border-left:4px solid {border_accent};'>{row.get(col_date_f, '-')}</td>"
                                 rows_f += f"<td style='{td_s}'>{row.get(col_time_f, '-')}</td>"
                                 rows_f += f"<td style='{td_s}'>{pea_link}</td>"
                                 rows_f += f"<td style='{td_s}'>{row.get(col_feeder_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}'>{row.get(col_a_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}'>{row.get(col_b_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}'>{row.get(col_c_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}font-weight:600;'>{row.get(col_a_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}font-weight:600;'>{row.get(col_b_f, '-')}</td>"
+                                rows_f += f"<td style='{td_s}font-weight:600;'>{row.get(col_c_f, '-')}</td>"
                                 rows_f += f"<td style='{td_s}'>{row.get(col_n_f, '-') if col_n_f else '-'}</td>"
-                                rows_f += f"<td style='{td_s}text-align:left;font-size:0.78rem;color:#6c757d;'>{row.get(col_note_f, '') if col_note_f else ''}</td>"
-                                rows_f += f"<td style='{td_s}font-size:0.78rem;'>{status_val}</td>"
+                                rows_f += f"<td style='{td_s}text-align:left;font-size:0.75rem;color:#6c757d;'>{row.get(col_note_f, '') if col_note_f else ''}</td>"
+                                rows_f += f"<td style='{td_s}'>{status_badge}</td>"
                                 rows_f += "</tr>"
                             
-                            filter_table = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="{th_s}">📅 วันที่</th><th style="{th_s}">🕐 เวลา</th><th style="{th_s}">PEA NO</th><th style="{th_s}">ฟีดเดอร์</th><th style="{th_s}">กระแส A</th><th style="{th_s}">กระแส B</th><th style="{th_s}">กระแส C</th><th style="{th_s}">กระแส N</th><th style="{th_s}">หมายเหตุ</th><th style="{th_s}">Status</th></tr></thead><tbody>{rows_f}</tbody></table></div>"""
+                            filter_table = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="{th_s}">📅 วันที่</th><th style="{th_s}">🕐 เวลา</th><th style="{th_s}">🔗 PEA NO</th><th style="{th_s}">🔌 ฟีดเดอร์</th><th style="{th_s}">A</th><th style="{th_s}">B</th><th style="{th_s}">C</th><th style="{th_s}">N</th><th style="{th_s}">📝 หมายเหตุ</th><th style="{th_s}">⚡ Status</th></tr></thead><tbody>{rows_f}</tbody></table></div>"""
                             
                             st.markdown(filter_table, unsafe_allow_html=True)
                         # Chart if PEA is selected
