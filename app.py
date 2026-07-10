@@ -576,69 +576,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# Auto-collapse sidebar on mobile after menu selection
-if st.session_state.get('sidebar_collapsed', False):
-    st.session_state.sidebar_collapsed = False
-    components.html("""
-    <script>
-        function getStDoc() {
-            try {
-                if (window.parent && window.parent.document.querySelector('section[data-testid="stSidebar"]'))
-                    return window.parent.document;
-            } catch(e) {}
-            try {
-                if (window.top && window.top.document.querySelector('section[data-testid="stSidebar"]'))
-                    return window.top.document;
-            } catch(e) {}
-            return null;
-        }
-        
-        function closeSidebar() {
-            var doc = getStDoc();
-            if (!doc) return false;
-            
-            // Strategy 1: Click the dark overlay (mobile only, most reliable)
-            var overlay = doc.querySelector('[data-testid="stSidebarOverlay"]');
-            if (overlay) { overlay.click(); return true; }
-            
-            // Strategy 2: Try various collapse button selectors
-            var btnSelectors = [
-                '[data-testid="stSidebarCollapseButton"]',
-                '[data-testid="stSidebarNavCollapseButton"]',
-                'section[data-testid="stSidebar"] button[kind="header"]',
-                'section[data-testid="stSidebar"] button[kind="headerNoPadding"]'
-            ];
-            for (var i = 0; i < btnSelectors.length; i++) {
-                var btn = doc.querySelector(btnSelectors[i]);
-                if (btn) { btn.click(); return true; }
-            }
-            
-            // Strategy 3: Find close button by aria-label
-            var allBtns = doc.querySelectorAll('button[aria-label]');
-            for (var j = 0; j < allBtns.length; j++) {
-                var lbl = (allBtns[j].getAttribute('aria-label') || '').toLowerCase();
-                if (lbl.indexOf('close') >= 0 || lbl.indexOf('collapse') >= 0) {
-                    allBtns[j].click(); return true;
-                }
-            }
-            
-            // Strategy 4: Directly set aria-expanded to false
-            var sidebar = doc.querySelector('section[data-testid="stSidebar"]');
-            if (sidebar) {
-                sidebar.setAttribute('aria-expanded', 'false');
-                return true;
-            }
-            return false;
-        }
-        
-        // Retry multiple times with increasing delays to handle render timing
-        setTimeout(closeSidebar, 50);
-        setTimeout(closeSidebar, 200);
-        setTimeout(closeSidebar, 500);
-        setTimeout(closeSidebar, 1000);
-    </script>
-    """, height=1)
-
 # --- 5. Header Banner ---
 import base64
 icon_html = '<div class="icon">⚡</div>'
