@@ -7,6 +7,8 @@ from google.oauth2.service_account import Credentials
 import folium
 from folium.plugins import MarkerCluster, LocateControl
 from streamlit_folium import st_folium
+import time
+import random
 
 # --- 1. ตั้งค่าหน้าเว็บ Streamlit ---
 st.set_page_config(
@@ -888,33 +890,51 @@ if client:
                         st.error("⚠️ กรุณาเลือกฟีดเดอร์ที่ต้องการบันทึกก่อนครับ")
                         st.stop()
 
-                    with st.spinner("กำลังบันทึกข้อมูล..."):
-                        try:
-                            sheet_record = client.open(SHEET_NAME).worksheet("Record Data")
-                            
-                            rows_to_insert = []
-                            for f_name, data in feeder_inputs.items():
-                                rows_to_insert.append([
-                                    record_date.strftime("%d/%m/%Y"),
-                                    record_time.strftime("%H:%M:%S"),
-                                    selected_pea,
-                                    f_name,
-                                    data["A"], data["B"], data["C"], data["N"],
-                                    data["note"]
-                                ])
-                            
-                            if total_checked or len(selected_feeders) > 0:
-                                rows_to_insert.append([
-                                    record_date.strftime("%d/%m/%Y"),
-                                    record_time.strftime("%H:%M:%S"),
-                                    selected_pea,
-                                    "รวม",
-                                    tot_a, tot_b, tot_c, tot_n,
-                                    tot_note
-                                ])
-                            
-                            sheet_record.append_rows(rows_to_insert)
-                            
+                    with st.spinner("กำลังบันทึกข้อมูล... (ระบบอาจใช้เวลาสักครู่หากมีการใช้งานพร้อมกันหลายทีม)"):
+                        max_retries = 5  # ให้ระบบพยายามบันทึกใหม่สูงสุด 5 ครั้งหากชนกัน
+                        success = False
+                        
+                        for attempt in range(max_retries):
+                            try:
+                                sheet_record = client.open(SHEET_NAME).worksheet("Record Data")
+                                
+                                rows_to_insert = []
+                                for f_name, data in feeder_inputs.items():
+                                    rows_to_insert.append([
+                                        record_date.strftime("%d/%m/%Y"),
+                                        record_time.strftime("%H:%M:%S"),
+                                        selected_pea,
+                                        f_name,
+                                        data["A"], data["B"], data["C"], data["N"],
+                                        data["note"]
+                                    ])
+                                
+                                if total_checked or len(selected_feeders) > 0:
+                                    rows_to_insert.append([
+                                        record_date.strftime("%d/%m/%Y"),
+                                        record_time.strftime("%H:%M:%S"),
+                                        selected_pea,
+                                        "รวม",
+                                        tot_a, tot_b, tot_c, tot_n,
+                                        tot_note
+                                    ])
+                                
+                                sheet_record.append_rows(rows_to_insert)
+                                success = True
+                                break  # บันทึกสำเร็จ ให้หลุดออกจากลูปทันที
+                                
+                            except gspread.exceptions.WorksheetNotFound:
+                                st.error("ไม่พบชีตชื่อ 'Record Data' ในไฟล์ Google Sheets ของคุณ")
+                                break
+                            except Exception as e:
+                                if attempt < max_retries - 1:
+                                    # สุ่มรอ 1.5 ถึง 3 วินาที เพื่อหลบหลีกการชนกันซ้ำซ้อน
+                                    wait_time = random.uniform(1.5, 3.0)
+                                    time.sleep(wait_time)
+                                else:
+                                    st.error(f"❌ ระบบไม่ว่างเนื่องจากมีการส่งข้อมูลพร้อมกันมากเกินไป กรุณากดปุ่มบันทึกใหม่อีกครั้ง")
+
+                        if success:
                             # หากเป็นการตรวจงานซ้ำ ให้บันทึกสถานะ Done
                             try:
                                 sheet_task = client.open(SHEET_NAME).worksheet("Task Data")
@@ -924,7 +944,6 @@ if client:
                                 pass
                             
                             st.success("✅ บันทึกข้อมูลเรียบร้อยแล้ว!")
-                            
                             st.session_state.page = "Map"
                             st.session_state.selected_pea_from_map = None
                             if 'last_dialog_pea' in st.session_state:
@@ -933,11 +952,6 @@ if client:
                             load_completed_data.clear()
                             load_task_data.clear()
                             st.rerun()
-                            
-                        except gspread.exceptions.WorksheetNotFound:
-                            st.error("ไม่พบชีตชื่อ 'Record Data' ในไฟล์ Google Sheets ของคุณ")
-                        except Exception as e:
-                            st.error(f"❌ เกิดข้อผิดพลาด: {e}")
             
             # ==============================
             # หน้าที่ 3: SUMMARY PAGE
