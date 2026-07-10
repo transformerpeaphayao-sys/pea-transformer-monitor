@@ -545,19 +545,25 @@ with st.sidebar:
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>📱 สำหรับหน้างาน (Field Work)</div>", unsafe_allow_html=True)
     if st.button("🗺️  แผนที่หม้อแปลง", use_container_width=True):
         st.session_state.page = "Map"
+        st.session_state.sidebar_collapsed = True
     if st.button("📝  บันทึกข้อมูล", use_container_width=True):
         st.session_state.page = "Form"
+        st.session_state.sidebar_collapsed = True
         
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; margin-top:15px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>💻 สำหรับหลังบ้าน (Back Office)</div>", unsafe_allow_html=True)
     if st.button("📊  สรุปผลงาน", use_container_width=True):
         st.session_state.page = "Summary"
+        st.session_state.sidebar_collapsed = True
     if st.button("🔍  กรองข้อมูล (Filter)", use_container_width=True):
         st.session_state.page = "Filter"
+        st.session_state.sidebar_collapsed = True
     if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
         st.session_state.page = "Profile"
         st.session_state.selected_pea_for_profile = None
+        st.session_state.sidebar_collapsed = True
     if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
         st.session_state.page = "Register"
+        st.session_state.sidebar_collapsed = True
     
     st.markdown("---")
     if st.button("🔄 ดึงข้อมูลล่าสุด (Refresh)", use_container_width=True, type="secondary"):
@@ -569,6 +575,33 @@ with st.sidebar:
         📅 {(datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M')}
     </div>
     """, unsafe_allow_html=True)
+
+# Auto-collapse sidebar on mobile after menu selection
+if st.session_state.get('sidebar_collapsed', False):
+    st.session_state.sidebar_collapsed = False
+    components.html("""
+    <script>
+        if (window.innerWidth <= 992) {
+            // Strategy 1: Click collapse button by data-testid
+            var collapseBtn = window.parent.document.querySelector('[data-testid="stSidebarCollapseButton"]');
+            if (collapseBtn) {
+                collapseBtn.click();
+            } else {
+                // Strategy 2: Find header button
+                var headerBtns = window.parent.document.querySelectorAll('button[kind="header"]');
+                if (headerBtns.length > 0) {
+                    headerBtns[0].click();
+                } else {
+                    // Strategy 3: Directly manipulate sidebar
+                    var sidebar = window.parent.document.querySelector('section[data-testid="stSidebar"]');
+                    if (sidebar) {
+                        sidebar.setAttribute('aria-expanded', 'false');
+                    }
+                }
+            }
+        }
+    </script>
+    """, height=0)
 
 # --- 5. Header Banner ---
 import base64
