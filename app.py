@@ -581,27 +581,63 @@ if st.session_state.get('sidebar_collapsed', False):
     st.session_state.sidebar_collapsed = False
     components.html("""
     <script>
-        if (window.innerWidth <= 992) {
-            // Strategy 1: Click collapse button by data-testid
-            var collapseBtn = window.parent.document.querySelector('[data-testid="stSidebarCollapseButton"]');
-            if (collapseBtn) {
-                collapseBtn.click();
-            } else {
-                // Strategy 2: Find header button
-                var headerBtns = window.parent.document.querySelectorAll('button[kind="header"]');
-                if (headerBtns.length > 0) {
-                    headerBtns[0].click();
-                } else {
-                    // Strategy 3: Directly manipulate sidebar
-                    var sidebar = window.parent.document.querySelector('section[data-testid="stSidebar"]');
-                    if (sidebar) {
-                        sidebar.setAttribute('aria-expanded', 'false');
-                    }
+        function getStDoc() {
+            try {
+                if (window.parent && window.parent.document.querySelector('section[data-testid="stSidebar"]'))
+                    return window.parent.document;
+            } catch(e) {}
+            try {
+                if (window.top && window.top.document.querySelector('section[data-testid="stSidebar"]'))
+                    return window.top.document;
+            } catch(e) {}
+            return null;
+        }
+        
+        function closeSidebar() {
+            var doc = getStDoc();
+            if (!doc) return false;
+            
+            // Strategy 1: Click the dark overlay (mobile only, most reliable)
+            var overlay = doc.querySelector('[data-testid="stSidebarOverlay"]');
+            if (overlay) { overlay.click(); return true; }
+            
+            // Strategy 2: Try various collapse button selectors
+            var btnSelectors = [
+                '[data-testid="stSidebarCollapseButton"]',
+                '[data-testid="stSidebarNavCollapseButton"]',
+                'section[data-testid="stSidebar"] button[kind="header"]',
+                'section[data-testid="stSidebar"] button[kind="headerNoPadding"]'
+            ];
+            for (var i = 0; i < btnSelectors.length; i++) {
+                var btn = doc.querySelector(btnSelectors[i]);
+                if (btn) { btn.click(); return true; }
+            }
+            
+            // Strategy 3: Find close button by aria-label
+            var allBtns = doc.querySelectorAll('button[aria-label]');
+            for (var j = 0; j < allBtns.length; j++) {
+                var lbl = (allBtns[j].getAttribute('aria-label') || '').toLowerCase();
+                if (lbl.indexOf('close') >= 0 || lbl.indexOf('collapse') >= 0) {
+                    allBtns[j].click(); return true;
                 }
             }
+            
+            // Strategy 4: Directly set aria-expanded to false
+            var sidebar = doc.querySelector('section[data-testid="stSidebar"]');
+            if (sidebar) {
+                sidebar.setAttribute('aria-expanded', 'false');
+                return true;
+            }
+            return false;
         }
+        
+        // Retry multiple times with increasing delays to handle render timing
+        setTimeout(closeSidebar, 50);
+        setTimeout(closeSidebar, 200);
+        setTimeout(closeSidebar, 500);
+        setTimeout(closeSidebar, 1000);
     </script>
-    """, height=0)
+    """, height=1)
 
 # --- 5. Header Banner ---
 import base64
