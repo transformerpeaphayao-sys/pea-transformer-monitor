@@ -846,9 +846,11 @@ if client:
                     transformer_info = df_pending[df_pending['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
                     
                     try:
-                        kva_value = float(transformer_info['ค่าพิกัด kVA หม้อแปลง'])
+                        # กำจัดลูกน้ำและช่องว่างก่อนแปลงเป็นทศนิยม
+                        kva_str = str(transformer_info['ค่าพิกัด kVA หม้อแปลง']).replace(',', '').strip()
+                        kva_value = float(kva_str)
                     except ValueError:
-                        st.error("ข้อมูล kVA ใน MasterData ไม่ใช่ตัวเลขที่ถูกต้อง!")
+                        st.error(f"ข้อมูล kVA ใน MasterData ไม่ใช่ตัวเลขที่ถูกต้อง! (พบค่า: {transformer_info['ค่าพิกัด kVA หม้อแปลง']})")
                         st.stop()
                     
                     # 1. คำนวณพิกัดกระแสสูงสุด (I_max) ของหม้อแปลง
@@ -946,12 +948,17 @@ if client:
 
                         if success:
                             # หากเป็นการตรวจงานซ้ำ ให้บันทึกสถานะ Done
-                            try:
-                                sheet_task = client.open(SHEET_NAME).worksheet("Task Data")
-                                now_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M:%S')
-                                sheet_task.append_row([selected_pea, "Done", now_str])
-                            except Exception:
-                                pass
+                            for task_attempt in range(3):
+                                try:
+                                    sheet_task = client.open(SHEET_NAME).worksheet("Task Data")
+                                    now_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M:%S')
+                                    sheet_task.append_row([selected_pea, "Done", now_str])
+                                    break # สำเร็จแล้วออกจากลูป
+                                except Exception:
+                                    if task_attempt < 2:
+                                        time.sleep(random.uniform(1.0, 2.0))
+                                    else:
+                                        pass # ถ้าพยายามครบ 3 ครั้งแล้วไม่สำเร็จ ให้ข้ามไป
                             
                             st.success("✅ บันทึกข้อมูลเรียบร้อยแล้ว!")
                             st.session_state.page = "Map"
@@ -1578,11 +1585,16 @@ if client:
                     submitted = st.form_submit_button("💾 บันทึกข้อมูลหม้อแปลง", type="primary", use_container_width=True)
                     
                     if submitted:
-                        with st.spinner("กำลังบันทึกข้อมูลลงฐานข้อมูลหลัก (MasterData)..."):
-                            new_row = []
-                            for col in df_master.columns:
-                                col_str = str(col).strip()
-                                if col_str == "PEANO หม้อแปลง":
+                        if not reg_pea.strip():
+                            st.warning("⚠️ กรุณากรอกรหัส PEANO หม้อแปลง")
+                        elif reg_pea.strip() in df_master['PEANO หม้อแปลง'].astype(str).str.strip().values:
+                            st.error(f"❌ มีรหัส PEA {reg_pea} อยู่ในระบบแล้วครับ ไม่สามารถลงทะเบียนซ้ำได้")
+                        else:
+                            with st.spinner("กำลังบันทึกข้อมูลลงฐานข้อมูลหลัก (MasterData)..."):
+                                new_row = []
+                                for col in df_master.columns:
+                                    col_str = str(col).strip()
+                                    if col_str == "PEANO หม้อแปลง":
                                     new_row.append(reg_pea)
                                 elif col_str == "ค่าพิกัด kVA หม้อแปลง":
                                     new_row.append(reg_kva)
