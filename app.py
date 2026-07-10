@@ -5,6 +5,7 @@ import math
 import datetime
 from google.oauth2.service_account import Credentials
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
 # --- 1. ตั้งค่าหน้าเว็บ Streamlit ---
@@ -678,7 +679,10 @@ if client:
                                     st.session_state.selected_pea_from_map = pea_no
                                     st.rerun()
 
-                        # ปักหมุด
+                        # สร้าง MarkerCluster เพื่อยุบรวมหมุดที่อยู่ใกล้กัน
+                        marker_cluster = MarkerCluster().add_to(m)
+                        
+                        # ปักหมุดลงใน MarkerCluster
                         for idx, row in map_data.iterrows():
                             pea_no_str = str(row['PEANO หม้อแปลง'])
                             color = row.get('MarkerColor', 'red')
@@ -686,7 +690,7 @@ if client:
                                 [row['LATITUDE'], row['LONGITUDE']],
                                 tooltip=pea_no_str,
                                 icon=folium.Icon(color=color, icon="info-sign")
-                            ).add_to(m)
+                            ).add_to(marker_cluster)
                         
                         st_data = st_folium(m, width="100%", height=500, returned_objects=["last_object_clicked_tooltip"])
                         
