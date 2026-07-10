@@ -5,7 +5,7 @@ import math
 import datetime
 from google.oauth2.service_account import Credentials
 import folium
-from folium.plugins import MarkerCluster
+from folium.plugins import MarkerCluster, LocateControl
 from streamlit_folium import st_folium
 
 # --- 1. ตั้งค่าหน้าเว็บ Streamlit ---
@@ -651,6 +651,14 @@ if client:
                         center_lon = map_data['LONGITUDE'].mean()
                         
                         m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
+                        
+                        # เพิ่มปุ่มค้นหาตำแหน่งปัจจุบันของผู้ใช้ (GPS)
+                        LocateControl(
+                            position="topleft",
+                            drawCircle=True,
+                            flyTo=True,
+                            strings={"title": "แสดงตำแหน่งปัจจุบันของฉัน"}
+                        ).add_to(m)
                         
                         @st.dialog("📍 ข้อมูลหม้อแปลง")
                         def show_transformer_dialog(pea_no, row_data):
