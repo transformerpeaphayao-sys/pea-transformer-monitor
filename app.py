@@ -385,14 +385,19 @@ def load_master_data(_client, spreadsheet_name="PEA_Transformer_DB"):
         return pd.DataFrame()
 
 def add_master_data_to_sheet(client, spreadsheet_name, row_data):
-    try:
-        sheet = client.open(spreadsheet_name).worksheet("MasterData")
-        sheet.append_row(row_data)
-        load_master_data.clear()
-        return True
-    except Exception as e:
-        st.error(f"Error adding master data: {e}")
-        return False
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            sheet = client.open(spreadsheet_name).worksheet("MasterData")
+            sheet.append_row(row_data)
+            load_master_data.clear()
+            return True
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(random.uniform(1.5, 3.0)) # รอคิวหากมีการชนกัน
+            else:
+                st.error(f"Error adding master data: {e}")
+                return False
 
 def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
     try:
@@ -467,22 +472,27 @@ def load_task_data(_client, spreadsheet_name):
         return pd.DataFrame(columns=["PEA NO", "Status", "Date"])
 
 def add_task_to_sheet(client, spreadsheet_name, pea_no):
-    try:
-        sh = client.open(spreadsheet_name)
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
-            sheet = sh.worksheet("Task Data")
-        except gspread.exceptions.WorksheetNotFound:
-            sheet = sh.add_worksheet(title="Task Data", rows="1000", cols="3")
-            sheet.append_row(["PEA NO", "Status", "Date"])
-        
-        now_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M:%S')
-        sheet.append_row([str(pea_no), "Pending", now_str])
-        
-        load_task_data.clear()
-        return True
-    except Exception as e:
-        st.error(f"Error adding task: {e}")
-        return False
+            sh = client.open(spreadsheet_name)
+            try:
+                sheet = sh.worksheet("Task Data")
+            except gspread.exceptions.WorksheetNotFound:
+                sheet = sh.add_worksheet(title="Task Data", rows="1000", cols="3")
+                sheet.append_row(["PEA NO", "Status", "Date"])
+            
+            now_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M:%S')
+            sheet.append_row([str(pea_no), "Pending", now_str])
+            
+            load_task_data.clear()
+            return True
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(random.uniform(1.5, 3.0))
+            else:
+                st.error(f"Error adding task: {e}")
+                return False
 
 # --- Dialog: รายละเอียดหม้อแปลง (Summary Page) ---
 @st.dialog("รายละเอียดหม้อแปลง", width="large")
