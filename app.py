@@ -1595,19 +1595,19 @@ if client:
                                 for col in df_master.columns:
                                     col_str = str(col).strip()
                                     if col_str == "PEANO หม้อแปลง":
-                                    new_row.append(reg_pea)
-                                elif col_str == "ค่าพิกัด kVA หม้อแปลง":
-                                    new_row.append(reg_kva)
-                                elif col_str == "สถานที่":
-                                    new_row.append(reg_loc)
-                                elif col_str == "LATITUDE":
-                                    new_row.append(reg_lat)
-                                elif col_str == "LONGITUDE":
-                                    new_row.append(reg_lng)
-                                elif col_str == "ระบบเฟส":
-                                    new_row.append(reg_phase)
-                                else:
-                                    new_row.append("")
+                                        new_row.append(reg_pea)
+                                    elif col_str == "ค่าพิกัด kVA หม้อแปลง":
+                                        new_row.append(reg_kva)
+                                    elif col_str == "สถานที่":
+                                        new_row.append(reg_loc)
+                                    elif col_str == "LATITUDE":
+                                        new_row.append(reg_lat)
+                                    elif col_str == "LONGITUDE":
+                                        new_row.append(reg_lng)
+                                    elif col_str == "ระบบเฟส":
+                                        new_row.append(reg_phase)
+                                    else:
+                                        new_row.append("")
                                     
                             if add_master_data_to_sheet(client, SHEET_NAME, new_row):
                                 st.success(f"🎉 ลงทะเบียนหม้อแปลงสำเร็จแล้ว!")
