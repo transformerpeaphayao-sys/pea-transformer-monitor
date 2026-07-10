@@ -846,11 +846,15 @@ if client:
                     transformer_info = df_pending[df_pending['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
                     
                     try:
-                        # กำจัดลูกน้ำและช่องว่างก่อนแปลงเป็นทศนิยม
+                        # กำจัดลูกน้ำและช่องว่าง
                         kva_str = str(transformer_info['ค่าพิกัด kVA หม้อแปลง']).replace(',', '').strip()
+                        # เช็คว่าค่าว่างหรือมีตัวอักษรปนหรือไม่
+                        if not kva_str or not kva_str.replace('.', '', 1).isdigit():
+                            st.error(f"❌ ข้อมูล kVA ใน MasterData ไม่ถูกต้องหรือถูกเว้นว่างไว้ (พบค่า: '{kva_str}') โปรดแก้ไขที่ฐานข้อมูลก่อนบันทึกครับ")
+                            st.stop()
                         kva_value = float(kva_str)
-                    except ValueError:
-                        st.error(f"ข้อมูล kVA ใน MasterData ไม่ใช่ตัวเลขที่ถูกต้อง! (พบค่า: {transformer_info['ค่าพิกัด kVA หม้อแปลง']})")
+                    except Exception as e:
+                        st.error(f"เกิดข้อผิดพลาดในการอ่านค่า kVA: {e}")
                         st.stop()
                     
                     # 1. คำนวณพิกัดกระแสสูงสุด (I_max) ของหม้อแปลง
@@ -1218,7 +1222,12 @@ if client:
                             pea = str(row['PEA NO'])
                             master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == pea]
                             if master_row.empty: return "⚪ ข้อมูล Master ไม่ครบ"
-                            kva_val = float(master_row.iloc[0].get('ค่าพิกัด kVA หม้อแปลง', 0))
+                            # กำจัดลูกน้ำก่อนแปลง และป้องกัน division by zero
+                            kva_raw = master_row.iloc[0].get('ค่าพิกัด kVA หม้อแปลง', 0)
+                            kva_clean = str(kva_raw).replace(',', '').strip()
+                            kva_val = float(kva_clean) if kva_clean.replace('.', '', 1).isdigit() else 0.0
+                            if kva_val == 0:
+                                raise ValueError("Invalid kVA")
                             
                             col_a = "กระแส A" if "กระแส A" in row else "Ph A" if "Ph A" in row else row.keys()[4]
                             col_b = "กระแส B" if "กระแส B" in row else "Ph B" if "Ph B" in row else row.keys()[5]
