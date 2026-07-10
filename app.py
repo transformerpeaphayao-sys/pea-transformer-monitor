@@ -576,6 +576,39 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
+# Auto-collapse sidebar on mobile after menu selection
+if st.session_state.get('sidebar_collapsed', False):
+    st.session_state.sidebar_collapsed = False
+    st.markdown("""
+        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+             onload="
+                setTimeout(function(){
+                    try{
+                        var o=document.querySelector('[data-testid=&quot;stSidebarOverlay&quot;]');
+                        if(o){o.click();return;}
+                        var b=document.querySelector('[data-testid=&quot;stSidebarCollapseButton&quot;]');
+                        if(b){b.click();return;}
+                        var allB=document.querySelectorAll('button[aria-label]');
+                        for(var i=0;i<allB.length;i++){
+                            var l=(allB[i].getAttribute('aria-label')||'').toLowerCase();
+                            if(l.indexOf('close')>=0||l.indexOf('collapse')>=0){allB[i].click();return;}
+                        }
+                        var s=document.querySelector('section[data-testid=&quot;stSidebar&quot;]');
+                        if(s)s.setAttribute('aria-expanded','false');
+                    }catch(e){}
+                },150);
+                setTimeout(function(){
+                    try{
+                        var o=document.querySelector('[data-testid=&quot;stSidebarOverlay&quot;]');
+                        if(o){o.click();return;}
+                        var b=document.querySelector('[data-testid=&quot;stSidebarCollapseButton&quot;]');
+                        if(b)b.click();
+                    }catch(e){}
+                },600);
+             "
+             style="display:none;height:0;width:0;position:absolute;">
+    """, unsafe_allow_html=True)
+
 # --- 5. Header Banner ---
 import base64
 icon_html = '<div class="icon">⚡</div>'
