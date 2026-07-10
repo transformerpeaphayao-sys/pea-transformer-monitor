@@ -385,7 +385,7 @@ def add_master_data_to_sheet(client, spreadsheet_name, row_data):
     try:
         sheet = client.open(spreadsheet_name).worksheet("MasterData")
         sheet.append_row(row_data)
-        st.cache_data.clear()
+        load_master_data.clear()
         return True
     except Exception as e:
         st.error(f"Error adding master data: {e}")
@@ -433,7 +433,9 @@ def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
         except Exception as e:
             st.warning(f"ลบ Task Data: {e}")
 
-        st.cache_data.clear()
+        load_master_data.clear()
+        load_completed_data.clear()
+        load_task_data.clear()
         return True
     except Exception as e:
         st.error(f"Error deleting from sheets: {e}")
@@ -473,7 +475,7 @@ def add_task_to_sheet(client, spreadsheet_name, pea_no):
         now_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M:%S')
         sheet.append_row([str(pea_no), "Pending", now_str])
         
-        st.cache_data.clear()
+        load_task_data.clear()
         return True
     except Exception as e:
         st.error(f"Error adding task: {e}")
@@ -916,7 +918,8 @@ if client:
                             if 'last_dialog_pea' in st.session_state:
                                 del st.session_state['last_dialog_pea']
                             
-                            st.cache_data.clear()
+                            load_completed_data.clear()
+                            load_task_data.clear()
                             st.rerun()
                             
                         except gspread.exceptions.WorksheetNotFound:
