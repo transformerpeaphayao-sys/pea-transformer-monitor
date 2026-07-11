@@ -539,12 +539,6 @@ if 'profile_pea' in st.query_params:
     st.session_state.selected_pea_for_profile = st.query_params['profile_pea']
     st.query_params.clear()
 
-if 'nav' in st.query_params:
-    st.session_state.page = st.query_params['nav']
-    if st.query_params['nav'] == 'Profile':
-        st.session_state.selected_pea_for_profile = None
-    st.query_params.clear()
-
 # เมนูด้านข้าง (Sidebar)
 with st.sidebar:
     import os
@@ -571,19 +565,35 @@ with st.sidebar:
         """, unsafe_allow_html=True)
     st.markdown("---")
     
-    # --- Navigation Menu (HTML Links for mobile sidebar auto-close) ---
-    nav_link = "display:block;width:100%;padding:0.6rem 1rem;margin:5px 0;background:rgba(255,255,255,0.05);color:white;text-decoration:none;border-radius:8px;text-align:center;font-family:'Prompt',sans-serif;font-size:0.85rem;font-weight:500;border:1px solid rgba(255,255,255,0.1);transition:all 0.2s;"
-    nav_hover = "onmouseover=\"this.style.background='rgba(255,255,255,0.15)'\" onmouseout=\"this.style.background='rgba(255,255,255,0.05)'\""
-    
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>📱 สำหรับหน้างาน (Field Work)</div>", unsafe_allow_html=True)
-    st.markdown(f'<a href="?nav=Map" target="_self" style="{nav_link}" {nav_hover}>🗺️  แผนที่หม้อแปลง</a>', unsafe_allow_html=True)
-    st.markdown(f'<a href="?nav=Form" target="_self" style="{nav_link}" {nav_hover}>📝  บันทึกข้อมูล</a>', unsafe_allow_html=True)
+    
+    if st.button("🗺️  แผนที่หม้อแปลง", use_container_width=True):
+        st.session_state.page = "Map"
+        st.rerun()
+        
+    if st.button("📝  บันทึกข้อมูล", use_container_width=True):
+        st.session_state.page = "Form"
+        st.rerun()
     
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; margin-top:15px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>💻 สำหรับหลังบ้าน (Back Office)</div>", unsafe_allow_html=True)
-    st.markdown(f'<a href="?nav=Summary" target="_self" style="{nav_link}" {nav_hover}>📊  สรุปผลงาน</a>', unsafe_allow_html=True)
-    st.markdown(f'<a href="?nav=Filter" target="_self" style="{nav_link}" {nav_hover}>🔍  กรองข้อมูล (Filter)</a>', unsafe_allow_html=True)
-    st.markdown(f'<a href="?nav=Profile" target="_self" style="{nav_link}" {nav_hover}>📋  ประวัติหม้อแปลง</a>', unsafe_allow_html=True)
-    st.markdown(f'<a href="?nav=Register" target="_self" style="{nav_link}" {nav_hover}>➕  ลงทะเบียนหม้อแปลง</a>', unsafe_allow_html=True)
+    
+    if st.button("📊  สรุปผลงาน", use_container_width=True):
+        st.session_state.page = "Summary"
+        st.rerun()
+        
+    if st.button("🔍  กรองข้อมูล (Filter)", use_container_width=True):
+        st.session_state.page = "Filter"
+        st.rerun()
+        
+    if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
+        st.session_state.page = "Profile"
+        st.session_state.selected_pea_for_profile = None 
+        st.rerun()
+        
+    if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
+        st.session_state.page = "Register"
+        st.rerun()
+
     
     st.markdown("---")
     if st.button("🔄 ดึงข้อมูลล่าสุด (Refresh)", use_container_width=True, type="secondary"):
