@@ -18,49 +18,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- System JS: Offline Protection & Mobile Sidebar Auto-Close ---
+# --- Offline Protection ---
 import streamlit.components.v1 as components
 components.html("""
 <script>
-    // 1. Offline Protection (ดักจับสัญญาณอินเทอร์เน็ต)
     window.addEventListener('offline', function(e) {
         alert('⚠️ สัญญาณอินเทอร์เน็ตขาดหาย! โปรดหาพื้นที่ที่มีสัญญาณก่อนกรอกหรือบันทึกข้อมูล เพื่อป้องกันข้อมูลสูญหาย');
     });
-    
     window.addEventListener('online', function(e) {
         alert('✅ กลับมาออนไลน์แล้ว สามารถใช้งานและบันทึกข้อมูลต่อได้ตามปกติครับ');
     });
-
-    // 2. Mobile Sidebar Auto-Close (พับเมนูอัตโนมัติเมื่อกดปุ่ม)
-    const doc = window.parent.document;
-    
-    // ป้องกันการสร้าง Listener ซ้ำซ้อนเวลาระบบ Rerun
-    if (!doc.sidebarListenerAttached) {
-        doc.addEventListener('click', function(e) {
-            let target = e.target;
-            
-            // วนลูปหาว่าสิ่งที่ถูกคลิกคือปุ่ม (BUTTON) หรือไม่
-            while(target && target !== doc) {
-                if (target.tagName === 'BUTTON') {
-                    
-                    // เช็คว่าปุ่มที่กดนั้น อยู่ภายในกล่อง Sidebar หรือไม่
-                    const sidebar = target.closest('[data-testid="stSidebar"]');
-                    if (sidebar) {
-                        // หน่วงเวลา 150ms ให้ Streamlit ส่งคำสั่ง st.rerun() สำเร็จก่อน 
-                        // จากนั้นจำลองการกดปุ่ม ESC และคลิกปุ่ม Close เพื่อพับหน้าจอ
-                        setTimeout(function() {
-                            doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
-                            const closeBtns = doc.querySelectorAll('button[aria-label="Close"], button[aria-label="Collapse sidebar"]');
-                            closeBtns.forEach(btn => btn.click());
-                        }, 150);
-                        break;
-                    }
-                }
-                target = target.parentNode;
-            }
-        });
-        doc.sidebarListenerAttached = true;
-    }
 </script>
 """, height=0)
 
@@ -560,6 +527,30 @@ if 'page' not in st.session_state:
 if 'selected_pea_from_map' not in st.session_state:
     st.session_state.selected_pea_from_map = None
 
+# --- จัดการสถานะสำหรับพับ Sidebar อัตโนมัติ ---
+if 'menu_clicked' not in st.session_state:
+    st.session_state.menu_clicked = False
+
+# ถ้ามีการกดปุ่มเมนู ให้ยิง Script ปิด Sidebar ทันที
+if st.session_state.menu_clicked:
+    components.html("""
+    <script>
+        setTimeout(function() {
+            const parentDoc = window.parent.document;
+            // จำลองการกดปุ่ม ESC เพื่อปิดเมนู
+            window.parent.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            parentDoc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            
+            // ค้นหาและกดปุ่ม X ปิดเมนูของ Streamlit (ถ้ามี)
+            const closeBtns = parentDoc.querySelectorAll('button[kind="header"], button[aria-label="Collapse sidebar"]');
+            closeBtns.forEach(btn => btn.click());
+        }, 50);
+    </script>
+    """, height=0)
+    # รีเซ็ตสถานะกลับเพื่อไม่ให้รันซ้ำ
+    st.session_state.menu_clicked = False
+
+
 # ตรวจสอบว่ามาจากการคลิกปุ่ม Edit ในแผนที่หรือไม่ (ผ่าน URL)
 if 'pea' in st.query_params:
     st.session_state.page = "Form"
@@ -601,35 +592,42 @@ with st.sidebar:
     
     if st.button("🗺️  แผนที่หม้อแปลง", use_container_width=True):
         st.session_state.page = "Map"
+        st.session_state.menu_clicked = True
         st.rerun()
         
     if st.button("📝  บันทึกข้อมูล", use_container_width=True):
         st.session_state.page = "Form"
+        st.session_state.menu_clicked = True
         st.rerun()
     
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; margin-top:15px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>💻 สำหรับหลังบ้าน (Back Office)</div>", unsafe_allow_html=True)
     
     if st.button("📊  สรุปผลงาน", use_container_width=True):
         st.session_state.page = "Summary"
+        st.session_state.menu_clicked = True
         st.rerun()
         
     if st.button("🔍  กรองข้อมูล (Filter)", use_container_width=True):
         st.session_state.page = "Filter"
+        st.session_state.menu_clicked = True
         st.rerun()
         
     if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
         st.session_state.page = "Profile"
         st.session_state.selected_pea_for_profile = None 
+        st.session_state.menu_clicked = True
         st.rerun()
         
     if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
         st.session_state.page = "Register"
+        st.session_state.menu_clicked = True
         st.rerun()
 
     
     st.markdown("---")
     if st.button("🔄 ดึงข้อมูลล่าสุด (Refresh)", use_container_width=True, type="secondary"):
         st.cache_data.clear()
+        st.session_state.menu_clicked = True
         st.rerun()
     st.markdown("---")
     st.markdown(f"""
