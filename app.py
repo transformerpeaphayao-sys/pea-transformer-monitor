@@ -694,6 +694,21 @@ if client:
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
+                    # --- [เพิ่มใหม่] ตัวกรองประเภทหมุด ---
+                    map_filter = st.radio(
+                        "กรองประเภทงาน:",
+                        options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจสอบซ้ำ"],
+                        horizontal=True,
+                        label_visibility="collapsed"
+                    )
+                    
+                    # ตัดข้อมูลตามที่ผู้ใช้เลือก
+                    if map_filter == "🔴 ยังไม่ตรวจ":
+                        map_data = map_data[map_data['MarkerColor'] == 'red']
+                    elif map_filter == "🟠 สั่งตรวจสอบซ้ำ":
+                        map_data = map_data[map_data['MarkerColor'] == 'orange']
+                    # -----------------------------------
+                    
                     if not map_data.empty:
                         center_lat = map_data['LATITUDE'].mean()
                         center_lon = map_data['LONGITUDE'].mean()
