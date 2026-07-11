@@ -527,29 +527,6 @@ if 'page' not in st.session_state:
 if 'selected_pea_from_map' not in st.session_state:
     st.session_state.selected_pea_from_map = None
 
-# --- จัดการสถานะสำหรับพับ Sidebar อัตโนมัติ ---
-if 'menu_clicked' not in st.session_state:
-    st.session_state.menu_clicked = False
-
-# ถ้ามีการกดปุ่มเมนู ให้ยิง Script ปิด Sidebar ทันที
-if st.session_state.menu_clicked:
-    components.html("""
-    <script>
-        setTimeout(function() {
-            const parentDoc = window.parent.document;
-            // จำลองการกดปุ่ม ESC เพื่อปิดเมนู
-            window.parent.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-            parentDoc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-            
-            // ค้นหาและกดปุ่ม X ปิดเมนูของ Streamlit (ถ้ามี)
-            const closeBtns = parentDoc.querySelectorAll('button[kind="header"], button[aria-label="Collapse sidebar"]');
-            closeBtns.forEach(btn => btn.click());
-        }, 50);
-    </script>
-    """, height=0)
-    # รีเซ็ตสถานะกลับเพื่อไม่ให้รันซ้ำ
-    st.session_state.menu_clicked = False
-
 
 # ตรวจสอบว่ามาจากการคลิกปุ่ม Edit ในแผนที่หรือไม่ (ผ่าน URL)
 if 'pea' in st.query_params:
@@ -592,42 +569,35 @@ with st.sidebar:
     
     if st.button("🗺️  แผนที่หม้อแปลง", use_container_width=True):
         st.session_state.page = "Map"
-        st.session_state.menu_clicked = True
         st.rerun()
         
     if st.button("📝  บันทึกข้อมูล", use_container_width=True):
         st.session_state.page = "Form"
-        st.session_state.menu_clicked = True
         st.rerun()
     
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; margin-top:15px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>💻 สำหรับหลังบ้าน (Back Office)</div>", unsafe_allow_html=True)
     
     if st.button("📊  สรุปผลงาน", use_container_width=True):
         st.session_state.page = "Summary"
-        st.session_state.menu_clicked = True
         st.rerun()
         
     if st.button("🔍  กรองข้อมูล (Filter)", use_container_width=True):
         st.session_state.page = "Filter"
-        st.session_state.menu_clicked = True
         st.rerun()
         
     if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
         st.session_state.page = "Profile"
         st.session_state.selected_pea_for_profile = None 
-        st.session_state.menu_clicked = True
         st.rerun()
         
     if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
         st.session_state.page = "Register"
-        st.session_state.menu_clicked = True
         st.rerun()
 
     
     st.markdown("---")
     if st.button("🔄 ดึงข้อมูลล่าสุด (Refresh)", use_container_width=True, type="secondary"):
         st.cache_data.clear()
-        st.session_state.menu_clicked = True
         st.rerun()
     st.markdown("---")
     st.markdown(f"""
