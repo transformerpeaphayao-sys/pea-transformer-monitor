@@ -336,6 +336,21 @@ button[kind="primary"]:hover {
 </style>
 """, unsafe_allow_html=True)
 
+# --- Helper Functions ---
+def safe_float(val, default=0.0):
+    try:
+        if pd.isna(val) or val == "":
+            return default
+        if isinstance(val, str):
+            val = val.replace(',', '').strip()
+        return float(val)
+    except (ValueError, TypeError):
+        return default
+
+@st.cache_data
+def convert_df_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8-sig')
+
 
 # --- 2. ฟังก์ชันสำหรับเชื่อมต่อ Google Sheets ---
 @st.cache_resource
@@ -856,16 +871,10 @@ if client:
                     # ดึงข้อมูลหม้อแปลงเฉพาะ PEA NO ที่ผู้ใช้เลือก
                     transformer_info = df_pending[df_pending['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
                     
-                    try:
-                        # กำจัดลูกน้ำและช่องว่าง
-                        kva_str = str(transformer_info['ค่าพิกัด kVA หม้อแปลง']).replace(',', '').strip()
-                        # เช็คว่าค่าว่างหรือมีตัวอักษรปนหรือไม่
-                        if not kva_str or not kva_str.replace('.', '', 1).isdigit():
-                            st.error(f"❌ ข้อมูล kVA ใน MasterData ไม่ถูกต้องหรือถูกเว้นว่างไว้ (พบค่า: '{kva_str}') โปรดแก้ไขที่ฐานข้อมูลก่อนบันทึกครับ")
-                            st.stop()
-                        kva_value = float(kva_str)
-                    except Exception as e:
-                        st.error(f"เกิดข้อผิดพลาดในการอ่านค่า kVA: {e}")
+                    # ดึงและแปลงค่า kVA ด้วยฟังก์ชันกลาง
+                    kva_value = safe_float(transformer_info['ค่าพิกัด kVA หม้อแปลง'])
+                    if kva_value == 0.0:
+                        st.error("❌ ข้อมูล kVA ใน MasterData ไม่ถูกต้อง โปรดแก้ไขที่ฐานข้อมูลก่อนบันทึกครับ")
                         st.stop()
                     
                     # 1. คำนวณพิกัดกระแสสูงสุด (I_max) ของหม้อแปลง
@@ -951,7 +960,12 @@ if client:
                                 break  # บันทึกสำเร็จ ให้หลุดออกจากลูปทันที
                                 
                             except gspread.exceptions.WorksheetNotFound:
-                                st.error("ไม่พบชีตชื่อ 'Record Data' ในไฟล์ Google Sheets ของคุณ")
+                                sh = client.open(SHEET_NAME)
+                                sheet_record = sh.add_worksheet(title="Record Data", rows="1000", cols="10")
+                                # สร้าง Header เริ่มต้น
+                                sheet_record.append_row(["วันที่", "เวลา", "PEA NO", "ฟิดเดอร์", "กระแส A", "กระแส B", "กระแส C", "กระแส N", "หมายเหตุ"])
+                                sheet_record.append_rows(rows_to_insert)
+                                success = True
                                 break
                             except Exception as e:
                                 if attempt < max_retries - 1:
@@ -1361,6 +1375,17 @@ if client:
                             
                             st.line_chart(chart_data)
                             st.markdown('</div>', unsafe_allow_html=True)
+                            
+                        # Export Button
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        csv_data = convert_df_to_csv(filtered_df)
+                        st.download_button(
+                            label="📥 ดาวน์โหลดข้อมูล (CSV)",
+                            data=csv_data,
+                            file_name=f"transformer_data_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
             
             # ==============================
             # หน้าที่ 5: PROFILE PAGE
