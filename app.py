@@ -15,7 +15,7 @@ st.set_page_config(
     page_title="ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="auto"
+    initial_sidebar_state="collapsed"
 )
 
 # --- Offline Protection ---
@@ -524,46 +524,51 @@ if 'profile_pea' in st.query_params:
     st.session_state.selected_pea_for_profile = st.query_params['profile_pea']
     st.query_params.clear()
 
+if 'nav' in st.query_params:
+    st.session_state.page = st.query_params['nav']
+    if st.query_params['nav'] == 'Profile':
+        st.session_state.selected_pea_for_profile = None
+    st.query_params.clear()
+
 # เมนูด้านข้าง (Sidebar)
 with st.sidebar:
     import os
+    
+    # --- Logo + Title (centered) ---
     if os.path.exists("pea-logo.png"):
-        col1, col2, col3 = st.columns([1, 1.5, 1])
-        with col2:
-            st.image("pea-logo.png", use_container_width=True)
+        import base64 as b64_logo
+        with open("pea-logo.png", "rb") as f_logo:
+            logo_sidebar_b64 = b64_logo.b64encode(f_logo.read()).decode()
+        st.markdown(f"""
+        <div style="text-align:center; padding: 0.5rem 0 0.2rem 0;">
+            <img src="data:image/png;base64,{logo_sidebar_b64}" style="width:70px; height:70px; object-fit:contain; margin-bottom:5px;">
+            <div style="font-size:1rem; font-weight:700; color:#e94560; letter-spacing:1px;">PEA LOAD</div>
+            <div style="font-size:0.65rem; color:rgba(255,255,255,0.5); margin-top:1px;">Transformer Monitor</div>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.markdown('<div style="text-align:center; font-size:2rem; padding-top:0.5rem;">⚡</div>', unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style="text-align:center; padding: 0.2rem 0 0.5rem 0;">
-        <div style="font-size:1rem; font-weight:700; color:#e94560; letter-spacing:1px;">PEA LOAD</div>
-        <div style="font-size:0.65rem; color:rgba(255,255,255,0.5); margin-top:1px;">Transformer Monitor</div>
-    </div>
-    """, unsafe_allow_html=True)
+        st.markdown("""
+        <div style="text-align:center; padding: 0.5rem 0 0.2rem 0;">
+            <div style="font-size:2rem;">⚡</div>
+            <div style="font-size:1rem; font-weight:700; color:#e94560; letter-spacing:1px;">PEA LOAD</div>
+            <div style="font-size:0.65rem; color:rgba(255,255,255,0.5); margin-top:1px;">Transformer Monitor</div>
+        </div>
+        """, unsafe_allow_html=True)
     st.markdown("---")
     
+    # --- Navigation Menu (HTML Links for mobile sidebar auto-close) ---
+    nav_link = "display:block;width:100%;padding:0.6rem 1rem;margin:5px 0;background:rgba(255,255,255,0.05);color:white;text-decoration:none;border-radius:8px;text-align:center;font-family:'Prompt',sans-serif;font-size:0.85rem;font-weight:500;border:1px solid rgba(255,255,255,0.1);transition:all 0.2s;"
+    nav_hover = "onmouseover=\"this.style.background='rgba(255,255,255,0.15)'\" onmouseout=\"this.style.background='rgba(255,255,255,0.05)'\""
+    
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>📱 สำหรับหน้างาน (Field Work)</div>", unsafe_allow_html=True)
-    if st.button("🗺️  แผนที่หม้อแปลง", use_container_width=True):
-        st.session_state.page = "Map"
-        st.session_state.sidebar_collapsed = True
-    if st.button("📝  บันทึกข้อมูล", use_container_width=True):
-        st.session_state.page = "Form"
-        st.session_state.sidebar_collapsed = True
-        
+    st.markdown(f'<a href="?nav=Map" target="_self" style="{nav_link}" {nav_hover}>🗺️  แผนที่หม้อแปลง</a>', unsafe_allow_html=True)
+    st.markdown(f'<a href="?nav=Form" target="_self" style="{nav_link}" {nav_hover}>📝  บันทึกข้อมูล</a>', unsafe_allow_html=True)
+    
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; margin-top:15px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>💻 สำหรับหลังบ้าน (Back Office)</div>", unsafe_allow_html=True)
-    if st.button("📊  สรุปผลงาน", use_container_width=True):
-        st.session_state.page = "Summary"
-        st.session_state.sidebar_collapsed = True
-    if st.button("🔍  กรองข้อมูล (Filter)", use_container_width=True):
-        st.session_state.page = "Filter"
-        st.session_state.sidebar_collapsed = True
-    if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
-        st.session_state.page = "Profile"
-        st.session_state.selected_pea_for_profile = None
-        st.session_state.sidebar_collapsed = True
-    if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
-        st.session_state.page = "Register"
-        st.session_state.sidebar_collapsed = True
+    st.markdown(f'<a href="?nav=Summary" target="_self" style="{nav_link}" {nav_hover}>📊  สรุปผลงาน</a>', unsafe_allow_html=True)
+    st.markdown(f'<a href="?nav=Filter" target="_self" style="{nav_link}" {nav_hover}>🔍  กรองข้อมูล (Filter)</a>', unsafe_allow_html=True)
+    st.markdown(f'<a href="?nav=Profile" target="_self" style="{nav_link}" {nav_hover}>📋  ประวัติหม้อแปลง</a>', unsafe_allow_html=True)
+    st.markdown(f'<a href="?nav=Register" target="_self" style="{nav_link}" {nav_hover}>➕  ลงทะเบียนหม้อแปลง</a>', unsafe_allow_html=True)
     
     st.markdown("---")
     if st.button("🔄 ดึงข้อมูลล่าสุด (Refresh)", use_container_width=True, type="secondary"):
@@ -574,39 +579,6 @@ with st.sidebar:
     <div style="text-align:center; padding: 0.5rem 0; opacity: 0.5; font-size: 0.7rem; color: white;">
         📅 {(datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M')}
     </div>
-    """, unsafe_allow_html=True)
-
-# Auto-collapse sidebar on mobile after menu selection
-if st.session_state.get('sidebar_collapsed', False):
-    st.session_state.sidebar_collapsed = False
-    st.markdown("""
-        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-             onload="
-                setTimeout(function(){
-                    try{
-                        var o=document.querySelector('[data-testid=&quot;stSidebarOverlay&quot;]');
-                        if(o){o.click();return;}
-                        var b=document.querySelector('[data-testid=&quot;stSidebarCollapseButton&quot;]');
-                        if(b){b.click();return;}
-                        var allB=document.querySelectorAll('button[aria-label]');
-                        for(var i=0;i<allB.length;i++){
-                            var l=(allB[i].getAttribute('aria-label')||'').toLowerCase();
-                            if(l.indexOf('close')>=0||l.indexOf('collapse')>=0){allB[i].click();return;}
-                        }
-                        var s=document.querySelector('section[data-testid=&quot;stSidebar&quot;]');
-                        if(s)s.setAttribute('aria-expanded','false');
-                    }catch(e){}
-                },150);
-                setTimeout(function(){
-                    try{
-                        var o=document.querySelector('[data-testid=&quot;stSidebarOverlay&quot;]');
-                        if(o){o.click();return;}
-                        var b=document.querySelector('[data-testid=&quot;stSidebarCollapseButton&quot;]');
-                        if(b)b.click();
-                    }catch(e){}
-                },600);
-             "
-             style="display:none;height:0;width:0;position:absolute;">
     """, unsafe_allow_html=True)
 
 # --- 5. Header Banner ---
