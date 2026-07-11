@@ -18,10 +18,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- Offline Protection ---
+# --- System JS: Offline Protection & Mobile Sidebar Auto-Close ---
 import streamlit.components.v1 as components
 components.html("""
 <script>
+    // 1. Offline Protection (ดักจับสัญญาณอินเทอร์เน็ต)
     window.addEventListener('offline', function(e) {
         alert('⚠️ สัญญาณอินเทอร์เน็ตขาดหาย! โปรดหาพื้นที่ที่มีสัญญาณก่อนกรอกหรือบันทึกข้อมูล เพื่อป้องกันข้อมูลสูญหาย');
     });
@@ -29,6 +30,37 @@ components.html("""
     window.addEventListener('online', function(e) {
         alert('✅ กลับมาออนไลน์แล้ว สามารถใช้งานและบันทึกข้อมูลต่อได้ตามปกติครับ');
     });
+
+    // 2. Mobile Sidebar Auto-Close (พับเมนูอัตโนมัติเมื่อกดปุ่ม)
+    const doc = window.parent.document;
+    
+    // ป้องกันการสร้าง Listener ซ้ำซ้อนเวลาระบบ Rerun
+    if (!doc.sidebarListenerAttached) {
+        doc.addEventListener('click', function(e) {
+            let target = e.target;
+            
+            // วนลูปหาว่าสิ่งที่ถูกคลิกคือปุ่ม (BUTTON) หรือไม่
+            while(target && target !== doc) {
+                if (target.tagName === 'BUTTON') {
+                    
+                    // เช็คว่าปุ่มที่กดนั้น อยู่ภายในกล่อง Sidebar หรือไม่
+                    const sidebar = target.closest('[data-testid="stSidebar"]');
+                    if (sidebar) {
+                        // หน่วงเวลา 150ms ให้ Streamlit ส่งคำสั่ง st.rerun() สำเร็จก่อน 
+                        // จากนั้นจำลองการกดปุ่ม ESC และคลิกปุ่ม Close เพื่อพับหน้าจอ
+                        setTimeout(function() {
+                            doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
+                            const closeBtns = doc.querySelectorAll('button[aria-label="Close"], button[aria-label="Collapse sidebar"]');
+                            closeBtns.forEach(btn => btn.click());
+                        }, 150);
+                        break;
+                    }
+                }
+                target = target.parentNode;
+            }
+        });
+        doc.sidebarListenerAttached = true;
+    }
 </script>
 """, height=0)
 
