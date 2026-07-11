@@ -961,7 +961,7 @@ if client:
                                 
                             except gspread.exceptions.WorksheetNotFound:
                                 sh = client.open(SHEET_NAME)
-                                sheet_record = sh.add_worksheet(title="Record Data", rows="1000", cols="10")
+                                sheet_record = sh.add_worksheet(title="Record Data", rows=1000, cols=10)
                                 # สร้าง Header เริ่มต้น
                                 sheet_record.append_row(["วันที่", "เวลา", "PEA NO", "ฟิดเดอร์", "กระแส A", "กระแส B", "กระแส C", "กระแส N", "หมายเหตุ"])
                                 sheet_record.append_rows(rows_to_insert)
