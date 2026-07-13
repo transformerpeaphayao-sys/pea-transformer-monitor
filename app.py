@@ -1414,6 +1414,25 @@ if client:
                         if status_filter != "ทั้งหมด":
                             filtered_df = filtered_df[filtered_df['Status'].str.contains(status_filter)]
                             
+                        # --- [เพิ่มใหม่] เรียงลำดับข้อมูลให้ล่าสุดอยู่บนสุด ---
+                        if not filtered_df.empty:
+                            col_date_f = "วันที่" if "วันที่" in filtered_df.columns else filtered_df.columns[0]
+                            col_time_f = "เวลา" if "เวลา" in filtered_df.columns else filtered_df.columns[1]
+                            
+                            # เก็บ Index เดิมไว้ เพื่อไม่ให้ลำดับฟีดเดอร์ (F1, F2, F3, รวม) สลับกันเอง
+                            filtered_df['Original_Index'] = filtered_df.index
+                            # สร้างคอลัมน์ชั่วคราวสำหรับเรียงลำดับเวลา
+                            filtered_df['Datetime_Sort'] = pd.to_datetime(
+                                filtered_df[col_date_f].astype(str) + ' ' + filtered_df[col_time_f].astype(str), 
+                                format='%d/%m/%Y %H:%M:%S', 
+                                errors='coerce'
+                            )
+                            # สั่งเรียงเวลาจากล่าสุดไปเก่า (False) และเรียงฟีดเดอร์ตามลำดับเดิม (True)
+                            filtered_df = filtered_df.sort_values(by=['Datetime_Sort', 'Original_Index'], ascending=[False, True])
+                            # ลบคอลัมน์ชั่วคราวทิ้ง
+                            filtered_df = filtered_df.drop(columns=['Datetime_Sort', 'Original_Index'])
+                        # ----------------------------------------------------
+                            
                         st.markdown(f"**แสดงผลลัพธ์: {len(filtered_df)} รายการ**")
                         st.caption("💡 คลิกที่เลข PEA NO (ตัวอักษรสีน้ำเงิน) เพื่อดูประวัติหม้อแปลงเครื่องนั้นได้ทันที")
                         
