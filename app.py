@@ -1127,8 +1127,81 @@ if client:
                 total_pending = total_transformers - total_completed
                 pct = (total_completed / total_transformers * 100) if total_transformers > 0 else 0
                 
+                # --- [เพิ่มใหม่] คำนวณสถานะของหม้อแปลงที่ทำเสร็จแล้ว ---
+                count_normal = 0
+                count_unbalance = 0
+                count_overload = 0
+                
+                if not df_record.empty and total_completed > 0:
+                    col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in df_record.columns else "Feeder" if "Feeder" in df_record.columns else df_record.columns[3]
+                    col_a = "กระแส A" if "กระแส A" in df_record.columns else "Ph A" if "Ph A" in df_record.columns else df_record.columns[4]
+                    col_b = "กระแส B" if "กระแส B" in df_record.columns else "Ph B" if "Ph B" in df_record.columns else df_record.columns[5]
+                    col_c = "กระแส C" if "กระแส C" in df_record.columns else "Ph C" if "Ph C" in df_record.columns else df_record.columns[6]
+
+                    for pea in completed_peas:
+                        master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == pea]
+                        if master_row.empty: continue
+                        
+                        kva_float = safe_float(master_row.iloc[0].get('ค่าพิกัด kVA หม้อแปลง', 0))
+                        if kva_float == 0: continue
+                            
+                        record_rows = df_record[df_record['PEA NO'].astype(str) == pea]
+                        if record_rows.empty: continue
+                            
+                        sum_row = record_rows[record_rows[col_feeder].astype(str).str.strip() == 'รวม']
+                        if not sum_row.empty:
+                            last_rec = sum_row.iloc[-1]
+                            tot_a = safe_float(last_rec.get(col_a, 0))
+                            tot_b = safe_float(last_rec.get(col_b, 0))
+                            tot_c = safe_float(last_rec.get(col_c, 0))
+                        else:
+                            try:
+                                tot_a = pd.to_numeric(record_rows[col_a], errors='coerce').sum()
+                                tot_b = pd.to_numeric(record_rows[col_b], errors='coerce').sum()
+                                tot_c = pd.to_numeric(record_rows[col_c], errors='coerce').sum()
+                            except:
+                                tot_a = tot_b = tot_c = 0
+                        
+                        i_max = (kva_float * 1000) / (math.sqrt(3) * 400)
+                        max_i = max(tot_a, tot_b, tot_c)
+                        pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
+                        
+                        avg_i = (tot_a + tot_b + tot_c) / 3
+                        pct_unb = 0
+                        if avg_i > 0:
+                            max_dev = max(abs(tot_a - avg_i), abs(tot_b - avg_i), abs(tot_c - avg_i))
+                            pct_unb = (max_dev / avg_i) * 100
+                        
+                        # จัดกลุ่ม (ยึดปัญหาที่รุนแรงที่สุดก่อน)
+                        if pct_load > 80:
+                            count_overload += 1
+                        elif pct_unb > 20:
+                            count_unbalance += 1
+                        else:
+                            count_normal += 1
+                # ----------------------------------------------------
+
                 # Dashboard Metric Cards
                 st.markdown(f"""
+                <style>
+                .health-row {{ display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 1.5rem; }}
+                .health-card {{
+                    flex: 1 1 100px;
+                    border-radius: 14px;
+                    padding: 0.8rem 1rem;
+                    text-align: center;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    transition: transform 0.2s ease;
+                }}
+                .health-card:hover {{ transform: translateY(-2px); }}
+                .health-card .value {{ font-size: 1.5rem; font-weight: 700; margin: 0; }}
+                .health-card .label {{ font-size: 0.75rem; font-weight: 600; margin: 0; opacity: 0.95; }}
+                .bg-normal {{ background: linear-gradient(135deg, #00b09b, #96c93d); color: white; }}
+                .bg-unb {{ background: linear-gradient(135deg, #f12711, #f5af19); color: white; }}
+                .bg-ovl {{ background: linear-gradient(135deg, #ed213a, #93291e); color: white; }}
+                </style>
+                
                 <div class="metric-row">
                     <div class="metric-card metric-total">
                         <p class="value">{total_transformers}</p>
@@ -1143,13 +1216,28 @@ if client:
                         <p class="label">⏳ ยังไม่ได้ทำ</p>
                     </div>
                 </div>
+                
+                <div class="health-row">
+                    <div class="health-card bg-normal">
+                        <p class="value">{count_normal}</p>
+                        <p class="label">🟢 โหลดปกติ / สมดุล</p>
+                    </div>
+                    <div class="health-card bg-unb">
+                        <p class="value">{count_unbalance}</p>
+                        <p class="label">🟡 Unbalance (>20%)</p>
+                    </div>
+                    <div class="health-card bg-ovl">
+                        <p class="value">{count_overload}</p>
+                        <p class="label">🔴 Overload (>80%)</p>
+                    </div>
+                </div>
                 """, unsafe_allow_html=True)
                 
                 # Progress bar
                 st.markdown(f"""
                 <div class="progress-wrapper">
                     <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; opacity:0.7;">
-                        <span>ความคืบหน้า</span>
+                        <span>ความคืบหน้าภาพรวม</span>
                         <span>{pct:.1f}%</span>
                     </div>
                     <div class="progress-bar-bg">
