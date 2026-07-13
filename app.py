@@ -1649,7 +1649,7 @@ if client:
                                 col_date = "วันที่" if "วันที่" in hist_df.columns else hist_df.columns[0]
                                 col_time = "เวลา" if "เวลา" in hist_df.columns else hist_df.columns[1]
                                 
-                                session_list = hist_df[[col_date, col_time]].drop_duplicates().apply(lambda x: f"{x[0]} เวลา {x[1]}", axis=1).tolist()
+                                session_list = hist_df[[col_date, col_time]].drop_duplicates().apply(lambda row: f"{row[col_date]} เวลา {row[col_time]}", axis=1).tolist()
                                 selected_session = st.selectbox("เลือกรอบการบันทึกที่ต้องการจัดการ:", options=["-- กรุณาเลือก --"] + session_list)
                                 
                                 if selected_session != "-- กรุณาเลือก --":
