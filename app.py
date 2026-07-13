@@ -516,8 +516,10 @@ def calculate_transformer_status(df_master, df_record, pea):
             last_time = record_rows[col_time].iloc[-1]
             latest_session = record_rows[(record_rows[col_date] == last_date) & (record_rows[col_time] == last_time)]
             
-        # --- คำนวณกระแส ---
-        sum_row = latest_session[latest_session[col_feeder].astype(str).str.strip() == 'รวม']
+        # --- คำนวณกระแส (เพิ่มการกำจัดช่องว่างในคำว่า "รวม") ---
+        is_total_row = latest_session[col_feeder].astype(str).str.replace(' ', '') == 'รวม'
+        sum_row = latest_session[is_total_row]
+        
         if not sum_row.empty:
             tot_a = safe_float(sum_row.iloc[0].get(col_a, 0))
             tot_b = safe_float(sum_row.iloc[0].get(col_b, 0))
@@ -1191,11 +1193,17 @@ if client:
                         pct_load, pct_unb = calculate_transformer_status(df_master, df_record, pea)
                         if pct_load is None: continue
                         
-                        if pct_load > 80:
+                        has_issue = False
+                        
+                        if pct_load >= 80:
                             count_overload += 1
-                        elif pct_unb > 20:
+                            has_issue = True
+                            
+                        if pct_unb >= 20:
                             count_unbalance += 1
-                        else:
+                            has_issue = True
+                            
+                        if not has_issue:
                             count_normal += 1
                 # ------------------------------------------------
 
@@ -1307,14 +1315,14 @@ if client:
                             
                             if pct_load is not None and pct_unb is not None:
                                 alerts = []
-                                if pct_load > 100:
+                                if pct_load >= 100:
                                     alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🔴 Overload {pct_load:.0f}%</span>')
-                                elif pct_load > 80:
+                                elif pct_load >= 80:
                                     alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🟡 Load {pct_load:.0f}%</span>')
                                     
-                                if pct_unb > 30:
+                                if pct_unb >= 30:
                                     alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🔴 Unbalance {pct_unb:.0f}%</span>')
-                                elif pct_unb > 20:
+                                elif pct_unb >= 20:
                                     alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🟡 Unbalance {pct_unb:.0f}%</span>')
                                     
                                 if alerts:
