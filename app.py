@@ -487,6 +487,60 @@ def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str):
         st.error(f"Error deleting record session: {e}")
         return False
 
+def calculate_transformer_status(df_master, df_record, pea):
+    try:
+        master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == pea]
+        if master_row.empty: return None, None
+        kva_float = safe_float(master_row.iloc[0].get('ค่าพิกัด kVA หม้อแปลง', 0))
+        if kva_float <= 0: return None, None
+        
+        record_rows = df_record[df_record['PEA NO'].astype(str) == pea]
+        if record_rows.empty: return None, None
+        
+        col_date = "วันที่" if "วันที่" in record_rows.columns else record_rows.columns[0]
+        col_time = "เวลา" if "เวลา" in record_rows.columns else record_rows.columns[1]
+        col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in record_rows.columns else "Feeder" if "Feeder" in record_rows.columns else record_rows.columns[3]
+        col_a = "กระแส A" if "กระแส A" in record_rows.columns else "Ph A" if "Ph A" in record_rows.columns else record_rows.columns[4]
+        col_b = "กระแส B" if "กระแส B" in record_rows.columns else "Ph B" if "Ph B" in record_rows.columns else record_rows.columns[5]
+        col_c = "กระแส C" if "กระแส C" in record_rows.columns else "Ph C" if "Ph C" in record_rows.columns else record_rows.columns[6]
+        
+        # --- ค้นหารอบการวัดที่ใหม่ล่าสุด (Latest Session) ---
+        temp_df = record_rows.copy()
+        temp_df['DT'] = pd.to_datetime(temp_df[col_date].astype(str) + ' ' + temp_df[col_time].astype(str), format='%d/%m/%Y %H:%M:%S', errors='coerce')
+        temp_df = temp_df.sort_values(by='DT', ascending=False)
+        
+        if temp_df['DT'].notna().any():
+            latest_session = temp_df[temp_df['DT'] == temp_df['DT'].iloc[0]]
+        else:
+            last_date = record_rows[col_date].iloc[-1]
+            last_time = record_rows[col_time].iloc[-1]
+            latest_session = record_rows[(record_rows[col_date] == last_date) & (record_rows[col_time] == last_time)]
+            
+        # --- คำนวณกระแส ---
+        sum_row = latest_session[latest_session[col_feeder].astype(str).str.strip() == 'รวม']
+        if not sum_row.empty:
+            tot_a = safe_float(sum_row.iloc[0].get(col_a, 0))
+            tot_b = safe_float(sum_row.iloc[0].get(col_b, 0))
+            tot_c = safe_float(sum_row.iloc[0].get(col_c, 0))
+        else:
+            tot_a = pd.to_numeric(latest_session[col_a], errors='coerce').fillna(0).sum()
+            tot_b = pd.to_numeric(latest_session[col_b], errors='coerce').fillna(0).sum()
+            tot_c = pd.to_numeric(latest_session[col_c], errors='coerce').fillna(0).sum()
+            
+        i_max = (kva_float * 1000) / (math.sqrt(3) * 400)
+        max_i = max(tot_a, tot_b, tot_c)
+        pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
+        
+        avg_i = (tot_a + tot_b + tot_c) / 3
+        pct_unb = 0
+        if avg_i > 0:
+            max_dev = max(abs(tot_a - avg_i), abs(tot_b - avg_i), abs(tot_c - avg_i))
+            pct_unb = (max_dev / avg_i) * 100
+            
+        return pct_load, pct_unb
+    except Exception:
+        return None, None
+
 # --- 3.5. ฟังก์ชันสำหรับดึงข้อมูลที่บันทึกไปแล้ว ---
 @st.cache_data(ttl=60)
 def load_completed_data(_client, spreadsheet_name):
@@ -1127,59 +1181,23 @@ if client:
                 total_pending = total_transformers - total_completed
                 pct = (total_completed / total_transformers * 100) if total_transformers > 0 else 0
                 
-                # --- [เพิ่มใหม่] คำนวณสถานะของหม้อแปลงที่ทำเสร็จแล้ว ---
                 count_normal = 0
                 count_unbalance = 0
                 count_overload = 0
                 
+                # --- เรียกใช้ฟังก์ชันแกนกลาง เพื่อให้นับเลขเป๊ะ 100% ---
                 if not df_record.empty and total_completed > 0:
-                    col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in df_record.columns else "Feeder" if "Feeder" in df_record.columns else df_record.columns[3]
-                    col_a = "กระแส A" if "กระแส A" in df_record.columns else "Ph A" if "Ph A" in df_record.columns else df_record.columns[4]
-                    col_b = "กระแส B" if "กระแส B" in df_record.columns else "Ph B" if "Ph B" in df_record.columns else df_record.columns[5]
-                    col_c = "กระแส C" if "กระแส C" in df_record.columns else "Ph C" if "Ph C" in df_record.columns else df_record.columns[6]
-
                     for pea in completed_peas:
-                        master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == pea]
-                        if master_row.empty: continue
+                        pct_load, pct_unb = calculate_transformer_status(df_master, df_record, pea)
+                        if pct_load is None: continue
                         
-                        kva_float = safe_float(master_row.iloc[0].get('ค่าพิกัด kVA หม้อแปลง', 0))
-                        if kva_float == 0: continue
-                            
-                        record_rows = df_record[df_record['PEA NO'].astype(str) == pea]
-                        if record_rows.empty: continue
-                            
-                        sum_row = record_rows[record_rows[col_feeder].astype(str).str.strip() == 'รวม']
-                        if not sum_row.empty:
-                            last_rec = sum_row.iloc[-1]
-                            tot_a = safe_float(last_rec.get(col_a, 0))
-                            tot_b = safe_float(last_rec.get(col_b, 0))
-                            tot_c = safe_float(last_rec.get(col_c, 0))
-                        else:
-                            try:
-                                tot_a = pd.to_numeric(record_rows[col_a], errors='coerce').sum()
-                                tot_b = pd.to_numeric(record_rows[col_b], errors='coerce').sum()
-                                tot_c = pd.to_numeric(record_rows[col_c], errors='coerce').sum()
-                            except:
-                                tot_a = tot_b = tot_c = 0
-                        
-                        i_max = (kva_float * 1000) / (math.sqrt(3) * 400)
-                        max_i = max(tot_a, tot_b, tot_c)
-                        pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
-                        
-                        avg_i = (tot_a + tot_b + tot_c) / 3
-                        pct_unb = 0
-                        if avg_i > 0:
-                            max_dev = max(abs(tot_a - avg_i), abs(tot_b - avg_i), abs(tot_c - avg_i))
-                            pct_unb = (max_dev / avg_i) * 100
-                        
-                        # จัดกลุ่ม (ยึดปัญหาที่รุนแรงที่สุดก่อน)
                         if pct_load > 80:
                             count_overload += 1
                         elif pct_unb > 20:
                             count_unbalance += 1
                         else:
                             count_normal += 1
-                # ----------------------------------------------------
+                # ------------------------------------------------
 
                 # Dashboard Metric Cards
                 st.markdown(f"""
@@ -1283,61 +1301,29 @@ if client:
                             c3.write(kva_val)
                             c4.write(row.get('ระบบเฟส', '-'))
                             
-                            # --- คำนวณการแจ้งเตือน ---
+                            # --- คำนวณการแจ้งเตือน (ดึงจากฟังก์ชันกลาง) ---
                             status_html = '<span style="color: gray;">-</span>'
-                            record_rows = df_record[df_record['PEA NO'].astype(str) == pea]
-                            if not record_rows.empty:
-                                # ใช้ชื่อคอลัมน์จาก Sheet จริง ("ฟิดเดอร์", "กระแส A" ฯลฯ)
-                                col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in record_rows.columns else "Feeder" if "Feeder" in record_rows.columns else record_rows.columns[3]
-                                col_a = "กระแส A" if "กระแส A" in record_rows.columns else "Ph A" if "Ph A" in record_rows.columns else record_rows.columns[4]
-                                col_b = "กระแส B" if "กระแส B" in record_rows.columns else "Ph B" if "Ph B" in record_rows.columns else record_rows.columns[5]
-                                col_c = "กระแส C" if "กระแส C" in record_rows.columns else "Ph C" if "Ph C" in record_rows.columns else record_rows.columns[6]
-                                
-                                sum_row = record_rows[record_rows[col_feeder].astype(str).str.strip() == 'รวม']
-                                if not sum_row.empty:
-                                    last_rec = sum_row.iloc[-1]
-                                    try:
-                                        tot_a, tot_b, tot_c = float(last_rec.get(col_a, 0)), float(last_rec.get(col_b, 0)), float(last_rec.get(col_c, 0))
-                                    except:
-                                        tot_a, tot_b, tot_c = 0, 0, 0
+                            pct_load, pct_unb = calculate_transformer_status(df_master, df_record, pea)
+                            
+                            if pct_load is not None and pct_unb is not None:
+                                alerts = []
+                                if pct_load > 100:
+                                    alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🔴 Overload {pct_load:.0f}%</span>')
+                                elif pct_load > 80:
+                                    alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🟡 Load {pct_load:.0f}%</span>')
+                                    
+                                if pct_unb > 30:
+                                    alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🔴 Unbalance {pct_unb:.0f}%</span>')
+                                elif pct_unb > 20:
+                                    alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🟡 Unbalance {pct_unb:.0f}%</span>')
+                                    
+                                if alerts:
+                                    status_html = "<div style='display:flex; flex-direction:column; gap:4px; align-items:flex-start;'>" + "".join(alerts) + "</div>"
                                 else:
-                                    try:
-                                        tot_a = pd.to_numeric(record_rows[col_a], errors='coerce').sum()
-                                        tot_b = pd.to_numeric(record_rows[col_b], errors='coerce').sum()
-                                        tot_c = pd.to_numeric(record_rows[col_c], errors='coerce').sum()
-                                    except:
-                                        tot_a, tot_b, tot_c = 0, 0, 0
+                                    status_html = '<span style="background-color: #11998e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight:600;">🟢 ปกติ</span>'
+                            else:
+                                status_html = '<span style="color: gray; font-size: 0.8rem;">ไม่สามารถคำนวณได้</span>'
                                 
-                                try:
-                                    kva_float = safe_float(kva_val)
-                                    i_max = (kva_float * 1000) / (math.sqrt(3) * 400)
-                                    max_i = max(tot_a, tot_b, tot_c)
-                                    pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
-                                    
-                                    avg_i = (tot_a + tot_b + tot_c) / 3
-                                    pct_unb = 0
-                                    if avg_i > 0:
-                                        max_dev = max(abs(tot_a - avg_i), abs(tot_b - avg_i), abs(tot_c - avg_i))
-                                        pct_unb = (max_dev / avg_i) * 100
-                                        
-                                    alerts = []
-                                    if pct_load > 100:
-                                        alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🔴 Overload {pct_load:.0f}%</span>')
-                                    elif pct_load > 80:
-                                        alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🟡 Load {pct_load:.0f}%</span>')
-                                        
-                                    if pct_unb > 30:
-                                        alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🔴 Unbalance {pct_unb:.0f}%</span>')
-                                    elif pct_unb > 20:
-                                        alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🟡 Unbalance {pct_unb:.0f}%</span>')
-                                        
-                                    if alerts:
-                                        status_html = "<div style='display:flex; flex-direction:column; gap:4px; align-items:flex-start;'>" + "".join(alerts) + "</div>"
-                                    else:
-                                        status_html = '<span style="background-color: #11998e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight:600;">🟢 ปกติ</span>'
-                                except:
-                                    status_html = '<span style="color: gray; font-size: 0.8rem;">ไม่สามารถคำนวณได้</span>'
-                                    
                             c5.markdown(status_html, unsafe_allow_html=True)
                             
                             st.markdown("---")
@@ -1734,50 +1720,31 @@ if client:
                             st.markdown(full_html, unsafe_allow_html=True)
                             st.markdown("<br>", unsafe_allow_html=True)
                             
-                            # --- Smart Alerts (คำนวณจาก Record ล่าสุด) ---
+                            # --- Smart Alerts (ดึงจากฟังก์ชันกลาง) ---
                             try:
-                                latest = hist_df.iloc[0]
-                                kva_val = float(kva) if str(kva).replace('.','',1).isdigit() else 0
-                                
-                                col_a = "กระแส A" if "กระแส A" in latest else "Ph A" if "Ph A" in latest else latest.keys()[4]
-                                col_b = "กระแส B" if "กระแส B" in latest else "Ph B" if "Ph B" in latest else latest.keys()[5]
-                                col_c = "กระแส C" if "กระแส C" in latest else "Ph C" if "Ph C" in latest else latest.keys()[6]
-                                
-                                a = float(latest.get(col_a, 0)) if str(latest.get(col_a, 0)).replace('.','',1).isdigit() else 0
-                                b = float(latest.get(col_b, 0)) if str(latest.get(col_b, 0)).replace('.','',1).isdigit() else 0
-                                c = float(latest.get(col_c, 0)) if str(latest.get(col_c, 0)).replace('.','',1).isdigit() else 0
-                                
-                                avg_i = (a + b + c) / 3
-                                pct_unb = 0
-                                if avg_i > 0:
-                                    max_dev = max(abs(a - avg_i), abs(b - avg_i), abs(c - avg_i))
-                                    pct_unb = (max_dev / avg_i) * 100
-                                
-                                i_max = (kva_val * 1000) / (math.sqrt(3) * 400)
-                                max_i = max(a, b, c)
-                                pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
-                                
-                                alerts = []
-                                if pct_unb > 30:
-                                    alerts.append(f"<li>🚨 <b>Severe Unbalance:</b> ความไม่สมดุลขั้นวิกฤต ({pct_unb:.2f}%) อาจทำให้เกิดความร้อนสะสมและแรงดันตกหล่นรุนแรง</li>")
-                                elif pct_unb > 20:
-                                    alerts.append(f"<li>⚠️ <b>Warning Unbalance:</b> ความไม่สมดุล ({pct_unb:.2f}%) ควรเฝ้าระวัง</li>")
-                                    
-                                if pct_load > 100:
-                                    alerts.append(f"<li>🚨 <b>Overload:</b> โหลดเกินพิกัด ({pct_load:.2f}%) เสี่ยงต่อหม้อแปลงชำรุดหรือระเบิด</li>")
-                                elif pct_load > 80:
-                                    alerts.append(f"<li>⚠️ <b>High Load:</b> โหลดสูง ({pct_load:.2f}%) เข้าใกล้ขีดจำกัด</li>")
-                                    
-                                if alerts:
-                                    alert_html = f"""
-                                    <div style="background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                                        <h6 style="margin-top: 0; color: #842029;">🤖 ระบบวิเคราะห์อัตโนมัติ (Smart Alerts):</h6>
-                                        <ul style="margin-bottom: 0;">
-                                            {"".join(alerts)}
-                                        </ul>
-                                    </div>
-                                    """
-                                    st.markdown(alert_html, unsafe_allow_html=True)
+                                pct_load, pct_unb = calculate_transformer_status(df_master, df_record, search_pea)
+                                if pct_load is not None and pct_unb is not None:
+                                    alerts = []
+                                    if pct_unb > 30:
+                                        alerts.append(f"<li>🚨 <b>Severe Unbalance:</b> ความไม่สมดุลขั้นวิกฤต ({pct_unb:.2f}%) อาจทำให้เกิดความร้อนสะสมและแรงดันตกหล่นรุนแรง</li>")
+                                    elif pct_unb > 20:
+                                        alerts.append(f"<li>⚠️ <b>Warning Unbalance:</b> ความไม่สมดุล ({pct_unb:.2f}%) ควรเฝ้าระวัง</li>")
+                                        
+                                    if pct_load > 100:
+                                        alerts.append(f"<li>🚨 <b>Overload:</b> โหลดเกินพิกัด ({pct_load:.2f}%) เสี่ยงต่อหม้อแปลงชำรุดหรือระเบิด</li>")
+                                    elif pct_load > 80:
+                                        alerts.append(f"<li>⚠️ <b>High Load:</b> โหลดสูง ({pct_load:.2f}%) เข้าใกล้ขีดจำกัด</li>")
+                                        
+                                    if alerts:
+                                        alert_html = f"""
+                                        <div style="background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                                            <h6 style="margin-top: 0; color: #842029;">🤖 ระบบวิเคราะห์อัตโนมัติ (Smart Alerts):</h6>
+                                            <ul style="margin-bottom: 0;">
+                                                {"".join(alerts)}
+                                            </ul>
+                                        </div>
+                                        """
+                                        st.markdown(alert_html, unsafe_allow_html=True)
                             except Exception as e:
                                 pass
                                 
