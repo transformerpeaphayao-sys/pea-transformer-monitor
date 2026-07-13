@@ -794,7 +794,7 @@ if client:
                     record_time = st.time_input("🕐 เวลา", thai_time.time())
                 
                 with col_pea2:
-                    pea_list = df_pending['PEANO หม้อแปลง'].astype(str).unique().tolist()
+                    pea_list = df_master['PEANO หม้อแปลง'].astype(str).unique().tolist()
                     default_idx = 0
                     if st.session_state.selected_pea_from_map and st.session_state.selected_pea_from_map in pea_list:
                         default_idx = pea_list.index(st.session_state.selected_pea_from_map)
@@ -802,7 +802,7 @@ if client:
                     if pea_list:
                         selected_pea = st.selectbox("🔍 ค้นหา/เลือก PEANO หม้อแปลง", options=pea_list, index=default_idx)
                         if selected_pea:
-                            t_info = df_pending[df_pending['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
+                            t_info = df_master[df_master['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
                             phase = t_info.get('ระบบเฟส', '-')
                             kva = t_info.get('ค่าพิกัด kVA หม้อแปลง', '-')
                             loc = t_info.get('สถานที่', '-')
@@ -894,7 +894,7 @@ if client:
                 # --- ส่วนคำนวณและบันทึกลง Google Sheets ---
                 if submitted and selected_pea:
                     # ดึงข้อมูลหม้อแปลงเฉพาะ PEA NO ที่ผู้ใช้เลือก
-                    transformer_info = df_pending[df_pending['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
+                    transformer_info = df_master[df_master['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
                     
                     # ดึงและแปลงค่า kVA ด้วยฟังก์ชันกลาง
                     kva_value = safe_float(transformer_info['ค่าพิกัด kVA หม้อแปลง'])
