@@ -855,7 +855,7 @@ if client:
                         except: pass
                         
                     record_date = st.date_input("📅 วันที่", def_date)
-                    record_time = st.time_input("🕐 เวลา", def_time)
+                    record_time = st.time_input("🕐 เวลา", value=def_time, step=60)
                 
                 with col_pea2:
                     pea_list = df_master['PEANO หม้อแปลง'].astype(str).unique().tolist()
@@ -1100,7 +1100,14 @@ if client:
                                         pass # ถ้าพยายามครบ 3 ครั้งแล้วไม่สำเร็จ ให้ข้ามไป
                             
                             st.success("✅ บันทึกข้อมูลเรียบร้อยแล้ว!")
-                            st.session_state.page = "Map"
+                            
+                            # เช็คว่าถ้าเป็นการแก้ไข ให้เด้งกลับหน้าประวัติ แต่ถ้าลงใหม่ปกติให้ไปหน้าแผนที่
+                            if is_edit_mode:
+                                st.session_state.edit_mode = False
+                                st.session_state.page = "Profile"
+                            else:
+                                st.session_state.page = "Map"
+                                
                             st.session_state.selected_pea_from_map = None
                             if 'last_dialog_pea' in st.session_state:
                                 del st.session_state['last_dialog_pea']
