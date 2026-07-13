@@ -463,6 +463,30 @@ def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
         st.error(f"Error deleting from sheets: {e}")
         return False
 
+def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str):
+    try:
+        sh = client.open(spreadsheet_name)
+        sheet_record = sh.worksheet("Record Data")
+        records = sheet_record.get_all_records()
+        
+        rows_to_delete = []
+        for idx, row in enumerate(records):
+            # หาแถวที่ PEA NO, วันที่ และ เวลา ตรงกัน
+            if (str(row.get('PEA NO', '')).strip() == str(pea_no).strip() and 
+                str(row.get('วันที่', '')).strip() == str(date_str).strip() and 
+                str(row.get('เวลา', '')).strip() == str(time_str).strip()):
+                rows_to_delete.append(idx + 2) # +2 เพราะ index เริ่ม 0 และแถวแรกคือ Header
+                
+        # สั่งลบจากล่างขึ้นบน เพื่อไม่ให้ลำดับแถวคลาดเคลื่อน
+        for row_idx in reversed(rows_to_delete):
+            sheet_record.delete_rows(row_idx)
+            
+        load_completed_data.clear()
+        return True
+    except Exception as e:
+        st.error(f"Error deleting record session: {e}")
+        return False
+
 # --- 3.5. ฟังก์ชันสำหรับดึงข้อมูลที่บันทึกไปแล้ว ---
 @st.cache_data(ttl=60)
 def load_completed_data(_client, spreadsheet_name):
@@ -783,6 +807,37 @@ if client:
             elif st.session_state.page == "Form":
                 st.markdown("#### 📝 ฟอร์มบันทึกการวัดโหลดหม้อแปลง")
                 
+                # --- จัดการโหมดแก้ไข (Edit Mode) ---
+                is_edit_mode = st.session_state.get('edit_mode', False)
+                edit_data = {}
+                
+                if is_edit_mode:
+                    st.info(f"✏️ **กำลังแก้ไขข้อมูล:** PEA {st.session_state.edit_pea} (รอบเดิม: {st.session_state.edit_date} {st.session_state.edit_time})")
+                    if st.button("❌ ยกเลิกการแก้ไข", size="small"):
+                        st.session_state.edit_mode = False
+                        st.rerun()
+                        
+                    # ดึงข้อมูลเดิมมาเตรียมไว้สำหรับกรอกลงฟอร์ม
+                    old_df = df_record[(df_record['PEA NO'].astype(str) == st.session_state.edit_pea) &
+                                       (df_record['วันที่'].astype(str) == st.session_state.edit_date) &
+                                       (df_record['เวลา'].astype(str) == st.session_state.edit_time)]
+                    for _, r in old_df.iterrows():
+                        fname = str(r.get('ฟิดเดอร์', '')) if 'ฟิดเดอร์' in r else str(r.get('Feeder', ''))
+                        fname = fname.strip()
+                        col_a = "กระแส A" if "กระแส A" in r else "Ph A"
+                        col_b = "กระแส B" if "กระแส B" in r else "Ph B"
+                        col_c = "กระแส C" if "กระแส C" in r else "Ph C"
+                        col_n = "กระแส N" if "กระแส N" in r else "N"
+                        col_note = "หมายเหตุ" if "หมายเหตุ" in r else "Note"
+                        
+                        edit_data[fname] = {
+                            "A": safe_float(r.get(col_a, 0)) if str(r.get(col_a, '')).strip() != "" else None,
+                            "B": safe_float(r.get(col_b, 0)) if str(r.get(col_b, '')).strip() != "" else None,
+                            "C": safe_float(r.get(col_c, 0)) if str(r.get(col_c, '')).strip() != "" else None,
+                            "N": safe_float(r.get(col_n, 0)) if str(r.get(col_n, '')).strip() != "" else None,
+                            "note": str(r.get(col_note, ''))
+                        }
+
                 # === Section 1: ข้อมูลทั่วไป ===
                 st.markdown('<div class="section-card">', unsafe_allow_html=True)
                 st.markdown("**📋 ข้อมูลทั่วไป**")
@@ -790,17 +845,28 @@ if client:
                 col_pea1, col_pea2 = st.columns(2)
                 with col_pea1:
                     thai_time = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
-                    record_date = st.date_input("📅 วันที่", thai_time.date())
-                    record_time = st.time_input("🕐 เวลา", thai_time.time())
+                    def_date = thai_time.date()
+                    def_time = thai_time.time()
+                    
+                    if is_edit_mode:
+                        try:
+                            def_date = datetime.datetime.strptime(st.session_state.edit_date, "%d/%m/%Y").date()
+                            def_time = datetime.datetime.strptime(st.session_state.edit_time, "%H:%M:%S").time()
+                        except: pass
+                        
+                    record_date = st.date_input("📅 วันที่", def_date)
+                    record_time = st.time_input("🕐 เวลา", def_time)
                 
                 with col_pea2:
                     pea_list = df_master['PEANO หม้อแปลง'].astype(str).unique().tolist()
                     default_idx = 0
-                    if st.session_state.selected_pea_from_map and st.session_state.selected_pea_from_map in pea_list:
+                    if is_edit_mode and st.session_state.edit_pea in pea_list:
+                        default_idx = pea_list.index(st.session_state.edit_pea)
+                    elif st.session_state.selected_pea_from_map and st.session_state.selected_pea_from_map in pea_list:
                         default_idx = pea_list.index(st.session_state.selected_pea_from_map)
                     
                     if pea_list:
-                        selected_pea = st.selectbox("🔍 ค้นหา/เลือก PEANO หม้อแปลง", options=pea_list, index=default_idx)
+                        selected_pea = st.selectbox("🔍 ค้นหา/เลือก PEANO หม้อแปลง", options=pea_list, index=default_idx, disabled=is_edit_mode)
                         if selected_pea:
                             t_info = df_master[df_master['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
                             phase = t_info.get('ระบบเฟส', '-')
@@ -822,11 +888,11 @@ if client:
                 st.markdown('<div class="section-card">', unsafe_allow_html=True)
                 st.markdown("**📌 เลือกฟีดเดอร์ที่ต้องการบันทึก**")
                 chk_cols = st.columns(5)
-                f1_checked = chk_cols[0].checkbox("F1")
-                f2_checked = chk_cols[1].checkbox("F2")
-                f3_checked = chk_cols[2].checkbox("F3")
-                f4_checked = chk_cols[3].checkbox("F4")
-                total_checked = chk_cols[4].checkbox("รวม", help="กรณีวัดเมน หรือต้องการบันทึกค่ารวมแยกต่างหาก")
+                f1_checked = chk_cols[0].checkbox("F1", value=("F1" in edit_data))
+                f2_checked = chk_cols[1].checkbox("F2", value=("F2" in edit_data))
+                f3_checked = chk_cols[2].checkbox("F3", value=("F3" in edit_data))
+                f4_checked = chk_cols[3].checkbox("F4", value=("F4" in edit_data))
+                total_checked = chk_cols[4].checkbox("รวม", value=("รวม" in edit_data), help="กรณีวัดเมน หรือต้องการบันทึกค่ารวมแยกต่างหาก")
                 st.markdown('</div>', unsafe_allow_html=True)
                 
                 selected_feeders = []
@@ -844,11 +910,11 @@ if client:
                     </div>
                     """, unsafe_allow_html=True)
                     cols = st.columns(4)
-                    val_a = cols[0].number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A", value=None)
-                    val_b = cols[1].number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B", value=None)
-                    val_c = cols[2].number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C", value=None)
-                    val_n = cols[3].number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N", value=None)
-                    note = st.text_input(f"💬 หมายเหตุ {f_name}", key=f"{f_name}_note", placeholder=f"หมายเหตุเฉพาะฟีดเดอร์ {f_name}...")
+                    val_a = cols[0].number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A", value=edit_data.get(f_name, {}).get("A", None))
+                    val_b = cols[1].number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B", value=edit_data.get(f_name, {}).get("B", None))
+                    val_c = cols[2].number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C", value=edit_data.get(f_name, {}).get("C", None))
+                    val_n = cols[3].number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N", value=edit_data.get(f_name, {}).get("N", None))
+                    note = st.text_input(f"💬 หมายเหตุ {f_name}", key=f"{f_name}_note", value=edit_data.get(f_name, {}).get("note", ""), placeholder=f"หมายเหตุเฉพาะฟีดเดอร์ {f_name}...")
                     feeder_inputs[f_name] = {"A": val_a or 0.0, "B": val_b or 0.0, "C": val_c or 0.0, "N": val_n or 0.0, "note": note}
                 
                 # === Section 4: สรุปรวม ===
@@ -876,40 +942,35 @@ if client:
                 else:
                     if total_checked:
                         tot_cols = st.columns(4)
-                        tot_a = tot_cols[0].number_input("รวม I_a (A)", min_value=0.0, step=0.1, key="tot_a_manual", value=None)
-                        tot_b = tot_cols[1].number_input("รวม I_b (A)", min_value=0.0, step=0.1, key="tot_b_manual", value=None)
-                        tot_c = tot_cols[2].number_input("รวม I_c (A)", min_value=0.0, step=0.1, key="tot_c_manual", value=None)
-                        tot_n = tot_cols[3].number_input("รวม I_n (A)", min_value=0.0, step=0.1, key="tot_n_manual", value=None)
+                        tot_a = tot_cols[0].number_input("รวม I_a (A)", min_value=0.0, step=0.1, key="tot_a_manual", value=edit_data.get("รวม", {}).get("A", None))
+                        tot_b = tot_cols[1].number_input("รวม I_b (A)", min_value=0.0, step=0.1, key="tot_b_manual", value=edit_data.get("รวม", {}).get("B", None))
+                        tot_c = tot_cols[2].number_input("รวม I_c (A)", min_value=0.0, step=0.1, key="tot_c_manual", value=edit_data.get("รวม", {}).get("C", None))
+                        tot_n = tot_cols[3].number_input("รวม I_n (A)", min_value=0.0, step=0.1, key="tot_n_manual", value=edit_data.get("รวม", {}).get("N", None))
                         tot_a = tot_a or 0.0
                         tot_b = tot_b or 0.0
                         tot_c = tot_c or 0.0
                         tot_n = tot_n or 0.0
-                        tot_note = st.text_input("💬 หมายเหตุ (รวม)", key="tot_note_manual", placeholder="หมายเหตุรวม...")
+                        tot_note = st.text_input("💬 หมายเหตุ (รวม)", key="tot_note_manual", value=edit_data.get("รวม", {}).get("note", ""), placeholder="หมายเหตุรวม...")
                     else:
                         st.info("กรุณาเลือกฟีดเดอร์อย่างน้อย 1 รายการ หรือเลือก 'รวม'")
                 
                 st.write("")
-                submitted = st.button("💾 บันทึกข้อมูลและตรวจสอบ", type="primary", use_container_width=True)
+                btn_label = "💾 บันทึกการแก้ไข (อัปเดตข้อมูล)" if is_edit_mode else "💾 บันทึกข้อมูลและตรวจสอบ"
+                submitted = st.button(btn_label, type="primary", use_container_width=True)
                     
                 # --- ส่วนคำนวณและบันทึกลง Google Sheets ---
                 if submitted and selected_pea:
-                    # ดึงข้อมูลหม้อแปลงเฉพาะ PEA NO ที่ผู้ใช้เลือก
                     transformer_info = df_master[df_master['PEANO หม้อแปลง'].astype(str) == selected_pea].iloc[0]
                     
-                    # ดึงและแปลงค่า kVA ด้วยฟังก์ชันกลาง
                     kva_value = safe_float(transformer_info['ค่าพิกัด kVA หม้อแปลง'])
                     if kva_value == 0.0:
                         st.error("❌ ข้อมูล kVA ใน MasterData ไม่ถูกต้อง โปรดแก้ไขที่ฐานข้อมูลก่อนบันทึกครับ")
                         st.stop()
                     
-                    # 1. คำนวณพิกัดกระแสสูงสุด (I_max) ของหม้อแปลง
                     i_max = (kva_value * 1000) / (math.sqrt(3) * 400)
-                    
-                    # หากระแสเฟสที่สูงที่สุด เพื่อใช้คิด % โหลด
                     max_current_measured = max(tot_a, tot_b, tot_c)
                     percent_load = (max_current_measured / i_max) * 100 if i_max > 0 else 0
                     
-                    # 2. คำนวณ Load Unbalance (%)
                     avg_current = (tot_a + tot_b + tot_c) / 3
                     if avg_current > 0:
                         dev_a = abs(tot_a - avg_current)
@@ -920,14 +981,11 @@ if client:
                     else:
                         percent_unbalance = 0.0
                     
-                    # --- แสดงผลการคำนวณบนหน้าจอ ---
                     st.write("---")
                     st.markdown(f"**⚡ พิกัดหม้อแปลง:** {kva_value} kVA | **พิกัดกระแสสูงสุด (I_max):** {i_max:.2f} A")
                     st.markdown(f"**📊 กระแสเฉลี่ย 3 เฟส:** {avg_current:.2f} A")
                     
                     col_alert1, col_alert2 = st.columns(2)
-                    
-                    # --- แจ้งเตือน % โหลด (ควบคุมไม่ให้เกิน 80%) ---
                     with col_alert1:
                         if percent_load > 100:
                             st.error(f"🔴 **Overload!**\n\nโหลดใช้งาน {percent_load:.2f}%\n(กระแสเฟสสูงสุด {max_current_measured:.2f} A)")
@@ -936,9 +994,7 @@ if client:
                         else:
                             st.success(f"🟢 **โหลดปกติ**\n\nโหลดใช้งาน {percent_load:.2f}%")
                             
-                    # --- แจ้งเตือน Load Unbalance ---
                     with col_alert2:
-                        # สมมติเกณฑ์ Unbalance ที่ยอมรับได้คือ 20% (สามารถแก้ตัวเลข 20 ตรงนี้ได้ตามเกณฑ์ กฟภ. พื้นที่)
                         if percent_unbalance > 30:
                             st.error(f"🔴 **Unbalance สูงมาก!**\n\nความไม่สมดุล {percent_unbalance:.2f}%")
                         elif percent_unbalance > 20:
@@ -1586,6 +1642,36 @@ if client:
                             st.info("ยังไม่มีประวัติการวัดโหลดสำหรับหม้อแปลงเครื่องนี้ในระบบ")
                             
                         st.markdown("<br>", unsafe_allow_html=True)
+                        # --- [เพิ่มใหม่] ⚙️ จัดการข้อมูลย้อนหลัง (Edit / Delete) ---
+                        if not hist_df.empty:
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            with st.expander("⚙️ จัดการข้อมูลที่บันทึกไปแล้ว (แก้ไข / ลบ)"):
+                                col_date = "วันที่" if "วันที่" in hist_df.columns else hist_df.columns[0]
+                                col_time = "เวลา" if "เวลา" in hist_df.columns else hist_df.columns[1]
+                                
+                                session_list = hist_df[[col_date, col_time]].drop_duplicates().apply(lambda x: f"{x[0]} เวลา {x[1]}", axis=1).tolist()
+                                selected_session = st.selectbox("เลือกรอบการบันทึกที่ต้องการจัดการ:", options=["-- กรุณาเลือก --"] + session_list)
+                                
+                                if selected_session != "-- กรุณาเลือก --":
+                                    sel_date = selected_session.split(" เวลา ")[0]
+                                    sel_time = selected_session.split(" เวลา ")[1]
+                                    
+                                    c_edit, c_del = st.columns(2)
+                                    with c_del:
+                                        if st.button("🗑️ ลบข้อมูลรอบนี้", type="primary", use_container_width=True):
+                                            with st.spinner("กำลังลบข้อมูล..."):
+                                                if delete_record_session(client, SHEET_NAME, search_pea, sel_date, sel_time):
+                                                    st.success("ลบข้อมูลเรียบร้อยแล้ว!")
+                                                    st.rerun()
+                                    with c_edit:
+                                        if st.button("✏️ ดึงข้อมูลไปแก้ไข", use_container_width=True):
+                                            st.session_state.edit_mode = True
+                                            st.session_state.edit_pea = search_pea
+                                            st.session_state.edit_date = sel_date
+                                            st.session_state.edit_time = sel_time
+                                            st.session_state.page = "Form"
+                                            st.rerun()
+                        # -----------------------------------------------
                         col_btn1, col_btn2, col_btn3 = st.columns(3)
                         with col_btn1:
                             if st.button("🩺 บันทึกการตรวจวัดโหลดรอบใหม่", type="primary", use_container_width=True):
