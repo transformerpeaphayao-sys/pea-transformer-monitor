@@ -1221,7 +1221,7 @@ if client:
                                         tot_a, tot_b, tot_c = 0, 0, 0
                                 
                                 try:
-                                    kva_float = float(kva_val)
+                                    kva_float = safe_float(kva_val)
                                     i_max = (kva_float * 1000) / (math.sqrt(3) * 400)
                                     max_i = max(tot_a, tot_b, tot_c)
                                     pct_load = (max_i / i_max) * 100 if i_max > 0 else 0
