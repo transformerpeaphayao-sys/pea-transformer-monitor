@@ -337,11 +337,17 @@ button[kind="primary"]:hover {
 
 # --- Helper Functions ---
 def safe_float(val, default=0.0):
+    import re
     try:
         if pd.isna(val) or val == "":
             return default
         if isinstance(val, str):
             val = val.replace(',', '').strip()
+            match = re.search(r'[-+]?\d*\.?\d+', val)
+            if match:
+                val = match.group()
+            else:
+                return default
         return float(val)
     except (ValueError, TypeError):
         return default
