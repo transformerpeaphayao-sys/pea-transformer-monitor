@@ -1008,7 +1008,11 @@ if client:
                         st.stop()
 
                     with st.spinner("กำลังบันทึกข้อมูล... (ระบบอาจใช้เวลาสักครู่หากมีการใช้งานพร้อมกันหลายทีม)"):
-                        max_retries = 5  # ให้ระบบพยายามบันทึกใหม่สูงสุด 5 ครั้งหากชนกัน
+                        
+                        # [สำคัญ] หากมีโค้ดลบข้อมูลเดิม (delete_record_session) อยู่นอกลูป ให้ลบทิ้งได้เลยครับ 
+                        # เพราะเราจะนำระบบลบและแทรกใหม่ มารวมไว้ในลูป Retry เพื่อความปลอดภัยของข้อมูล
+                        
+                        max_retries = 5  
                         success = False
                         
                         for attempt in range(max_retries):
@@ -1036,9 +1040,34 @@ if client:
                                         tot_note
                                     ])
                                 
-                                sheet_record.append_rows(rows_to_insert)
+                                # --- [แก้ไขใหม่] ระบบบันทึกทับตำแหน่งเดิม (In-place Update) ---
+                                if is_edit_mode:
+                                    records = sheet_record.get_all_records()
+                                    rows_to_delete = []
+                                    # 1. ค้นหาว่าข้อมูลรอบเดิมอยู่บรรทัดที่เท่าไหร่บ้าง
+                                    for idx, row in enumerate(records):
+                                        if (str(row.get('PEA NO', '')).strip() == str(st.session_state.edit_pea).strip() and 
+                                            str(row.get('วันที่', '')).strip() == str(st.session_state.edit_date).strip() and 
+                                            str(row.get('เวลา', '')).strip() == str(st.session_state.edit_time).strip()):
+                                            rows_to_delete.append(idx + 2) # +2 เพราะ index เริ่ม 0 และมี Header
+                                            
+                                    if rows_to_delete:
+                                        start_index = min(rows_to_delete)
+                                        # 2. ลบข้อมูลเดิมทิ้ง (ลบจากล่างขึ้นบน)
+                                        for row_idx in reversed(rows_to_delete):
+                                            sheet_record.delete_rows(row_idx)
+                                        # 3. แทรกข้อมูลใหม่เข้าไปที่ "ตำแหน่งเดิมเป๊ะๆ"
+                                        sheet_record.insert_rows(rows_to_insert, row=start_index)
+                                    else:
+                                        # ถ้าหาประวัติเดิมไม่เจอจริงๆ ค่อยไปต่อท้าย
+                                        sheet_record.append_rows(rows_to_insert)
+                                else:
+                                    # โหมดบันทึกปกติ (รายการใหม่) ให้ต่อท้ายบรรทัดล่างสุด
+                                    sheet_record.append_rows(rows_to_insert)
+                                # -------------------------------------------------------------
+                                
                                 success = True
-                                break  # บันทึกสำเร็จ ให้หลุดออกจากลูปทันที
+                                break 
                                 
                             except gspread.exceptions.WorksheetNotFound:
                                 sh = client.open(SHEET_NAME)
