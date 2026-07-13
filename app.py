@@ -813,7 +813,7 @@ if client:
                 
                 if is_edit_mode:
                     st.info(f"✏️ **กำลังแก้ไขข้อมูล:** PEA {st.session_state.edit_pea} (รอบเดิม: {st.session_state.edit_date} {st.session_state.edit_time})")
-                    if st.button("❌ ยกเลิกการแก้ไข", size="small"):
+                    if st.button("❌ ยกเลิกการแก้ไข"):
                         st.session_state.edit_mode = False
                         st.rerun()
                         
