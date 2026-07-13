@@ -495,12 +495,13 @@ def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str):
 
 def calculate_transformer_status(df_master, df_record, pea):
     try:
-        master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == pea]
+        pea_str = str(pea).strip()
+        master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str).str.strip() == pea_str]
         if master_row.empty: return None, None
         kva_float = safe_float(master_row.iloc[0].get('ค่าพิกัด kVA หม้อแปลง', 0))
         if kva_float <= 0: return None, None
         
-        record_rows = df_record[df_record['PEA NO'].astype(str) == pea]
+        record_rows = df_record[df_record['PEA NO'].astype(str).str.strip() == pea_str]
         if record_rows.empty: return None, None
         
         col_date = "วันที่" if "วันที่" in record_rows.columns else record_rows.columns[0]
