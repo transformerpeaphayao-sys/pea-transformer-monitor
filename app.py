@@ -9,6 +9,9 @@ from folium.plugins import MarkerCluster, LocateControl
 from streamlit_folium import st_folium
 import time
 import random
+import io
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 
 # --- 1. ตั้งค่าหน้าเว็บ Streamlit ---
 st.set_page_config(
@@ -357,34 +360,69 @@ def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8-sig')
 
 
-# --- 2. ฟังก์ชันสำหรับเชื่อมต่อ Google Sheets ---
+# --- 2. ฟังก์ชันสำหรับเชื่อมต่อ Google API ---
 @st.cache_resource
-def init_connection():
+def get_google_credentials():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    
     # วิธีที่ 1: ลองอ่านจาก Streamlit Secrets (สำหรับ Cloud)
     try:
         creds_dict = dict(st.secrets["gcp_service_account"])
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        client = gspread.authorize(credentials)
-        return client
+        return credentials
     except Exception:
         pass
     
     # วิธีที่ 2: ลองอ่านจากไฟล์ credentials.json (สำหรับรันบนคอมพิวเตอร์ตัวเอง)
     try:
         credentials = Credentials.from_service_account_file("credentials.json", scopes=scopes)
-        client = gspread.authorize(credentials)
-        return client
+        return credentials
     except FileNotFoundError:
         st.error("ไม่พบข้อมูลการเชื่อมต่อ กรุณานำไฟล์ 'credentials.json' มาวาง หรือตั้งค่าใน Streamlit Secrets")
         return None
     except Exception as e:
-        st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ Google Sheets: {e}")
+        st.error(f"เกิดข้อผิดพลาดในการโหลด Credentials: {e}")
         return None
+
+@st.cache_resource
+def init_connection():
+    credentials = get_google_credentials()
+    if credentials:
+        try:
+            client = gspread.authorize(credentials)
+            return client
+        except Exception as e:
+            st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ Google Sheets: {e}")
+            return None
+    return None
+
+def upload_image_to_drive(file_bytes, folder_id, file_name):
+    credentials = get_google_credentials()
+    if not credentials:
+        return None
+    try:
+        service = build('drive', 'v3', credentials=credentials)
+        file_metadata = {
+            'name': file_name,
+            'parents': [folder_id]
+        }
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype='image/jpeg', resumable=True)
+        file = service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
+        
+        # Make the file viewable by anyone with the link
+        permission = {
+            'type': 'anyone',
+            'role': 'reader',
+        }
+        service.permissions().create(fileId=file.get('id'), body=permission).execute()
+        
+        return file.get('webViewLink')
+    except Exception as e:
+        st.error(f"Upload Image Error: {e}")
+        return None
+
 
 # --- 3. ฟังก์ชันสำหรับดึงข้อมูล MasterData ---
 @st.cache_data(ttl=600)
@@ -1017,6 +1055,25 @@ if client:
                     else:
                         st.info("กรุณาเลือกฟีดเดอร์อย่างน้อย 1 รายการ หรือเลือก 'รวม'")
                 
+                # === Section 5: รูปถ่ายหน้างาน ===
+                st.markdown("""
+                <div class="feeder-card">
+                    <div class="feeder-card-title">📸 รูปถ่ายหน้างาน (อุปกรณ์เสริม)</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                photo_tabs = st.tabs(["📷 ถ่ายรูปด้วยกล้อง", "📂 อัปโหลดไฟล์รูปภาพ"])
+                with photo_tabs[0]:
+                    camera_img = st.camera_input("ถ่ายรูปหน้างาน", label_visibility="collapsed")
+                with photo_tabs[1]:
+                    uploaded_img = st.file_uploader("เลือกไฟล์รูปภาพ (JPG, PNG)", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+                    
+                final_img_bytes = None
+                if camera_img is not None:
+                    final_img_bytes = camera_img.getvalue()
+                elif uploaded_img is not None:
+                    final_img_bytes = uploaded_img.getvalue()
+                
                 st.write("")
                 btn_label = "💾 บันทึกการแก้ไข (อัปเดตข้อมูล)" if is_edit_mode else "💾 บันทึกข้อมูลและตรวจสอบ"
                 submitted = st.button(btn_label, type="primary", use_container_width=True)
@@ -1072,6 +1129,12 @@ if client:
 
                     with st.spinner("กำลังบันทึกข้อมูล... (ระบบอาจใช้เวลาสักครู่หากมีการใช้งานพร้อมกันหลายทีม)"):
                         
+                        img_url = ""
+                        if final_img_bytes:
+                            folder_id = "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC"
+                            file_name = f"{selected_pea}_{record_date.strftime('%Y%m%d')}_{record_time.strftime('%H%M%S')}.jpg"
+                            img_url = upload_image_to_drive(final_img_bytes, folder_id, file_name) or ""
+                        
                         # [สำคัญ] หากมีโค้ดลบข้อมูลเดิม (delete_record_session) อยู่นอกลูป ให้ลบทิ้งได้เลยครับ 
                         # เพราะเราจะนำระบบลบและแทรกใหม่ มารวมไว้ในลูป Retry เพื่อความปลอดภัยของข้อมูล
                         
@@ -1090,7 +1153,8 @@ if client:
                                         selected_pea,
                                         f_name,
                                         data["A"], data["B"], data["C"], data["N"],
-                                        data["note"]
+                                        data["note"],
+                                        img_url
                                     ])
                                 
                                 if total_checked or len(selected_feeders) > 0:
@@ -1100,7 +1164,8 @@ if client:
                                         selected_pea,
                                         "รวม",
                                         tot_a, tot_b, tot_c, tot_n,
-                                        tot_note
+                                        tot_note,
+                                        img_url
                                     ])
                                 
                                 # --- [แก้ไขใหม่] ระบบบันทึกทับตำแหน่งเดิม (In-place Update) ---
@@ -1136,7 +1201,7 @@ if client:
                                 sh = client.open(SHEET_NAME)
                                 sheet_record = sh.add_worksheet(title="Record Data", rows=1000, cols=10)
                                 # สร้าง Header เริ่มต้น
-                                sheet_record.append_row(["วันที่", "เวลา", "PEA NO", "ฟิดเดอร์", "กระแส A", "กระแส B", "กระแส C", "กระแส N", "หมายเหตุ"])
+                                sheet_record.append_row(["วันที่", "เวลา", "PEA NO", "ฟิดเดอร์", "กระแส A", "กระแส B", "กระแส C", "กระแส N", "หมายเหตุ", "รูปถ่าย"])
                                 sheet_record.append_rows(rows_to_insert)
                                 success = True
                                 break
@@ -1751,15 +1816,17 @@ if client:
                                 c_val = row.get(col_c_h, '-')
                                 n_val = row.get(col_n_h, '-') if col_n_h else '-'
                                 note_val = row.get(col_note_h, '') if col_note_h else ''
+                                img_url = row.get("รูปถ่าย", "")
+                                img_link = f"<a href='{img_url}' target='_blank'>ดูรูปภาพ</a>" if str(img_url).startswith("http") else "-"
                                 
                                 if is_total:
                                     td_total = td_style + "font-weight:700;border-bottom:3px solid #adb5bd;"
                                     feeder_display = f"<b style='color:#e94560;'>⚡ {feeder_val}</b>"
-                                    rows_html += f"<tr style='background:{bg};'><td style='{td_total}'>{row.get(col_date, '-')}</td><td style='{td_total}'>{row.get(col_time, '-')}</td><td style='{td_total}'>{feeder_display}</td><td style='{td_total}'>{a_val}</td><td style='{td_total}'>{b_val}</td><td style='{td_total}'>{c_val}</td><td style='{td_total}'>{n_val}</td><td style='{td_total}text-align:left;color:#6c757d;'>{note_val}</td></tr>"
+                                    rows_html += f"<tr style='background:{bg};'><td style='{td_total}'>{row.get(col_date, '-')}</td><td style='{td_total}'>{row.get(col_time, '-')}</td><td style='{td_total}'>{feeder_display}</td><td style='{td_total}'>{a_val}</td><td style='{td_total}'>{b_val}</td><td style='{td_total}'>{c_val}</td><td style='{td_total}'>{n_val}</td><td style='{td_total}text-align:left;color:#6c757d;'>{note_val}</td><td style='{td_total}'>{img_link}</td></tr>"
                                 else:
-                                    rows_html += f"<tr style='background:{bg};'><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style}'>{feeder_val}</td><td style='{td_style}'>{a_val}</td><td style='{td_style}'>{b_val}</td><td style='{td_style}'>{c_val}</td><td style='{td_style}'>{n_val}</td><td style='{td_style}text-align:left;color:#6c757d;'>{note_val}</td></tr>"
+                                    rows_html += f"<tr style='background:{bg};'><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style}'>{feeder_val}</td><td style='{td_style}'>{a_val}</td><td style='{td_style}'>{b_val}</td><td style='{td_style}'>{c_val}</td><td style='{td_style}'>{n_val}</td><td style='{td_style}text-align:left;color:#6c757d;'>{note_val}</td><td style='{td_style}'>{img_link}</td></tr>"
                             
-                            full_html = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="{th_style}">📅 วันที่</th><th style="{th_style}">🕐 เวลา</th><th style="{th_style}">🔌 ฟีดเดอร์</th><th style="{th_style}">กระแส A</th><th style="{th_style}">กระแส B</th><th style="{th_style}">กระแส C</th><th style="{th_style}">กระแส N</th><th style="{th_style}">📝 หมายเหตุ</th></tr></thead><tbody>{rows_html}</tbody></table></div>"""
+                            full_html = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="{th_style}">📅 วันที่</th><th style="{th_style}">🕐 เวลา</th><th style="{th_style}">🔌 ฟีดเดอร์</th><th style="{th_style}">กระแส A</th><th style="{th_style}">กระแส B</th><th style="{th_style}">กระแส C</th><th style="{th_style}">กระแส N</th><th style="{th_style}">📝 หมายเหตุ</th><th style="{th_style}">📸 รูปถ่าย</th></tr></thead><tbody>{rows_html}</tbody></table></div>"""
                             
                             st.markdown(full_html, unsafe_allow_html=True)
                             st.markdown("<br>", unsafe_allow_html=True)
