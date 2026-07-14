@@ -1890,10 +1890,11 @@ if client:
                                             if "drive.google.com/file/d/" in u:
                                                 try:
                                                     file_id = u.split("/d/")[1].split("/")[0]
-                                                    direct_url = f"https://drive.google.com/uc?id={file_id}"
+                                                    # ใช้ endpoint thumbnail ของ Google Drive ซึ่งอนุญาตให้แสดงผลข้ามเว็บได้
+                                                    direct_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w150-h150"
                                                 except:
                                                     pass
-                                            img_elements.append(f"<a href='{u}' target='_blank'><img src='{direct_url}' style='width: 60px; max-height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #dee2e6; margin: 2px;' title='คลิกเพื่อดูรูปเต็ม'></a>")
+                                            img_elements.append(f"<a href='{u}' target='_blank'><img src='{direct_url}' style='width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #dee2e6; margin: 2px;' title='คลิกเพื่อดูรูปเต็ม' onerror=\"this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg';\"></a>")
                                         img_link = "<div style='display:flex; flex-wrap:wrap; gap:5px; justify-content:center;'>" + "".join(img_elements) + "</div>"
                                 
                                 if is_total:
