@@ -1237,15 +1237,18 @@ if client:
                                             str(row.get('เวลา', '')).strip() == str(st.session_state.edit_time).strip()):
                                             rows_to_delete.append(idx + 2) # +2 เพราะ index เริ่ม 0 และมี Header
                                             
+# --- [แก้ไขใหม่] ลบและแทรกแบบส่งคำสั่งครั้งเดียว ป้องกัน API บล็อก ---
                                     if rows_to_delete:
                                         start_index = min(rows_to_delete)
-                                        # 2. ลบข้อมูลเดิมทิ้ง (ลบจากล่างขึ้นบน)
-                                        for row_idx in reversed(rows_to_delete):
-                                            sheet_record.delete_rows(row_idx)
-                                        # 3. แทรกข้อมูลใหม่เข้าไปที่ "ตำแหน่งเดิมเป๊ะๆ"
+                                        end_index = max(rows_to_delete)
+                                        
+                                        # ลบข้อมูลเดิมทิ้งทั้งช่วงฟีดเดอร์ในรอบนั้นทีเดียว (ยิง API รอบเดียว)
+                                        sheet_record.delete_rows(start_index, end_index)
+                                        
+                                        # แทรกข้อมูลใหม่เข้าไปที่ตำแหน่งเดิมเป๊ะๆ
                                         sheet_record.insert_rows(rows_to_insert, row=start_index)
                                     else:
-                                        # ถ้าหาประวัติเดิมไม่เจอจริงๆ ค่อยไปต่อท้าย
+                                        # ถ้าหาประวัติเดิมไม่เจอจริงๆ ให้ต่อท้าย
                                         sheet_record.append_rows(rows_to_insert)
                                 else:
                                     # โหมดบันทึกปกติ (รายการใหม่) ให้ต่อท้ายบรรทัดล่างสุด
