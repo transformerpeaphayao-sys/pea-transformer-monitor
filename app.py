@@ -1884,7 +1884,17 @@ if client:
                                 if img_url_str:
                                     urls = [u.strip() for u in img_url_str.split(",") if u.strip().startswith("http")]
                                     if urls:
-                                        img_link = "<br>".join([f"<a href='{u}' target='_blank'>📸 รูปที่ {i+1}</a>" for i, u in enumerate(urls)])
+                                        img_elements = []
+                                        for i, u in enumerate(urls):
+                                            direct_url = u
+                                            if "drive.google.com/file/d/" in u:
+                                                try:
+                                                    file_id = u.split("/d/")[1].split("/")[0]
+                                                    direct_url = f"https://drive.google.com/uc?id={file_id}"
+                                                except:
+                                                    pass
+                                            img_elements.append(f"<a href='{u}' target='_blank'><img src='{direct_url}' style='width: 60px; max-height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #dee2e6; margin: 2px;' title='คลิกเพื่อดูรูปเต็ม'></a>")
+                                        img_link = "<div style='display:flex; flex-wrap:wrap; gap:5px; justify-content:center;'>" + "".join(img_elements) + "</div>"
                                 
                                 if is_total:
                                     td_total = td_style + "font-weight:700;border-bottom:3px solid #adb5bd;"
