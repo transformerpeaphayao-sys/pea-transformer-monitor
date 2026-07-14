@@ -426,8 +426,12 @@ def compress_image(img_bytes, max_width=1024, quality=75):
         return img_bytes
 
 def upload_image_to_drive(file_bytes, folder_id, file_name):
-    # วาง_URL_WEB_APP_ที่นี่
-    web_app_url = "https://script.google.com/macros/s/AKfycbz9UX3kfH2c87qtiVuwyDB65RHC3nDjJAwGwTOEIIIYq4Bv5UIxc7_KvZS-aJzXGMN5kw/exec"
+    # ดึง URL จาก Secrets (ถ้าไม่มีให้ใช้ค่าว่างเพื่อไม่ให้แครช)
+    web_app_url = st.secrets.get("gas_web_app_url", "")
+    
+    if not web_app_url:
+        st.error("ไม่พบ 'gas_web_app_url' ใน Streamlit Secrets")
+        return None
     
     try:
         # เข้ารหัสไฟล์ภาพเป็น Base64
@@ -654,7 +658,7 @@ def add_task_to_sheet(client, spreadsheet_name, pea_no):
             try:
                 sheet = sh.worksheet("Task Data")
             except gspread.exceptions.WorksheetNotFound:
-                sheet = sh.add_worksheet(title="Task Data", rows="1000", cols="3")
+                sheet = sh.add_worksheet(title="Task Data", rows=1000, cols=3)
                 sheet.append_row(["PEA NO", "Status", "Date"])
             
             now_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime('%d/%m/%Y %H:%M:%S')
@@ -1168,7 +1172,7 @@ if client:
                     with st.spinner("กำลังบันทึกข้อมูล... (ระบบอาจใช้เวลาสักครู่หากมีการใช้งานพร้อมกันหลายทีม)"):
                         
                         img_url_list = []
-                        folder_id = "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC"
+                        folder_id = st.secrets.get("drive_folder_id", "")
                         drive_upload_failed = False
                         
                         if final_img_bytes_list:
