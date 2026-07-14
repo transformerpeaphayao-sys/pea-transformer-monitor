@@ -1696,17 +1696,32 @@ if client:
                             col_n_f = "กระแส N" if "กระแส N" in filtered_df.columns else "N" if "N" in filtered_df.columns else filtered_df.columns[7] if len(filtered_df.columns) > 7 else ""
                             col_note_f = "หมายเหตุ" if "หมายเหตุ" in filtered_df.columns else "Note" if "Note" in filtered_df.columns else filtered_df.columns[8] if len(filtered_df.columns) > 8 else ""
                             
+                            session_counts = {}
+                            for _, r in filtered_df.iterrows():
+                                sess = f"{r.get(col_date_f, '')}-{r.get(col_time_f, '')}-{r.get('PEA NO', '')}"
+                                session_counts[sess] = session_counts.get(sess, 0) + 1
+                            
                             # สลับสีตามกลุ่ม PEA NO
                             group_colors = ["#f0f7ff", "#fff8f0"]
                             group_idx = 0
                             prev_pea = None
+                            prev_session_key = None
                             
                             rows_f = ""
                             for i, (_, row) in enumerate(filtered_df.iterrows()):
                                 pea_val = str(row.get('PEA NO', '-'))
-                                if pea_val != prev_pea:
-                                    group_idx += 1
-                                    prev_pea = pea_val
+                                date_val = str(row.get(col_date_f, '-'))
+                                time_val = str(row.get(col_time_f, '-'))
+                                current_session_key = f"{date_val}-{time_val}-{pea_val}"
+                                
+                                is_first_in_session = False
+                                if current_session_key != prev_session_key:
+                                    is_first_in_session = True
+                                    prev_session_key = current_session_key
+                                    
+                                    if pea_val != prev_pea:
+                                        group_idx += 1
+                                        prev_pea = pea_val
                                 
                                 bg = group_colors[group_idx % 2]
                                 border_accent = "#2575fc" if group_idx % 2 == 1 else "#e94560"
@@ -1724,9 +1739,14 @@ if client:
                                     status_badge = f"<span style='background:#e2e3e5;color:#41464b;padding:3px 8px;border-radius:12px;font-size:0.72rem;white-space:nowrap;'>{status_val}</span>"
                                 
                                 rows_f += f"<tr style='background:{bg};' onmouseover=\"this.style.background='#e8f0fe'\" onmouseout=\"this.style.background='{bg}'\">"
-                                rows_f += f"<td style='{td_s}border-left:4px solid {border_accent};'>{row.get(col_date_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}'>{row.get(col_time_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}'>{pea_link}</td>"
+                                
+                                if is_first_in_session:
+                                    r_span = session_counts[current_session_key]
+                                    td_first = f"<td rowspan='{r_span}' style='{td_s}border-left:4px solid {border_accent}; vertical-align:middle; background:{bg};'>{date_val}</td>"
+                                    td_first += f"<td rowspan='{r_span}' style='{td_s}vertical-align:middle; background:{bg};'>{time_val}</td>"
+                                    td_first += f"<td rowspan='{r_span}' style='{td_s}vertical-align:middle; background:{bg};'>{pea_link}</td>"
+                                    rows_f += td_first
+                                
                                 rows_f += f"<td style='{td_s}'>{row.get(col_feeder_f, '-')}</td>"
                                 rows_f += f"<td style='{td_s}font-weight:600;'>{row.get(col_a_f, '-')}</td>"
                                 rows_f += f"<td style='{td_s}font-weight:600;'>{row.get(col_b_f, '-')}</td>"
