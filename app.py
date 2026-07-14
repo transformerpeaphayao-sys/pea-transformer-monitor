@@ -12,8 +12,6 @@ import random
 import io
 import base64
 import requests
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 from PIL import Image
 
 # --- 1. ตั้งค่าหน้าเว็บ Streamlit ---
