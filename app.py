@@ -1194,24 +1194,49 @@ if client:
                 count_unbalance = 0
                 count_overload = 0
                 
-                # --- เรียกใช้ฟังก์ชันแกนกลาง เพื่อให้นับเลขเป๊ะ 100% ---
+                # --- สร้าง Cache เก็บสถานะและป้ายแจ้งเตือน (รับประกันยอดตรงกับตาราง 100%) ---
+                pea_alert_cache = {}
+                
                 if not df_record.empty and total_completed > 0:
                     for pea in completed_peas:
                         pct_load, pct_unb = calculate_transformer_status(df_master, df_record, pea)
-                        if pct_load is None: continue
                         
-                        has_issue = False
+                        status_html = '<span style="color: gray;">-</span>'
+                        is_ovl = False
+                        is_unb = False
                         
-                        if pct_load >= 80:
-                            count_overload += 1
-                            has_issue = True
+                        if pct_load is not None and pct_unb is not None:
+                            alerts = []
+                            # 1. เช็ค Overload (>80%)
+                            if pct_load >= 100:
+                                alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🔴 Overload {pct_load:.0f}%</span>')
+                                is_ovl = True
+                            elif pct_load >= 80:
+                                alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🟡 Load {pct_load:.0f}%</span>')
+                                is_ovl = True
+                                
+                            # 2. เช็ค Unbalance (>20%)
+                            if pct_unb >= 30:
+                                alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🔴 Unbalance {pct_unb:.0f}%</span>')
+                                is_unb = True
+                            elif pct_unb >= 20:
+                                alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🟡 Unbalance {pct_unb:.0f}%</span>')
+                                is_unb = True
+                                
+                            if alerts:
+                                status_html = "<div style='display:flex; flex-direction:column; gap:4px; align-items:flex-start;'>" + "".join(alerts) + "</div>"
+                            else:
+                                status_html = '<span style="background-color: #11998e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight:600;">🟢 ปกติ</span>'
+                        else:
+                            status_html = '<span style="color: gray; font-size: 0.8rem;">ไม่สามารถคำนวณได้</span>'
                             
-                        if pct_unb >= 20:
-                            count_unbalance += 1
-                            has_issue = True
-                            
-                        if not has_issue:
-                            count_normal += 1
+                        # เก็บ HTML ใส่ Cache ไว้ให้ตารางด้านล่างดึงไปใช้ต่อ
+                        pea_alert_cache[pea] = status_html
+                        
+                        # นับยอดกล่องด้านบน (ตัวเลขจะตรงกับป้ายเตือนที่ถูกสร้างเป๊ะๆ)
+                        if is_ovl: count_overload += 1
+                        if is_unb: count_unbalance += 1
+                        if not is_ovl and not is_unb and pct_load is not None: count_normal += 1
                 # ------------------------------------------------
 
                 # Dashboard Metric Cards
@@ -1316,29 +1341,9 @@ if client:
                             c3.write(kva_val)
                             c4.write(row.get('ระบบเฟส', '-'))
                             
-                            # --- คำนวณการแจ้งเตือน (ดึงจากฟังก์ชันกลาง) ---
-                            status_html = '<span style="color: gray;">-</span>'
-                            pct_load, pct_unb = calculate_transformer_status(df_master, df_record, pea)
+                            # --- ดึงการแจ้งเตือนจาก Cache (ไม่ต้องคำนวณใหม่ รับประกันตรงกับยอดสรุปด้านบน 100%) ---
+                            status_html = pea_alert_cache.get(pea, '<span style="color: gray; font-size: 0.8rem;">ไม่สามารถคำนวณได้</span>')
                             
-                            if pct_load is not None and pct_unb is not None:
-                                alerts = []
-                                if pct_load >= 100:
-                                    alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🔴 Overload {pct_load:.0f}%</span>')
-                                elif pct_load >= 80:
-                                    alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🟡 Load {pct_load:.0f}%</span>')
-                                    
-                                if pct_unb >= 30:
-                                    alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🔴 Unbalance {pct_unb:.0f}%</span>')
-                                elif pct_unb >= 20:
-                                    alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🟡 Unbalance {pct_unb:.0f}%</span>')
-                                    
-                                if alerts:
-                                    status_html = "<div style='display:flex; flex-direction:column; gap:4px; align-items:flex-start;'>" + "".join(alerts) + "</div>"
-                                else:
-                                    status_html = '<span style="background-color: #11998e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight:600;">🟢 ปกติ</span>'
-                            else:
-                                status_html = '<span style="color: gray; font-size: 0.8rem;">ไม่สามารถคำนวณได้</span>'
-                                
                             c5.markdown(status_html, unsafe_allow_html=True)
                             
                             st.markdown("---")
