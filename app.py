@@ -12,6 +12,7 @@ import random
 import io
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+from PIL import Image
 
 # --- 1. ตั้งค่าหน้าเว็บ Streamlit ---
 st.set_page_config(
@@ -398,6 +399,32 @@ def init_connection():
             return None
     return None
 
+def compress_image(img_bytes, max_width=1024, quality=75):
+    """
+    ฟังก์ชันสำหรับย่อขนาดและบีบอัดรูปภาพ
+    - max_width=1024 คือจำกัดความกว้างรูปไม่เกิน 1024 px
+    - quality=75 คือคุณภาพรูป JPEG (0-100) ซึ่ง 75 คือจุดที่สมดุลระหว่างความชัดและขนาดไฟล์
+    """
+    try:
+        img = Image.open(io.BytesIO(img_bytes))
+        
+        # แปลงเป็น RGB เสมอ เพื่อป้องกัน Error จากภาพ PNG ที่มีพื้นหลังใส
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+            
+        # ถ้ารูปใหญ่เกินไป ให้ย่อสัดส่วนลง
+        if img.width > max_width:
+            ratio = max_width / img.width
+            new_height = int(img.height * ratio)
+            img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+            
+        # บันทึกเป็น JPEG พร้อมบีบอัด
+        output_io = io.BytesIO()
+        img.save(output_io, format="JPEG", quality=quality)
+        return output_io.getvalue()
+    except Exception as e:
+        return img_bytes
+
 def upload_image_to_drive(file_bytes, folder_id, file_name):
     credentials = get_google_credentials()
     if not credentials:
@@ -408,7 +435,10 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             'name': file_name,
             'parents': [folder_id]
         }
-        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype='image/jpeg', resumable=True)
+        
+        compressed_bytes = compress_image(file_bytes)
+            
+        media = MediaIoBaseUpload(io.BytesIO(compressed_bytes), mimetype='image/jpeg', resumable=True)
         file = service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
         
         # Make the file viewable by anyone with the link
@@ -1067,7 +1097,9 @@ if client:
                 final_img_bytes_list = []
                 if uploaded_imgs:
                     for img in uploaded_imgs:
-                        final_img_bytes_list.append(img.getvalue())
+                        # --- นำภาพไปบีบอัดก่อนเก็บลงลิสต์ ---
+                        compressed_bytes = compress_image(img.getvalue())
+                        final_img_bytes_list.append(compressed_bytes)
                 
                 st.write("")
                 btn_label = "💾 บันทึกการแก้ไข (อัปเดตข้อมูล)" if is_edit_mode else "💾 บันทึกข้อมูลและตรวจสอบ"

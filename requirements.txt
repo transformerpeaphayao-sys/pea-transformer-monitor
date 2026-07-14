@@ -5,3 +5,5 @@ google-auth>=2.27.0
 folium>=0.15.0
 streamlit-folium>=0.17.0
 google-api-python-client>=2.100.0
+Pillow>=10.0.0
+
