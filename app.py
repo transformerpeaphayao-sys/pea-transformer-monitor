@@ -1474,7 +1474,7 @@ if client:
                         # 1. กรองด้วยข้อความ Search
                         mask = df_completed_master['PEANO หม้อแปลง'].astype(str).str.contains(search_completed, case=False, na=False) | \
                                df_completed_master['สถานที่'].astype(str).str.contains(search_completed, case=False, na=False)
-                        filtered_df = df_completed_master[mask]
+                        filtered_df = df_completed_master[mask].copy()
                         
                         # 2. กรองด้วยปุ่มสถานะที่กดเลือก
                         if summary_filter == "🔴 Overload (>80%)":
@@ -1483,6 +1483,24 @@ if client:
                             filtered_df = filtered_df[filtered_df['PEANO หม้อแปลง'].astype(str).map(pea_category_cache) == "unbalance"]
                         elif summary_filter == "🟢 ปกติ":
                             filtered_df = filtered_df[filtered_df['PEANO หม้อแปลง'].astype(str).map(pea_category_cache) == "normal"]
+                            
+                        # --- [เพิ่มใหม่] เรียงลำดับจากล่าสุดที่ตรวจ ขึ้นก่อนเสมอ ---
+                        if not df_record.empty and not filtered_df.empty:
+                            temp_rec = df_record.copy()
+                            col_date_r = "วันที่" if "วันที่" in temp_rec.columns else temp_rec.columns[0]
+                            col_time_r = "เวลา" if "เวลา" in temp_rec.columns else temp_rec.columns[1]
+                            temp_rec['DT'] = pd.to_datetime(
+                                temp_rec[col_date_r].astype(str) + ' ' + temp_rec[col_time_r].astype(str),
+                                format='%d/%m/%Y %H:%M:%S',
+                                errors='coerce'
+                            )
+                            # หาเวลาล่าสุดของแต่ละ PEA NO
+                            latest_dt_map = temp_rec.groupby(temp_rec['PEA NO'].astype(str))['DT'].max().to_dict()
+                            
+                            # นำเวลาล่าสุดมาแปะในตารางสรุป แล้วสั่งเรียงจากมากไปน้อย (ล่าสุดขึ้นบน)
+                            filtered_df['Latest_DT'] = filtered_df['PEANO หม้อแปลง'].astype(str).map(latest_dt_map)
+                            filtered_df = filtered_df.sort_values(by='Latest_DT', ascending=False)
+                        # ----------------------------------------------------
                         
                         st.markdown(f"<div style='font-size:0.9rem; margin-bottom:10px;'>📊 <b>ผลลัพธ์: {len(filtered_df)} รายการ</b></div>", unsafe_allow_html=True)
                         
