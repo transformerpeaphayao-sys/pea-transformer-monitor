@@ -435,10 +435,8 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             'name': file_name,
             'parents': [folder_id]
         }
-        
-        compressed_bytes = compress_image(file_bytes)
-            
-        media = MediaIoBaseUpload(io.BytesIO(compressed_bytes), mimetype='image/jpeg', resumable=True)
+        # นำ file_bytes ที่ถูกบีบอัดมาแล้วจากด้านล่าง มาใช้อัปโหลดได้เลย
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype='image/jpeg', resumable=True)
         file = service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
         
         # Make the file viewable by anyone with the link
