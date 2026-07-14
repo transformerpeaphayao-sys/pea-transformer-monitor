@@ -771,6 +771,21 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
+# --- Scroll to top on page change ---
+if "last_page" not in st.session_state:
+    st.session_state.last_page = st.session_state.page
+
+if st.session_state.last_page != st.session_state.page:
+    st.session_state.last_page = st.session_state.page
+    components.html("""
+        <script>
+            const body = window.parent.document.querySelector('.main');
+            if (body) {
+                body.scrollTo(0, 0);
+            }
+        </script>
+    """, height=0)
+
 # --- 5. Header Banner ---
 import base64
 icon_html = '<div class="icon">⚡</div>'
