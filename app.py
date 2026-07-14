@@ -1856,6 +1856,11 @@ if client:
                             col_n_h = "กระแส N" if "กระแส N" in hist_df.columns else "N" if "N" in hist_df.columns else hist_df.columns[7] if len(hist_df.columns) > 7 else ""
                             col_note_h = "หมายเหตุ" if "หมายเหตุ" in hist_df.columns else "Note" if "Note" in hist_df.columns else hist_df.columns[8] if len(hist_df.columns) > 8 else ""
                             
+                            session_counts = {}
+                            for _, r in hist_df.iterrows():
+                                sess = f"{r.get(col_date, '')}-{r.get(col_time, '')}"
+                                session_counts[sess] = session_counts.get(sess, 0) + 1
+                                
                             session_colors = ["#f0f7ff", "#fff8f0"]
                             session_idx = 0
                             prev_session = None
@@ -1866,9 +1871,12 @@ if client:
                             rows_html = ""
                             for _, row in hist_df.iterrows():
                                 current_session = f"{row.get(col_date, '')}-{row.get(col_time, '')}"
+                                
+                                is_first_row_of_session = False
                                 if current_session != prev_session:
                                     session_idx += 1
                                     prev_session = current_session
+                                    is_first_row_of_session = True
                                 
                                 bg = session_colors[session_idx % 2]
                                 feeder_val = str(row.get(col_feeder, '-'))
@@ -1879,30 +1887,36 @@ if client:
                                 c_val = row.get(col_c_h, '-')
                                 n_val = row.get(col_n_h, '-') if col_n_h else '-'
                                 note_val = row.get(col_note_h, '') if col_note_h else ''
-                                img_url_str = str(row.get("รูปถ่าย", ""))
-                                img_link = "-"
-                                if img_url_str:
-                                    urls = [u.strip() for u in img_url_str.split(",") if u.strip().startswith("http")]
-                                    if urls:
-                                        img_elements = []
-                                        for i, u in enumerate(urls):
-                                            direct_url = u
-                                            if "drive.google.com/file/d/" in u:
-                                                try:
-                                                    file_id = u.split("/d/")[1].split("/")[0]
-                                                    # ใช้ endpoint thumbnail ของ Google Drive ซึ่งอนุญาตให้แสดงผลข้ามเว็บได้
-                                                    direct_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w150-h150"
-                                                except:
-                                                    pass
-                                            img_elements.append(f"<a href='{u}' target='_blank'><img src='{direct_url}' style='width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #dee2e6; margin: 2px;' title='คลิกเพื่อดูรูปเต็ม' onerror=\"this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg';\"></a>")
-                                        img_link = "<div style='display:flex; flex-wrap:wrap; gap:5px; justify-content:center;'>" + "".join(img_elements) + "</div>"
+                                
+                                td_img = ""
+                                if is_first_row_of_session:
+                                    img_url_str = str(row.get("รูปถ่าย", ""))
+                                    img_link = "-"
+                                    if img_url_str:
+                                        urls = [u.strip() for u in img_url_str.split(",") if u.strip().startswith("http")]
+                                        if urls:
+                                            img_elements = []
+                                            for i, u in enumerate(urls):
+                                                direct_url = u
+                                                if "drive.google.com/file/d/" in u:
+                                                    try:
+                                                        file_id = u.split("/d/")[1].split("/")[0]
+                                                        # ใช้ endpoint thumbnail ของ Google Drive ซึ่งอนุญาตให้แสดงผลข้ามเว็บได้
+                                                        direct_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w150-h150"
+                                                    except:
+                                                        pass
+                                                img_elements.append(f"<a href='{u}' target='_blank'><img src='{direct_url}' style='width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #dee2e6; margin: 2px;' title='คลิกเพื่อดูรูปเต็ม' onerror=\"this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg';\"></a>")
+                                            img_link = "<div style='display:flex; flex-wrap:wrap; gap:5px; justify-content:center;'>" + "".join(img_elements) + "</div>"
+                                    
+                                    rowspan = session_counts[current_session]
+                                    td_img = f"<td rowspan='{rowspan}' style='{td_style}vertical-align:middle; background: #fff; border-left: 1px solid #e9ecef;'>{img_link}</td>"
                                 
                                 if is_total:
                                     td_total = td_style + "font-weight:700;border-bottom:3px solid #adb5bd;"
                                     feeder_display = f"<b style='color:#e94560;'>⚡ {feeder_val}</b>"
-                                    rows_html += f"<tr style='background:{bg};'><td style='{td_total}'>{row.get(col_date, '-')}</td><td style='{td_total}'>{row.get(col_time, '-')}</td><td style='{td_total}'>{feeder_display}</td><td style='{td_total}'>{a_val}</td><td style='{td_total}'>{b_val}</td><td style='{td_total}'>{c_val}</td><td style='{td_total}'>{n_val}</td><td style='{td_total}text-align:left;color:#6c757d;'>{note_val}</td><td style='{td_total}'>{img_link}</td></tr>"
+                                    rows_html += f"<tr style='background:{bg};'><td style='{td_total}'>{row.get(col_date, '-')}</td><td style='{td_total}'>{row.get(col_time, '-')}</td><td style='{td_total}'>{feeder_display}</td><td style='{td_total}'>{a_val}</td><td style='{td_total}'>{b_val}</td><td style='{td_total}'>{c_val}</td><td style='{td_total}'>{n_val}</td><td style='{td_total}text-align:left;color:#6c757d;'>{note_val}</td>{td_img}</tr>"
                                 else:
-                                    rows_html += f"<tr style='background:{bg};'><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style}'>{feeder_val}</td><td style='{td_style}'>{a_val}</td><td style='{td_style}'>{b_val}</td><td style='{td_style}'>{c_val}</td><td style='{td_style}'>{n_val}</td><td style='{td_style}text-align:left;color:#6c757d;'>{note_val}</td><td style='{td_style}'>{img_link}</td></tr>"
+                                    rows_html += f"<tr style='background:{bg};'><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style}'>{feeder_val}</td><td style='{td_style}'>{a_val}</td><td style='{td_style}'>{b_val}</td><td style='{td_style}'>{c_val}</td><td style='{td_style}'>{n_val}</td><td style='{td_style}text-align:left;color:#6c757d;'>{note_val}</td>{td_img}</tr>"
                             
                             full_html = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="{th_style}">📅 วันที่</th><th style="{th_style}">🕐 เวลา</th><th style="{th_style}">🔌 ฟีดเดอร์</th><th style="{th_style}">กระแส A</th><th style="{th_style}">กระแส B</th><th style="{th_style}">กระแส C</th><th style="{th_style}">กระแส N</th><th style="{th_style}">📝 หมายเหตุ</th><th style="{th_style}">📸 รูปถ่าย</th></tr></thead><tbody>{rows_html}</tbody></table></div>"""
                             
