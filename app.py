@@ -1905,11 +1905,12 @@ if client:
                                                         direct_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w150-h150"
                                                     except:
                                                         pass
-                                                img_elements.append(f"<a href='{u}' target='_blank'><img src='{direct_url}' style='width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #dee2e6; margin: 2px;' title='คลิกเพื่อดูรูปเต็ม' onerror=\"this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg';\"></a>")
-                                            img_link = "<div style='display:flex; flex-wrap:wrap; gap:5px; justify-content:center;'>" + "".join(img_elements) + "</div>"
+                                                img_elements.append(f"<a href='{u}' target='_blank' style='display:block; width:100%; height:100%;'><img src='{direct_url}' style='width: 100%; height: 100%; min-height: 100px; object-fit: cover; display: block;' title='คลิกเพื่อดูรูปเต็ม' onerror=\"this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg';\"></a>")
+                                            img_link = "<div style='display:flex; flex-direction:column; width:100%; height:100%;'>" + "".join(img_elements) + "</div>"
                                     
                                     rowspan = session_counts[current_session]
-                                    td_img = f"<td rowspan='{rowspan}' style='{td_style}vertical-align:middle; background: #fff; border-left: 1px solid #e9ecef;'>{img_link}</td>"
+                                    # ลบ padding ออกจาก td และตั้งค่าให้ภาพขยายเต็มกรอบ
+                                    td_img = f"<td rowspan='{rowspan}' style='padding: 0; text-align:center; border-bottom:1px solid #e9ecef; vertical-align:middle; background: #fff; border-left: 1px solid #e9ecef; width: 120px;'>{img_link}</td>"
                                 
                                 if is_total:
                                     td_total = td_style + "font-weight:700;border-bottom:3px solid #adb5bd;"
