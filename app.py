@@ -445,8 +445,8 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "folderId": folder_id
         }
         
-        # ส่ง POST Request
-        response = requests.post(web_app_url, data=payload)
+        # ส่ง POST Request เป็นรูปแบบ JSON เพื่อป้องกันการเกิด Error 500 (เมื่อข้อความยาวเกินไป)
+        response = requests.post(web_app_url, json=payload, timeout=20)
         
         # --- [ส่วนที่แก้ไข] ตรวจสอบคำตอบแบบข้อความธรรมดา (Plain Text) ---
         if response.status_code == 200:
