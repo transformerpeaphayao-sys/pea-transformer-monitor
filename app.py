@@ -1196,32 +1196,32 @@ if client:
                 
                 # --- สร้าง Cache เก็บสถานะและป้ายแจ้งเตือน (รับประกันยอดตรงกับตาราง 100%) ---
                 pea_alert_cache = {}
+                pea_category_cache = {} # เพิ่ม Cache สำหรับกรองข้อมูล
                 
                 if not df_record.empty and total_completed > 0:
                     for pea in completed_peas:
                         pct_load, pct_unb = calculate_transformer_status(df_master, df_record, pea)
                         
                         status_html = '<span style="color: gray;">-</span>'
-                        is_ovl = False
-                        is_unb = False
+                        cat = "normal"
                         
                         if pct_load is not None and pct_unb is not None:
                             alerts = []
-                            # 1. เช็ค Overload (>80%)
+                            # 1. เช็ค Overload (>80%) - ให้ความสำคัญสูงสุด (Worst-case)
                             if pct_load >= 100:
                                 alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🔴 Overload {pct_load:.0f}%</span>')
-                                is_ovl = True
+                                cat = "overload"
                             elif pct_load >= 80:
-                                alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🟡 Load {pct_load:.0f}%</span>')
-                                is_ovl = True
+                                alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; margin-bottom:4px; display:inline-block; font-weight:600;">🔴 Load {pct_load:.0f}%</span>')
+                                cat = "overload"
                                 
-                            # 2. เช็ค Unbalance (>20%)
+                            # 2. เช็ค Unbalance (>20%) - เปลี่ยนสีเป็นส้ม/เหลือง เพื่อไม่ให้สับสนกับ Overload
                             if pct_unb >= 30:
-                                alerts.append(f'<span style="background-color: #e94560; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🔴 Unbalance {pct_unb:.0f}%</span>')
-                                is_unb = True
+                                alerts.append(f'<span style="background-color: #fd7e14; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🟠 Unbalance {pct_unb:.0f}%</span>')
+                                if cat != "overload": cat = "unbalance"
                             elif pct_unb >= 20:
                                 alerts.append(f'<span style="background-color: #f7971e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; display:inline-block; font-weight:600;">🟡 Unbalance {pct_unb:.0f}%</span>')
-                                is_unb = True
+                                if cat != "overload": cat = "unbalance"
                                 
                             if alerts:
                                 status_html = "<div style='display:flex; flex-direction:column; gap:4px; align-items:flex-start;'>" + "".join(alerts) + "</div>"
@@ -1229,14 +1229,16 @@ if client:
                                 status_html = '<span style="background-color: #11998e; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight:600;">🟢 ปกติ</span>'
                         else:
                             status_html = '<span style="color: gray; font-size: 0.8rem;">ไม่สามารถคำนวณได้</span>'
+                            cat = "error"
                             
-                        # เก็บ HTML ใส่ Cache ไว้ให้ตารางด้านล่างดึงไปใช้ต่อ
+                        # เก็บลง Cache
                         pea_alert_cache[pea] = status_html
+                        pea_category_cache[pea] = cat
                         
-                        # นับยอดกล่องด้านบน (ตัวเลขจะตรงกับป้ายเตือนที่ถูกสร้างเป๊ะๆ)
-                        if is_ovl: count_overload += 1
-                        if is_unb: count_unbalance += 1
-                        if not is_ovl and not is_unb and pct_load is not None: count_normal += 1
+                        # นับยอดแบบ Mutually Exclusive (ไม่นับซ้ำซ้อน)
+                        if cat == "overload": count_overload += 1
+                        elif cat == "unbalance": count_unbalance += 1
+                        elif cat == "normal": count_normal += 1
                 # ------------------------------------------------
 
                 # Dashboard Metric Cards
@@ -1307,13 +1309,35 @@ if client:
                 tab1, tab2 = st.tabs(["✅ ทำเสร็จแล้ว", "⏳ ยังไม่เสร็จ"])
                 
                 with tab1:
+                    # --- [เพิ่มใหม่] เมนูกรองตามการแจ้งเตือน ---
+                    st.markdown("<div style='font-size:0.85rem; font-weight:600; color:#555; margin-bottom:8px;'>🎯 กรองดูเฉพาะสถานะ:</div>", unsafe_allow_html=True)
+                    summary_filter = st.radio(
+                        "กรองสถานะ",
+                        options=["ทั้งหมด", "🔴 Overload (>80%)", "🟠 Unbalance (>20%)", "🟢 ปกติ"],
+                        horizontal=True,
+                        label_visibility="collapsed"
+                    )
+                    st.write("") # เว้นบรรทัด
+                    # ----------------------------------------
+                    
                     search_completed = st.text_input("🔍 ค้นหาด้วย รหัส PEA หรือ สถานที่...", key="search_comp", placeholder="พิมพ์ค้นหา...")
                     if completed_peas:
                         df_completed_master = df_master[df_master['PEANO หม้อแปลง'].astype(str).isin(completed_peas)]
                         
+                        # 1. กรองด้วยข้อความ Search
                         mask = df_completed_master['PEANO หม้อแปลง'].astype(str).str.contains(search_completed, case=False, na=False) | \
                                df_completed_master['สถานที่'].astype(str).str.contains(search_completed, case=False, na=False)
                         filtered_df = df_completed_master[mask]
+                        
+                        # 2. กรองด้วยปุ่มสถานะที่กดเลือก
+                        if summary_filter == "🔴 Overload (>80%)":
+                            filtered_df = filtered_df[filtered_df['PEANO หม้อแปลง'].astype(str).map(pea_category_cache) == "overload"]
+                        elif summary_filter == "🟠 Unbalance (>20%)":
+                            filtered_df = filtered_df[filtered_df['PEANO หม้อแปลง'].astype(str).map(pea_category_cache) == "unbalance"]
+                        elif summary_filter == "🟢 ปกติ":
+                            filtered_df = filtered_df[filtered_df['PEANO หม้อแปลง'].astype(str).map(pea_category_cache) == "normal"]
+                        
+                        st.markdown(f"<div style='font-size:0.9rem; margin-bottom:10px;'>📊 <b>ผลลัพธ์: {len(filtered_df)} รายการ</b></div>", unsafe_allow_html=True)
                         
                         st.markdown("""
                         <div class="table-header">
