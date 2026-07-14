@@ -444,7 +444,7 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
         }
         
         # ส่ง POST Request
-        response = requests.post(web_app_url, json=payload)
+        response = requests.post(web_app_url, data=payload)
         
         if response.status_code == 200:
             result = response.json()
