@@ -1062,17 +1062,12 @@ if client:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                photo_tabs = st.tabs(["📷 ถ่ายรูปด้วยกล้อง", "📂 อัปโหลดไฟล์รูปภาพ"])
-                with photo_tabs[0]:
-                    camera_img = st.camera_input("ถ่ายรูปหน้างาน", label_visibility="collapsed")
-                with photo_tabs[1]:
-                    uploaded_img = st.file_uploader("เลือกไฟล์รูปภาพ (JPG, PNG)", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
-                    
-                final_img_bytes = None
-                if camera_img is not None:
-                    final_img_bytes = camera_img.getvalue()
-                elif uploaded_img is not None:
-                    final_img_bytes = uploaded_img.getvalue()
+                uploaded_imgs = st.file_uploader("📂 อัปโหลดไฟล์รูปภาพ (JPG, PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+                
+                final_img_bytes_list = []
+                if uploaded_imgs:
+                    for img in uploaded_imgs:
+                        final_img_bytes_list.append(img.getvalue())
                 
                 st.write("")
                 btn_label = "💾 บันทึกการแก้ไข (อัปเดตข้อมูล)" if is_edit_mode else "💾 บันทึกข้อมูลและตรวจสอบ"
@@ -1129,11 +1124,16 @@ if client:
 
                     with st.spinner("กำลังบันทึกข้อมูล... (ระบบอาจใช้เวลาสักครู่หากมีการใช้งานพร้อมกันหลายทีม)"):
                         
-                        img_url = ""
-                        if final_img_bytes:
-                            folder_id = "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC"
-                            file_name = f"{selected_pea}_{record_date.strftime('%Y%m%d')}_{record_time.strftime('%H%M%S')}.jpg"
-                            img_url = upload_image_to_drive(final_img_bytes, folder_id, file_name) or ""
+                        img_url_list = []
+                        folder_id = "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC"
+                        if final_img_bytes_list:
+                            for i, img_bytes in enumerate(final_img_bytes_list):
+                                file_name = f"{selected_pea}_{record_date.strftime('%Y%m%d')}_{record_time.strftime('%H%M%S')}_{i+1}.jpg"
+                                url = upload_image_to_drive(img_bytes, folder_id, file_name)
+                                if url:
+                                    img_url_list.append(url)
+                        
+                        img_url = ", ".join(img_url_list)
                         
                         # [สำคัญ] หากมีโค้ดลบข้อมูลเดิม (delete_record_session) อยู่นอกลูป ให้ลบทิ้งได้เลยครับ 
                         # เพราะเราจะนำระบบลบและแทรกใหม่ มารวมไว้ในลูป Retry เพื่อความปลอดภัยของข้อมูล
@@ -1816,8 +1816,12 @@ if client:
                                 c_val = row.get(col_c_h, '-')
                                 n_val = row.get(col_n_h, '-') if col_n_h else '-'
                                 note_val = row.get(col_note_h, '') if col_note_h else ''
-                                img_url = row.get("รูปถ่าย", "")
-                                img_link = f"<a href='{img_url}' target='_blank'>ดูรูปภาพ</a>" if str(img_url).startswith("http") else "-"
+                                img_url_str = str(row.get("รูปถ่าย", ""))
+                                img_link = "-"
+                                if img_url_str:
+                                    urls = [u.strip() for u in img_url_str.split(",") if u.strip().startswith("http")]
+                                    if urls:
+                                        img_link = "<br>".join([f"<a href='{u}' target='_blank'>📸 รูปที่ {i+1}</a>" for i, u in enumerate(urls)])
                                 
                                 if is_total:
                                     td_total = td_style + "font-weight:700;border-bottom:3px solid #adb5bd;"
