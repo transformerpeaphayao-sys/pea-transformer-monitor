@@ -947,10 +947,15 @@ if client:
                         st.rerun()
                         
                     # ดึงข้อมูลเดิมมาเตรียมไว้สำหรับกรอกลงฟอร์ม
+                    old_img_url = "" # [เพิ่มใหม่] ตัวแปรเก็บลิงก์รูปเก่า
                     old_df = df_record[(df_record['PEA NO'].astype(str) == st.session_state.edit_pea) &
                                        (df_record['วันที่'].astype(str) == st.session_state.edit_date) &
                                        (df_record['เวลา'].astype(str) == st.session_state.edit_time)]
                     for _, r in old_df.iterrows():
+                        # [เพิ่มใหม่] ตรวจสอบและเก็บลิงก์รูปเก่า
+                        if str(r.get("รูปถ่าย", "")) != "" and str(r.get("รูปถ่าย", "")) != "nan":
+                            old_img_url = str(r.get("รูปถ่าย", ""))
+                            
                         fname = str(r.get('ฟิดเดอร์', '')) if 'ฟิดเดอร์' in r else str(r.get('Feeder', ''))
                         fname = fname.strip()
                         col_a = "กระแส A" if "กระแส A" in r else "Ph A"
@@ -1156,14 +1161,27 @@ if client:
                         
                         img_url_list = []
                         folder_id = "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC"
+                        drive_upload_failed = False
+                        
                         if final_img_bytes_list:
                             for i, img_bytes in enumerate(final_img_bytes_list):
                                 file_name = f"{selected_pea}_{record_date.strftime('%Y%m%d')}_{record_time.strftime('%H%M%S')}_{i+1}.jpg"
                                 url = upload_image_to_drive(img_bytes, folder_id, file_name)
                                 if url:
                                     img_url_list.append(url)
-                        
+                                else:
+                                    drive_upload_failed = True
+                                    
+                        # --- [เพิ่มใหม่] หยุดระบบถ้าอัปโหลดรูปไม่เข้า เพื่อให้เห็น Error ชัดๆ ---
+                        if drive_upload_failed:
+                            st.error("❌ พบปัญหาในการส่งรูปภาพไปที่ Google Drive ข้อมูลยังไม่ถูกบันทึก! โปรดอ่าน Error ด้านบน 👆")
+                            st.stop()
+                            
                         img_url = ", ".join(img_url_list)
+                        
+                        # --- [เพิ่มใหม่] ป้องกันรูปเก่าหายเวลากด Edit แล้วไม่ได้อัปรูปใหม่ ---
+                        if is_edit_mode and not final_img_bytes_list:
+                            img_url = old_img_url
                         
                         # [สำคัญ] หากมีโค้ดลบข้อมูลเดิม (delete_record_session) อยู่นอกลูป ให้ลบทิ้งได้เลยครับ 
                         # เพราะเราจะนำระบบลบและแทรกใหม่ มารวมไว้ในลูป Retry เพื่อความปลอดภัยของข้อมูล
