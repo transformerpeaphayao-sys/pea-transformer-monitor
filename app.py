@@ -10,6 +10,8 @@ from streamlit_folium import st_folium
 import time
 import random
 import io
+import base64
+import requests
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from PIL import Image
@@ -426,29 +428,36 @@ def compress_image(img_bytes, max_width=1024, quality=75):
         return img_bytes
 
 def upload_image_to_drive(file_bytes, folder_id, file_name):
-    credentials = get_google_credentials()
-    if not credentials:
-        return None
+    # วาง_URL_WEB_APP_ที่นี่
+    web_app_url = "https://script.google.com/macros/s/AKfycbz9UX3kfH2c87qtiVuwyDB65RHC3nDjJAwGwTOEIIIYq4Bv5UIxc7_KvZS-aJzXGMN5kw/exec"
+    
     try:
-        service = build('drive', 'v3', credentials=credentials)
-        file_metadata = {
-            'name': file_name,
-            'parents': [folder_id]
-        }
-        # นำ file_bytes ที่ถูกบีบอัดมาแล้วจากด้านล่าง มาใช้อัปโหลดได้เลย
-        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype='image/jpeg', resumable=True)
-        file = service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
+        # เข้ารหัสไฟล์ภาพเป็น Base64
+        encoded_image = base64.b64encode(file_bytes).decode('utf-8')
         
-        # Make the file viewable by anyone with the link
-        permission = {
-            'type': 'anyone',
-            'role': 'reader',
+        # เตรียมข้อมูลสำหรับส่งไปให้ Google Apps Script
+        payload = {
+            "fileName": file_name,
+            "mimeType": "image/jpeg",
+            "fileData": encoded_image,
+            "folderId": folder_id
         }
-        service.permissions().create(fileId=file.get('id'), body=permission).execute()
         
-        return file.get('webViewLink')
+        # ส่ง POST Request
+        response = requests.post(web_app_url, json=payload)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("status") == "success":
+                return result.get("url")
+            else:
+                st.error(f"Upload Error (GAS): {result.get('message')}")
+                return None
+        else:
+            st.error(f"HTTP Error: {response.status_code}")
+            return None
     except Exception as e:
-        st.error(f"Upload Image Error: {e}")
+        st.error(f"Upload Image Exception: {e}")
         return None
 
 
