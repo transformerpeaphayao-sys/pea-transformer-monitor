@@ -446,12 +446,13 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
         # ส่ง POST Request
         response = requests.post(web_app_url, data=payload)
         
+        # --- [ส่วนที่แก้ไข] ตรวจสอบคำตอบแบบข้อความธรรมดา (Plain Text) ---
         if response.status_code == 200:
-            result = response.json()
-            if result.get("status") == "success":
-                return result.get("url")
+            response_text = str(response.text).strip()
+            if not response_text.startswith("Error"):
+                return response_text # คืนค่าเป็นลิงก์ URL ที่ใช้งานได้ทันที
             else:
-                st.error(f"Upload Error (GAS): {result.get('message')}")
+                st.error(f"Apps Script Error: {response_text}")
                 return None
         else:
             st.error(f"HTTP Error: {response.status_code}")
