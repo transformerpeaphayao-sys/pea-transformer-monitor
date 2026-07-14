@@ -777,12 +777,16 @@ if "last_page" not in st.session_state:
 
 if st.session_state.last_page != st.session_state.page:
     st.session_state.last_page = st.session_state.page
-    components.html("""
+    # ใส่ค่าเวลาสุ่มลงไปในโค้ด เพื่อบังคับให้ Streamlit รัน Script ทุกครั้งที่โค้ดเปลี่ยน (แก้ปัญหาแคช)
+    components.html(f"""
         <script>
-            const body = window.parent.document.querySelector('.main');
-            if (body) {
-                body.scrollTo(0, 0);
-            }
+            // {time.time()}
+            window.parent.scrollTo(0, 0);
+            window.parent.document.documentElement.scrollTop = 0;
+            const main = window.parent.document.querySelector('.main');
+            if (main) {{ main.scrollTo(0, 0); }}
+            const block = window.parent.document.querySelector('.block-container');
+            if (block) {{ block.scrollIntoView(); }}
         </script>
     """, height=0)
 
