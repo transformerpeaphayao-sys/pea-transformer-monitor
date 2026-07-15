@@ -1907,7 +1907,7 @@ if client:
                                 </div>
                                 <div>
                                     <span style="color: #6c757d;">สถานที่ติดตั้ง:</span> {loc}<br>
-                                    <span style="color: #6c757d;">พิกัด (Lat, Lng):</span> {lat}, {lng}
+                                    <span style="color: #6c757d;">พิกัด (Lat, Lng):</span> <a href="https://www.google.com/maps?layer=c&cbll={lat},{lng}" target="_blank" style="color:#2575fc; text-decoration:none; font-weight:600; border-bottom:1px dashed #2575fc;" title="คลิกเพื่อเปิด Google Street View">🗺️ {lat}, {lng}</a>
                                 </div>
                                 <div>
                                     <span style="color: #6c757d;">ตรวจวัดมาแล้ว:</span> <b>{unique_sessions}</b> ครั้ง
