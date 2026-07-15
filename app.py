@@ -1337,6 +1337,16 @@ if client:
                 total_pending = total_transformers - total_completed
                 pct = (total_completed / total_transformers * 100) if total_transformers > 0 else 0
                 
+                # --- [เพิ่มใหม่] นับจำนวนที่ทำวันนี้ ---
+                count_today = 0
+                if not df_record.empty:
+                    today_str = (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime("%d/%m/%Y")
+                    col_date = "วันที่" if "วันที่" in df_record.columns else df_record.columns[0]
+                    df_today = df_record[df_record[col_date].astype(str).str.strip() == today_str]
+                    if 'PEA NO' in df_today.columns:
+                        count_today = df_today['PEA NO'].nunique()
+                # ------------------------------------
+                
                 count_normal = 0
                 count_unbalance = 0
                 count_overload = 0
@@ -1407,16 +1417,22 @@ if client:
                 .bg-normal {{ background: linear-gradient(135deg, #00b09b, #96c93d); color: white; }}
                 .bg-unb {{ background: linear-gradient(135deg, #f12711, #f5af19); color: white; }}
                 .bg-ovl {{ background: linear-gradient(135deg, #ed213a, #93291e); color: white; }}
+                
+                .metric-today {{ background: linear-gradient(135deg, #36D1DC 0%, #5B86E5 100%); color: white; }}
                 </style>
                 
                 <div class="metric-row">
                     <div class="metric-card metric-total">
                         <p class="value">{total_transformers}</p>
-                        <p class="label">หม้อแปลงทั้งหมด (จุด)</p>
+                        <p class="label">หม้อแปลงทั้งหมด</p>
                     </div>
                     <div class="metric-card metric-done">
                         <p class="value">{total_completed}</p>
                         <p class="label">✅ ทำเสร็จแล้ว</p>
+                    </div>
+                    <div class="metric-card metric-today">
+                        <p class="value">{count_today}</p>
+                        <p class="label">📅 ทำวันนี้</p>
                     </div>
                     <div class="metric-card metric-pending">
                         <p class="value">{total_pending}</p>
