@@ -1666,53 +1666,39 @@ if client:
                         
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว (อัปเดตให้เปลี่ยนสีตัวเลขด้วย) ---
-                    st.markdown("""
-                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-                         onload="
-                            var attempts = 0;
-                            var timer = setInterval(function() {
-                                attempts++;
-                                if (attempts > 50) { clearInterval(timer); return; }
-                                // 1. ค้นหา Label ที่มีคำว่า 'Harmonic'
-                                var labels = document.querySelectorAll('label');
-                                for (var i = 0; i < labels.length; i++) {
-                                    if (labels[i].textContent.includes('Harmonic')) {
-                                        var sliderContainer = labels[i].closest('[data-testid=stSlider]');
-                                        if (sliderContainer) {
-                                            // 2. เปลี่ยนสีจุดกลม (Thumb)
-                                            var thumbs = sliderContainer.querySelectorAll('[role=slider]');
-                                            thumbs.forEach(function(thumb) {
-                                                thumb.style.setProperty('background-color', '#198754', 'important');
-                                                thumb.style.setProperty('border-color', '#198754', 'important');
-                                            });
-                                            // 3. เปลี่ยนสีเส้นแถบ (Track)
-                                            var allDivs = sliderContainer.querySelectorAll('div');
-                                            allDivs.forEach(function(div) {
-                                                var bg = window.getComputedStyle(div).backgroundColor;
-                                                if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'rgb(255, 255, 255)' && bg !== 'transparent') {
-                                                    if (div.getAttribute('role') !== 'slider' && div.getAttribute('data-baseweb') !== 'slider') {
-                                                        div.style.setProperty('background-color', '#198754', 'important');
-                                                    }
-                                                }
-                                            });
-                                            // 4. เปลี่ยนสีตัวอักษร 0 และ 250 ด้านล่าง (TickBar Text)
-                                            var texts = sliderContainer.querySelectorAll('div, span, p');
-                                            texts.forEach(function(txt) {
-                                                var color = window.getComputedStyle(txt).color;
-                                                if (color === 'rgb(255, 75, 75)' || color === 'rgb(233, 69, 96)') {
-                                                    txt.style.setProperty('color', '#198754', 'important');
-                                                }
-                                            });
-                                            clearInterval(timer);
-                                            return;
-                                        }
-                                    }
-                                }
-                            }, 300);
-                         "
-                         style="display:none;">
-                    """, unsafe_allow_html=True)
+                    # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว (ใช้ iframe srcdoc ซึ่งเป็น same-origin) ---
+                    st.markdown('''
+                    <iframe srcdoc='<html><body><script>
+                    var p=window.parent.document;
+                    var n=0;
+                    var t=setInterval(function(){
+                    n++;if(n>100){clearInterval(t);return;}
+                    var l=p.querySelectorAll("label");
+                    for(var i=0;i<l.length;i++){
+                    if(l[i].textContent.indexOf("Harmonic")>-1){
+                    var s=l[i].closest("[data-testid=stSlider]");
+                    if(!s)continue;
+                    s.querySelectorAll("[role=slider]").forEach(function(e){
+                    e.style.setProperty("background-color","#198754","important");
+                    e.style.setProperty("border-color","#198754","important");
+                    });
+                    s.querySelectorAll("div").forEach(function(e){
+                    var b=getComputedStyle(e).backgroundColor;
+                    if(b&&b!="rgba(0, 0, 0, 0)"&&b!="rgb(255, 255, 255)"&&b!="transparent"&&e.getAttribute("role")!="slider"&&!e.getAttribute("data-baseweb")){
+                    e.style.setProperty("background-color","#198754","important");
+                    }
+                    });
+                    s.querySelectorAll("div,span").forEach(function(e){
+                    var c=getComputedStyle(e).color;
+                    if(c=="rgb(255, 75, 75)"||c=="rgb(233, 69, 96)"){
+                    e.style.setProperty("color","#198754","important");
+                    }
+                    });
+                    clearInterval(t);return;
+                    }}
+                    },300);
+                    </script></body></html>' style='width:0;height:0;border:none;position:absolute;'></iframe>
+                    ''', unsafe_allow_html=True)
                     
                     # --- Data Processing ---
                     filtered_df = df_record.copy()
