@@ -1678,22 +1678,35 @@ if client:
                     if(l[i].textContent.indexOf("Harmonic")>-1){
                     var s=l[i].closest("[data-testid=stSlider]");
                     if(!s)continue;
-                    s.querySelectorAll("[role=slider]").forEach(function(e){
+                    
+                    var thumbs=s.querySelectorAll("[role=slider]");
+                    if(thumbs.length===0)continue;
+                    
+                    // 1. ดึงสีดั้งเดิม (สีแดง/ชมพูของธีม) จากปุ่มกลมก่อนที่เราจะเปลี่ยนมัน
+                    var originalColor = getComputedStyle(thumbs[0]).backgroundColor;
+                    
+                    // 2. เปลี่ยนสีจุดกลม (Thumb)
+                    thumbs.forEach(function(e){
                     e.style.setProperty("background-color","#198754","important");
                     e.style.setProperty("border-color","#198754","important");
                     });
+                    
+                    // 3. เปลี่ยนสีเส้นแถบ (Track) โดยหา div ที่มีสีพื้นหลังตรงกับสีดั้งเดิม
                     s.querySelectorAll("div").forEach(function(e){
-                    var b=getComputedStyle(e).backgroundColor;
-                    if(b&&b!="rgba(0, 0, 0, 0)"&&b!="rgb(255, 255, 255)"&&b!="transparent"&&e.getAttribute("role")!="slider"&&!e.getAttribute("data-baseweb")){
+                    if(getComputedStyle(e).backgroundColor === originalColor && e.getAttribute("role")!=="slider"){
                     e.style.setProperty("background-color","#198754","important");
                     }
                     });
+                    
+                    // 4. เปลี่ยนสีตัวอักษร 0 และ 250 ด้านล่าง (TickBar Text)
                     s.querySelectorAll("div,span").forEach(function(e){
                     var c=getComputedStyle(e).color;
-                    if(c=="rgb(255, 75, 75)"||c=="rgb(233, 69, 96)"){
+                    // ถ้าสีตัวอักษรตรงกับสีธีมเดิม ให้เปลี่ยนเป็นเขียวด้วย
+                    if(c === originalColor || c === "rgb(255, 75, 75)" || c === "rgb(233, 69, 96)"){
                     e.style.setProperty("color","#198754","important");
                     }
                     });
+                    
                     clearInterval(t);return;
                     }}
                     },300);
