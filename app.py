@@ -1682,12 +1682,21 @@ if client:
                     e.style.setProperty("background-color","#198754","important");
                     e.style.setProperty("border-color","#198754","important");
                     });
-                    s.querySelectorAll("div").forEach(function(e){
-                    var b=getComputedStyle(e).backgroundColor;
-                    if(b&&b!="rgba(0, 0, 0, 0)"&&b!="rgb(255, 255, 255)"&&b!="transparent"&&e.getAttribute("role")!="slider"&&!e.getAttribute("data-baseweb")){
-                    e.style.setProperty("background-color","#198754","important");
+                    var bw=s.querySelector("[data-baseweb=slider]");
+                    if(bw){
+                    var tw=bw.firstElementChild;
+                    if(tw){
+                    for(var k=0;k<tw.children.length;k++){
+                    var ch=tw.children[k];
+                    if(ch.getAttribute("role")!=="slider"){
+                    ch.style.setProperty("background-color","#198754","important");
+                    for(var m=0;m<ch.children.length;m++){
+                    ch.children[m].style.setProperty("background-color","#198754","important");
                     }
-                    });
+                    }
+                    }
+                    }
+                    }
                     s.querySelectorAll("div,span").forEach(function(e){
                     var c=getComputedStyle(e).color;
                     if(c=="rgb(255, 75, 75)"||c=="rgb(233, 69, 96)"){
