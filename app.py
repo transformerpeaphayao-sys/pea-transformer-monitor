@@ -1663,36 +1663,49 @@ if client:
                         filter_bitcoin = st.checkbox("👾 ค้นหาโหลดที่น่าสงสัย (Bitcoin / Harmonic สูง)", value=False, help="แสดงเฉพาะรายการที่มีกระแสในสายนิวทรอลสูงผิดปกติจนน่าสงสัยว่าจะเป็นเครื่องขุด Bitcoin หรือโหลด Non-linear ขนาดใหญ่")
                     with col_f7:
                         min_harm, max_harm = st.slider("ช่วงกระแส Harmonic แฝงที่ต้องการค้นหา (Amp)", min_value=0, max_value=250, value=(0, 250), step=5, help="ค้นหาหม้อแปลงที่มีกระแส Harmonic แฝงอยู่ในช่วงนี้")
-                        st.markdown("""
-                        <style>
-                        /* สไตล์สำหรับ slider ที่ถูกแปะ class 'green-slider' ผ่าน JS */
-                        .green-slider div[role="slider"] {
-                            background-color: #198754 !important;
-                            border-color: #198754 !important;
-                        }
-                        /* สำหรับ Range Slider เส้นเชื่อมระหว่าง thumb จะเป็น child ที่ 3 */
-                        .green-slider div[data-baseweb="slider"] > div:first-child > div:nth-child(3) {
-                            background-color: #198754 !important;
-                        }
-                        </style>
-                        """, unsafe_allow_html=True)
-                        import streamlit.components.v1 as components
-                        components.html("""
-                        <script>
-                        // ค้นหา label ของ Slider แล้วแปะคลาส green-slider ให้กับตัวครอบ
-                        const labels = window.parent.document.querySelectorAll('label');
-                        labels.forEach(label => {
-                            if (label.innerText.includes('Harmonic')) {
-                                const sliderDiv = label.closest('div[data-testid="stSlider"]');
-                                if (sliderDiv) {
-                                    sliderDiv.classList.add('green-slider');
-                                }
-                            }
-                        });
-                        </script>
-                        """, height=0)
                         
                     st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว ---
+                    import streamlit.components.v1 as components
+                    components.html("""
+                    <script>
+                    (function() {
+                        var attempts = 0;
+                        var timer = setInterval(function() {
+                            attempts++;
+                            if (attempts > 50) { clearInterval(timer); return; }
+                            
+                            var labels = window.parent.document.querySelectorAll('label');
+                            for (var i = 0; i < labels.length; i++) {
+                                if (labels[i].textContent.indexOf('Harmonic') !== -1) {
+                                    var sliderContainer = labels[i].closest('div[data-testid="stSlider"]');
+                                    if (!sliderContainer) continue;
+                                    
+                                    // เปลี่ยนสี thumb (ปุ่มกลม)
+                                    var thumbs = sliderContainer.querySelectorAll('div[role="slider"]');
+                                    for (var t = 0; t < thumbs.length; t++) {
+                                        thumbs[t].style.setProperty('background-color', '#198754', 'important');
+                                        thumbs[t].style.setProperty('border-color', '#198754', 'important');
+                                    }
+                                    
+                                    // เปลี่ยนสีเส้น track (เส้นเชื่อมระหว่าง thumb)
+                                    var tracks = sliderContainer.querySelectorAll('div[data-baseweb="slider"] > div > div');
+                                    for (var k = 0; k < tracks.length; k++) {
+                                        var bg = window.getComputedStyle(tracks[k]).backgroundColor;
+                                        if (bg && bg.indexOf('255') === -1 && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+                                            tracks[k].style.setProperty('background-color', '#198754', 'important');
+                                        }
+                                    }
+                                    
+                                    clearInterval(timer);
+                                    return;
+                                }
+                            }
+                        }, 200);
+                    })();
+                    </script>
+                    """, height=0)
                     
                     # --- Data Processing ---
                     filtered_df = df_record.copy()
