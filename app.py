@@ -1657,6 +1657,9 @@ if client:
                     with col_f5:
                         min_amp, max_amp = st.slider("ช่วงกระแสที่ต้องการค้นหา (Amp)", min_value=0, max_value=250, value=(0, 250), step=5, help="ค้นหาหม้อแปลงที่มีกระแสเฟสใดเฟสหนึ่งอยู่ในช่วงนี้")
                         
+                    st.markdown("**3. กรองค้นหาความผิดปกติ (Smart Grid)**")
+                    filter_bitcoin = st.checkbox("👾 ค้นหาโหลดที่น่าสงสัย (Bitcoin / Harmonic สูง)", value=False, help="แสดงเฉพาะรายการที่มีกระแสในสายนิวทรอลสูงผิดปกติจนน่าสงสัยว่าจะเป็นเครื่องขุด Bitcoin หรือโหลด Non-linear ขนาดใหญ่")
+                        
                     st.markdown('</div>', unsafe_allow_html=True)
                     
                     # --- Data Processing ---
@@ -1672,6 +1675,7 @@ if client:
                     col_a = "กระแส A" if "กระแส A" in filtered_df.columns else "Ph A" if "Ph A" in filtered_df.columns else filtered_df.columns[4]
                     col_b = "กระแส B" if "กระแส B" in filtered_df.columns else "Ph B" if "Ph B" in filtered_df.columns else filtered_df.columns[5]
                     col_c = "กระแส C" if "กระแส C" in filtered_df.columns else "Ph C" if "Ph C" in filtered_df.columns else filtered_df.columns[6]
+                    col_n_f = "กระแส N" if "กระแส N" in filtered_df.columns else "N" if "N" in filtered_df.columns else filtered_df.columns[7] if len(filtered_df.columns) > 7 else ""
                     
                     if exclude_total:
                         filtered_df = filtered_df[filtered_df[col_feeder].astype(str).str.strip() != "รวม"]
@@ -1686,6 +1690,17 @@ if client:
                         mask_c = (c_vals >= min_amp) & (c_vals <= max_amp)
                         
                         filtered_df = filtered_df[mask_a | mask_b | mask_c]
+
+                    if filter_bitcoin and not filtered_df.empty and col_n_f:
+                        def is_bitcoin_row(r):
+                            a = safe_float(r.get(col_a, 0))
+                            b = safe_float(r.get(col_b, 0))
+                            c = safe_float(r.get(col_c, 0))
+                            n = safe_float(r.get(col_n_f, 0))
+                            is_btc, _, _ = check_bitcoin_miner(a, b, c, n)
+                            return is_btc
+                        
+                        filtered_df = filtered_df[filtered_df.apply(is_bitcoin_row, axis=1)]
 
                         
                     def compute_status(row):
