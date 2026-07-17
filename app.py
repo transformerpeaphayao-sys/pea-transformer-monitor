@@ -1674,34 +1674,28 @@ if client:
                     var t=setInterval(function(){
                     n++;if(n>100){clearInterval(t);return;}
                     var l=p.querySelectorAll("label");
-                    Array.prototype.forEach.call(l,function(lb){
-                    if(lb.textContent.indexOf("Harmonic")>-1){
-                    var s=lb.closest("[data-testid=stSlider]");
-                    if(!s)return;
+                    for(var i=0;i<l.length;i++){
+                    if(l[i].textContent.indexOf("Harmonic")>-1){
+                    var s=l[i].closest("[data-testid=stSlider]");
+                    if(!s)continue;
                     s.querySelectorAll("[role=slider]").forEach(function(e){
                     e.style.setProperty("background-color","#198754","important");
                     e.style.setProperty("border-color","#198754","important");
                     });
-                    var bw=s.querySelector("[data-baseweb=slider]");
-                    if(bw&&bw.firstElementChild){
-                    Array.prototype.forEach.call(bw.firstElementChild.children,function(ch){
-                    if(ch.getAttribute("role")!=="slider"){
-                    ch.style.setProperty("background-color","#198754","important");
-                    Array.prototype.forEach.call(ch.children,function(gc){
-                    gc.style.setProperty("background-color","#198754","important");
-                    });
+                    s.querySelectorAll("div").forEach(function(e){
+                    var b=getComputedStyle(e).backgroundColor;
+                    if(b&&b!="rgba(0, 0, 0, 0)"&&b!="rgb(255, 255, 255)"&&b!="transparent"&&e.getAttribute("role")!="slider"&&!e.getAttribute("data-baseweb")){
+                    e.style.setProperty("background-color","#198754","important");
                     }
                     });
-                    }
                     s.querySelectorAll("div,span").forEach(function(e){
                     var c=getComputedStyle(e).color;
                     if(c=="rgb(255, 75, 75)"||c=="rgb(233, 69, 96)"){
                     e.style.setProperty("color","#198754","important");
                     }
                     });
-                    clearInterval(t);
-                    }
-                    });
+                    clearInterval(t);return;
+                    }}
                     },300);
                     </script></body></html>' style='width:0;height:0;border:none;position:absolute;'></iframe>
                     ''', unsafe_allow_html=True)
