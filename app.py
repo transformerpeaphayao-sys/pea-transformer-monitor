@@ -1658,7 +1658,11 @@ if client:
                         min_amp, max_amp = st.slider("ช่วงกระแสที่ต้องการค้นหา (Amp)", min_value=0, max_value=250, value=(0, 250), step=5, help="ค้นหาหม้อแปลงที่มีกระแสเฟสใดเฟสหนึ่งอยู่ในช่วงนี้")
                         
                     st.markdown("**3. กรองค้นหาความผิดปกติ (Smart Grid)**")
-                    filter_bitcoin = st.checkbox("👾 ค้นหาโหลดที่น่าสงสัย (Bitcoin / Harmonic สูง)", value=False, help="แสดงเฉพาะรายการที่มีกระแสในสายนิวทรอลสูงผิดปกติจนน่าสงสัยว่าจะเป็นเครื่องขุด Bitcoin หรือโหลด Non-linear ขนาดใหญ่")
+                    col_f6, col_f7 = st.columns([1, 2])
+                    with col_f6:
+                        filter_bitcoin = st.checkbox("👾 ค้นหาโหลดที่น่าสงสัย (Bitcoin / Harmonic สูง)", value=False, help="แสดงเฉพาะรายการที่มีกระแสในสายนิวทรอลสูงผิดปกติจนน่าสงสัยว่าจะเป็นเครื่องขุด Bitcoin หรือโหลด Non-linear ขนาดใหญ่")
+                    with col_f7:
+                        min_harm, max_harm = st.slider("ช่วงกระแส Harmonic แฝงที่ต้องการค้นหา (Amp)", min_value=0, max_value=250, value=(0, 250), step=5, help="ค้นหาหม้อแปลงที่มีกระแส Harmonic แฝงอยู่ในช่วงนี้")
                         
                     st.markdown('</div>', unsafe_allow_html=True)
                     
@@ -1691,16 +1695,24 @@ if client:
                         
                         filtered_df = filtered_df[mask_a | mask_b | mask_c]
 
-                    if filter_bitcoin and not filtered_df.empty and col_n_f:
-                        def is_bitcoin_row(r):
+                    if (filter_bitcoin or min_harm > 0 or max_harm < 250) and not filtered_df.empty and col_n_f:
+                        def is_smart_grid_match(r):
                             a = safe_float(r.get(col_a, 0))
                             b = safe_float(r.get(col_b, 0))
                             c = safe_float(r.get(col_c, 0))
                             n = safe_float(r.get(col_n_f, 0))
-                            is_btc, _, _ = check_bitcoin_miner(a, b, c, n)
-                            return is_btc
+                            is_btc, harm_amp, _ = check_bitcoin_miner(a, b, c, n)
+                            
+                            if filter_bitcoin and not is_btc:
+                                return False
+                                
+                            if min_harm > 0 or max_harm < 250:
+                                if not (min_harm <= harm_amp <= max_harm):
+                                    return False
+                                    
+                            return True
                         
-                        filtered_df = filtered_df[filtered_df.apply(is_bitcoin_row, axis=1)]
+                        filtered_df = filtered_df[filtered_df.apply(is_smart_grid_match, axis=1)]
 
                         
                     def compute_status(row):
