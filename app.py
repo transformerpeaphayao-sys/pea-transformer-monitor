@@ -1662,22 +1662,35 @@ if client:
                     with col_f6:
                         filter_bitcoin = st.checkbox("👾 ค้นหาโหลดที่น่าสงสัย (Bitcoin / Harmonic สูง)", value=False, help="แสดงเฉพาะรายการที่มีกระแสในสายนิวทรอลสูงผิดปกติจนน่าสงสัยว่าจะเป็นเครื่องขุด Bitcoin หรือโหลด Non-linear ขนาดใหญ่")
                     with col_f7:
+                        min_harm, max_harm = st.slider("ช่วงกระแส Harmonic แฝงที่ต้องการค้นหา (Amp)", min_value=0, max_value=250, value=(0, 250), step=5, help="ค้นหาหม้อแปลงที่มีกระแส Harmonic แฝงอยู่ในช่วงนี้")
                         st.markdown("""
                         <style>
-                        /* เปลี่ยนสี Slider ในบรรทัดที่ 3 (Harmonic) ให้เป็นสีเขียว */
-                        div[data-testid="stHorizontalBlock"]:nth-of-type(3) div[data-testid="stSlider"] div[role="slider"] {
+                        /* สไตล์สำหรับ slider ที่ถูกแปะ class 'green-slider' ผ่าน JS */
+                        .green-slider div[role="slider"] {
                             background-color: #198754 !important;
                             border-color: #198754 !important;
                         }
-                        div[data-testid="stHorizontalBlock"]:nth-of-type(3) div[data-testid="stSlider"] div[data-baseweb="slider"] > div:nth-child(1) > div:nth-child(1) {
-                            background-color: #198754 !important;
-                        }
-                        div[data-testid="stHorizontalBlock"]:nth-of-type(3) div[data-testid="stSlider"] div[data-baseweb="slider"] > div:nth-child(1) > div:nth-child(3) {
+                        /* สำหรับ Range Slider เส้นเชื่อมระหว่าง thumb จะเป็น child ที่ 3 */
+                        .green-slider div[data-baseweb="slider"] > div:first-child > div:nth-child(3) {
                             background-color: #198754 !important;
                         }
                         </style>
                         """, unsafe_allow_html=True)
-                        min_harm, max_harm = st.slider("ช่วงกระแส Harmonic แฝงที่ต้องการค้นหา (Amp)", min_value=0, max_value=250, value=(0, 250), step=5, help="ค้นหาหม้อแปลงที่มีกระแส Harmonic แฝงอยู่ในช่วงนี้")
+                        import streamlit.components.v1 as components
+                        components.html("""
+                        <script>
+                        // ค้นหา label ของ Slider แล้วแปะคลาส green-slider ให้กับตัวครอบ
+                        const labels = window.parent.document.querySelectorAll('label');
+                        labels.forEach(label => {
+                            if (label.innerText.includes('Harmonic')) {
+                                const sliderDiv = label.closest('div[data-testid="stSlider"]');
+                                if (sliderDiv) {
+                                    sliderDiv.classList.add('green-slider');
+                                }
+                            }
+                        });
+                        </script>
+                        """, height=0)
                         
                     st.markdown('</div>', unsafe_allow_html=True)
                     
