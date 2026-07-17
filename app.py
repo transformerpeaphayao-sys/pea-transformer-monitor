@@ -1666,36 +1666,55 @@ if client:
                         
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว (ใช้ img onload trick เพื่อรันใน main DOM) ---
+                    # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว (อัปเดตให้เปลี่ยนสีตัวเลขด้วย) ---
                     st.markdown("""
                     <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                          onload="
-                            var self = this;
                             var attempts = 0;
                             var timer = setInterval(function() {
                                 attempts++;
                                 if (attempts > 50) { clearInterval(timer); return; }
-                                var labels = document.querySelectorAll('label');
+                                
+                                // 1. ค้นหา Label ที่มีคำว่า 'Harmonic'
+                                var labels = document.querySelectorAll('[data-testid=\\'stWidgetLabel\\']');
                                 for (var i = 0; i < labels.length; i++) {
-                                    if (labels[i].textContent.indexOf('Harmonic') !== -1) {
-                                        var sc = labels[i].closest('div[data-testid=stSlider]');
-                                        if (!sc) continue;
-                                        var thumbs = sc.querySelectorAll('div[role=slider]');
-                                        for (var t = 0; t < thumbs.length; t++) {
-                                            thumbs[t].style.setProperty('background-color','#198754','important');
-                                            thumbs[t].style.setProperty('border-color','#198754','important');
-                                        }
-                                        var allDivs = sc.querySelectorAll('div[data-baseweb=slider] div');
-                                        for (var k = 0; k < allDivs.length; k++) {
-                                            var bg = window.getComputedStyle(allDivs[k]).backgroundColor;
-                                            if (bg && bg.indexOf('rgb') !== -1 && bg.indexOf('255, 255, 255') === -1 && bg !== 'rgba(0, 0, 0, 0)') {
-                                                if (allDivs[k].getAttribute('role') !== 'slider') {
-                                                    allDivs[k].style.setProperty('background-color','#198754','important');
+                                    if (labels[i].textContent.includes('Harmonic')) {
+                                        var sliderContainer = labels[i].closest('[data-testid=\\'stSlider\\']');
+                                        
+                                        if (sliderContainer) {
+                                            // 2. เปลี่ยนสีจุดกลม (Thumb)
+                                            var thumbs = sliderContainer.querySelectorAll('[role=\\'slider\\']');
+                                            thumbs.forEach(function(thumb) {
+                                                thumb.style.setProperty('background-color', '#198754', 'important'); // สีเขียว Success
+                                                thumb.style.setProperty('border-color', '#198754', 'important');
+                                            });
+                                            
+                                            // 3. เปลี่ยนสีเส้นแถบ (Track)
+                                            var allDivs = sliderContainer.querySelectorAll('div');
+                                            allDivs.forEach(function(div) {
+                                                var bg = window.getComputedStyle(div).backgroundColor;
+                                                // จับเฉพาะ Element ที่มีสีพื้นหลังเป็นสีแดง/ชมพู (สีธีมหลัก)
+                                                if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'rgb(255, 255, 255)' && bg !== 'transparent') {
+                                                    if (div.getAttribute('role') !== 'slider' && div.getAttribute('data-baseweb') !== 'slider') {
+                                                        div.style.setProperty('background-color', '#198754', 'important');
+                                                    }
                                                 }
-                                            }
+                                            });
+                                            
+                                            // 4. เปลี่ยนสีตัวอักษร 0 และ 250 ด้านล่าง (TickBar Text)
+                                            var texts = sliderContainer.querySelectorAll('div, span, p');
+                                            texts.forEach(function(txt) {
+                                                var color = window.getComputedStyle(txt).color;
+                                                // Streamlit มักจะใช้ค่าสี RGB ประมาณ 255, 75, 75 สำหรับธีมแดง
+                                                // หากตรวจพบว่าไม่ใช่สีข้อความปกติ (ดำ/เทา) ให้เปลี่ยนเป็นสีเขียว
+                                                if (color === 'rgb(255, 75, 75)' || color === 'rgb(233, 69, 96)') {
+                                                    txt.style.setProperty('color', '#198754', 'important');
+                                                }
+                                            });
+                    
+                                            clearInterval(timer);
+                                            return;
                                         }
-                                        clearInterval(timer);
-                                        return;
                                     }
                                 }
                             }, 300);
