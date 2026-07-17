@@ -1845,16 +1845,35 @@ if client:
                                     td_first += f"<td rowspan='{r_span}' style='{td_s}vertical-align:middle; background:{bg};'>{pea_link}</td>"
                                     rows_f += td_first
                                 
+                                a_val = row.get(col_a_f, '-')
+                                b_val = row.get(col_b_f, '-')
+                                c_val = row.get(col_c_f, '-')
+                                n_val = row.get(col_n_f, '-') if col_n_f else '-'
+                                
+                                # คำนวณ N อุดมคติ และ ฮาร์มอนิกแฝง
+                                a_float = safe_float(a_val)
+                                b_float = safe_float(b_val)
+                                c_float = safe_float(c_val)
+                                n_float = safe_float(n_val)
+                                is_btc, harm_amp, in_cal = check_bitcoin_miner(a_float, b_float, c_float, n_float)
+                                
+                                in_cal_str = f"{in_cal:.2f}" if (a_float or b_float or c_float) else "-"
+                                harm_str = f"{harm_amp:.2f}" if (a_float or b_float or c_float) else "-"
+                                harm_color = "#842029" if is_btc else "#333"
+                                harm_bg = "#f8d7da" if is_btc else "transparent"
+                                
                                 rows_f += f"<td style='{td_s}'>{row.get(col_feeder_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}font-weight:600;'>{row.get(col_a_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}font-weight:600;'>{row.get(col_b_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}font-weight:600;'>{row.get(col_c_f, '-')}</td>"
-                                rows_f += f"<td style='{td_s}'>{row.get(col_n_f, '-') if col_n_f else '-'}</td>"
+                                rows_f += f"<td style='{td_s}font-weight:600;'>{a_val}</td>"
+                                rows_f += f"<td style='{td_s}font-weight:600;'>{b_val}</td>"
+                                rows_f += f"<td style='{td_s}font-weight:600;'>{c_val}</td>"
+                                rows_f += f"<td style='{td_s}'>{n_val}</td>"
+                                rows_f += f"<td style='{td_s}color:#6c757d;'>{in_cal_str}</td>"
+                                rows_f += f"<td style='{td_s}color:{harm_color};background:{harm_bg};font-weight:600;'>{harm_str}</td>"
                                 rows_f += f"<td style='{td_s}text-align:left;font-size:0.75rem;color:#6c757d;'>{row.get(col_note_f, '') if col_note_f else ''}</td>"
                                 rows_f += f"<td style='{td_s}'>{status_badge}</td>"
                                 rows_f += "</tr>"
                             
-                            filter_table = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="{th_s}">📅 วันที่</th><th style="{th_s}">🕐 เวลา</th><th style="{th_s}">🔗 PEA NO</th><th style="{th_s}">🔌 ฟีดเดอร์</th><th style="{th_s}">A</th><th style="{th_s}">B</th><th style="{th_s}">C</th><th style="{th_s}">N</th><th style="{th_s}">📝 หมายเหตุ</th><th style="{th_s}">⚡ Status</th></tr></thead><tbody>{rows_f}</tbody></table></div>"""
+                            filter_table = f"""<div style="border-radius:10px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.1);overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:1000px;"><thead><tr><th style="{th_s}">📅 วันที่</th><th style="{th_s}">🕐 เวลา</th><th style="{th_s}">🔗 PEA NO</th><th style="{th_s}">🔌 ฟีดเดอร์</th><th style="{th_s}">A</th><th style="{th_s}">B</th><th style="{th_s}">C</th><th style="{th_s}">N (วัด)</th><th style="{th_s}">N (คำนวณ)</th><th style="{th_s}">Harmonic แฝง</th><th style="{th_s}">📝 หมายเหตุ</th><th style="{th_s}">⚡ Status</th></tr></thead><tbody>{rows_f}</tbody></table></div>"""
                             
                             st.markdown(filter_table, unsafe_allow_html=True)
                         # Chart if PEA is selected
