@@ -1675,13 +1675,13 @@ if client:
                                 attempts++;
                                 if (attempts > 50) { clearInterval(timer); return; }
                                 // 1. ค้นหา Label ที่มีคำว่า 'Harmonic'
-                                var labels = document.querySelectorAll('[data-testid=\\'stWidgetLabel\\']');
+                                var labels = document.querySelectorAll('label');
                                 for (var i = 0; i < labels.length; i++) {
                                     if (labels[i].textContent.includes('Harmonic')) {
-                                        var sliderContainer = labels[i].closest('[data-testid=\\'stSlider\\']');
+                                        var sliderContainer = labels[i].closest('[data-testid=stSlider]');
                                         if (sliderContainer) {
                                             // 2. เปลี่ยนสีจุดกลม (Thumb)
-                                            var thumbs = sliderContainer.querySelectorAll('[role=\\'slider\\']');
+                                            var thumbs = sliderContainer.querySelectorAll('[role=slider]');
                                             thumbs.forEach(function(thumb) {
                                                 thumb.style.setProperty('background-color', '#198754', 'important');
                                                 thumb.style.setProperty('border-color', '#198754', 'important');
