@@ -340,6 +340,36 @@ button[kind="primary"]:hover {
 """, unsafe_allow_html=True)
 
 # --- Helper Functions ---
+
+def check_bitcoin_miner(ia, ib, ic, in_measured):
+    """
+    ฟังก์ชันตรวจสอบแนวโน้มเหมืองขุด Bitcoin จากกระแส Harmonic
+    return: (is_suspicious (bool), harmonic_current (float), in_cal (float))
+    """
+    # 1. ป้องกันกรณีข้อมูลว่าง
+    ia = safe_float(ia)
+    ib = safe_float(ib)
+    ic = safe_float(ic)
+    in_measured = safe_float(in_measured)
+    
+    # 2. คำนวณกระแสนิวทรอลทางทฤษฎี (เวกเตอร์)
+    sqrt3_over_2 = math.sqrt(3) / 2
+    real_part = ia - (0.5 * ib) - (0.5 * ic)
+    imag_part = (sqrt3_over_2 * ic) - (sqrt3_over_2 * ib)
+    
+    in_cal = math.sqrt((real_part ** 2) + (imag_part ** 2))
+    
+    # 3. หากระแส Harmonic แฝง (วัดได้จริง ลบด้วย ทฤษฎี)
+    harmonic_current = in_measured - in_cal
+    
+    # 4. ตั้งเกณฑ์ความน่าสงสัย (เกณฑ์นี้ กฟภ. สามารถปรับจูนได้ตามหน้างาน)
+    # ตัวอย่าง: ถ้ากระแส Harmonic สูงกว่า 15A และมากกว่ากระแสคำนวณเกิน 30% ให้ถือว่าน่าสงสัย
+    is_suspicious = False
+    if harmonic_current > 15.0 and in_measured > (in_cal * 1.30):
+        is_suspicious = True
+        
+    return is_suspicious, harmonic_current, in_cal
+
 def safe_float(val, default=0.0):
     import re
     try:
@@ -2002,6 +2032,30 @@ if client:
                                 pct_load, pct_unb = calculate_transformer_status(df_master, df_record, search_pea)
                                 if pct_load is not None and pct_unb is not None:
                                     alerts = []
+                                    
+                                    # --- [เพิ่มใหม่] ตรวจสอบเหมืองขุด Bitcoin ---
+                                    try:
+                                        col_feeder_alert = "ฟิดเดอร์" if "ฟิดเดอร์" in hist_df.columns else "Feeder" if "Feeder" in hist_df.columns else hist_df.columns[3]
+                                        col_a_alert = "กระแส A" if "กระแส A" in hist_df.columns else "Ph A" if "Ph A" in hist_df.columns else hist_df.columns[4]
+                                        col_b_alert = "กระแส B" if "กระแส B" in hist_df.columns else "Ph B" if "Ph B" in hist_df.columns else hist_df.columns[5]
+                                        col_c_alert = "กระแส C" if "กระแส C" in hist_df.columns else "Ph C" if "Ph C" in hist_df.columns else hist_df.columns[6]
+                                        col_n_alert = "กระแส N" if "กระแส N" in hist_df.columns else "N" if "N" in hist_df.columns else hist_df.columns[7] if len(hist_df.columns) > 7 else ""
+                                        
+                                        # หา record ที่เป็น "รวม" 
+                                        total_rows = hist_df[hist_df[col_feeder_alert].astype(str).str.strip() == "รวม"]
+                                        if not total_rows.empty:
+                                            latest_total = total_rows.iloc[-1]
+                                            a_val = safe_float(latest_total.get(col_a_alert, 0))
+                                            b_val = safe_float(latest_total.get(col_b_alert, 0))
+                                            c_val = safe_float(latest_total.get(col_c_alert, 0))
+                                            n_val = safe_float(latest_total.get(col_n_alert, 0)) if col_n_alert else 0
+                                            
+                                            is_btc, harm_amp, in_cal = check_bitcoin_miner(a_val, b_val, c_val, n_val)
+                                            if is_btc:
+                                                alerts.append(f"<li>👾 <b style='color:#842029;'>Suspicious Load (Bitcoin?):</b> พบกระแสนิวทรอลสูงผิดปกติ วัดได้ {n_val:.2f}A แต่คำนวณทางเวกเตอร์ได้เพียง {in_cal:.2f}A (กระแส Harmonic แฝงสูงถึง {harm_amp:.2f}A) มีโอกาสพบโหลดกลุ่มเหมืองขุดสูงมาก</li>")
+                                    except Exception as e:
+                                        pass
+                                    # ----------------------------------------
                                     if pct_unb > 30:
                                         alerts.append(f"<li>🚨 <b>Severe Unbalance:</b> ความไม่สมดุลขั้นวิกฤต ({pct_unb:.2f}%) อาจทำให้เกิดความร้อนสะสมและแรงดันตกหล่นรุนแรง</li>")
                                     elif pct_unb > 20:
