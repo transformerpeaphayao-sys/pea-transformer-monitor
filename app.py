@@ -1674,28 +1674,24 @@ if client:
                     var t=setInterval(function(){
                     n++;if(n>100){clearInterval(t);return;}
                     var l=p.querySelectorAll("label");
-                    for(var i=0;i<l.length;i++){
-                    if(l[i].textContent.indexOf("Harmonic")>-1){
-                    var s=l[i].closest("[data-testid=stSlider]");
-                    if(!s)continue;
+                    Array.prototype.forEach.call(l,function(lb){
+                    if(lb.textContent.indexOf("Harmonic")>-1){
+                    var s=lb.closest("[data-testid=stSlider]");
+                    if(!s)return;
                     s.querySelectorAll("[role=slider]").forEach(function(e){
                     e.style.setProperty("background-color","#198754","important");
                     e.style.setProperty("border-color","#198754","important");
                     });
                     var bw=s.querySelector("[data-baseweb=slider]");
-                    if(bw){
-                    var tw=bw.firstElementChild;
-                    if(tw){
-                    for(var k=0;k<tw.children.length;k++){
-                    var ch=tw.children[k];
+                    if(bw&&bw.firstElementChild){
+                    Array.prototype.forEach.call(bw.firstElementChild.children,function(ch){
                     if(ch.getAttribute("role")!=="slider"){
                     ch.style.setProperty("background-color","#198754","important");
-                    for(var m=0;m<ch.children.length;m++){
-                    ch.children[m].style.setProperty("background-color","#198754","important");
+                    Array.prototype.forEach.call(ch.children,function(gc){
+                    gc.style.setProperty("background-color","#198754","important");
+                    });
                     }
-                    }
-                    }
-                    }
+                    });
                     }
                     s.querySelectorAll("div,span").forEach(function(e){
                     var c=getComputedStyle(e).color;
@@ -1703,8 +1699,9 @@ if client:
                     e.style.setProperty("color","#198754","important");
                     }
                     });
-                    clearInterval(t);return;
-                    }}
+                    clearInterval(t);
+                    }
+                    });
                     },300);
                     </script></body></html>' style='width:0;height:0;border:none;position:absolute;'></iframe>
                     ''', unsafe_allow_html=True)
