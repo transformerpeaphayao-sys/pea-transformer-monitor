@@ -1667,6 +1667,7 @@ if client:
                     st.markdown('</div>', unsafe_allow_html=True)
                     
                     # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว (ใช้ iframe srcdoc ซึ่งเป็น same-origin) ---
+                    # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว (ใช้ iframe srcdoc ซึ่งเป็น same-origin) ---
                     st.markdown('''
                     <iframe srcdoc='<html><body><script>
                     var p=window.parent.document;
@@ -1678,35 +1679,24 @@ if client:
                     if(l[i].textContent.indexOf("Harmonic")>-1){
                     var s=l[i].closest("[data-testid=stSlider]");
                     if(!s)continue;
-                    
                     var thumbs=s.querySelectorAll("[role=slider]");
                     if(thumbs.length===0)continue;
-                    
-                    // 1. ดึงสีดั้งเดิม (สีแดง/ชมพูของธีม) จากปุ่มกลมก่อนที่เราจะเปลี่ยนมัน
-                    var originalColor = getComputedStyle(thumbs[0]).backgroundColor;
-                    
-                    // 2. เปลี่ยนสีจุดกลม (Thumb)
+                    var originalColor=getComputedStyle(thumbs[0]).backgroundColor;
                     thumbs.forEach(function(e){
                     e.style.setProperty("background-color","#198754","important");
                     e.style.setProperty("border-color","#198754","important");
                     });
-                    
-                    // 3. เปลี่ยนสีเส้นแถบ (Track) โดยหา div ที่มีสีพื้นหลังตรงกับสีดั้งเดิม
                     s.querySelectorAll("div").forEach(function(e){
-                    if(getComputedStyle(e).backgroundColor === originalColor && e.getAttribute("role")!=="slider"){
+                    if(getComputedStyle(e).backgroundColor===originalColor && e.getAttribute("role")!=="slider"){
                     e.style.setProperty("background-color","#198754","important");
                     }
                     });
-                    
-                    // 4. เปลี่ยนสีตัวอักษร 0 และ 250 ด้านล่าง (TickBar Text)
                     s.querySelectorAll("div,span").forEach(function(e){
                     var c=getComputedStyle(e).color;
-                    // ถ้าสีตัวอักษรตรงกับสีธีมเดิม ให้เปลี่ยนเป็นเขียวด้วย
-                    if(c === originalColor || c === "rgb(255, 75, 75)" || c === "rgb(233, 69, 96)"){
+                    if(c===originalColor || c==="rgb(255, 75, 75)" || c==="rgb(233, 69, 96)"){
                     e.style.setProperty("color","#198754","important");
                     }
                     });
-                    
                     clearInterval(t);return;
                     }}
                     },300);
