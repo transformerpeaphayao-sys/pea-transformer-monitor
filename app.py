@@ -1666,46 +1666,42 @@ if client:
                         
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว ---
-                    import streamlit.components.v1 as components
-                    components.html("""
-                    <script>
-                    (function() {
-                        var attempts = 0;
-                        var timer = setInterval(function() {
-                            attempts++;
-                            if (attempts > 50) { clearInterval(timer); return; }
-                            
-                            var labels = window.parent.document.querySelectorAll('label');
-                            for (var i = 0; i < labels.length; i++) {
-                                if (labels[i].textContent.indexOf('Harmonic') !== -1) {
-                                    var sliderContainer = labels[i].closest('div[data-testid="stSlider"]');
-                                    if (!sliderContainer) continue;
-                                    
-                                    // เปลี่ยนสี thumb (ปุ่มกลม)
-                                    var thumbs = sliderContainer.querySelectorAll('div[role="slider"]');
-                                    for (var t = 0; t < thumbs.length; t++) {
-                                        thumbs[t].style.setProperty('background-color', '#198754', 'important');
-                                        thumbs[t].style.setProperty('border-color', '#198754', 'important');
-                                    }
-                                    
-                                    // เปลี่ยนสีเส้น track (เส้นเชื่อมระหว่าง thumb)
-                                    var tracks = sliderContainer.querySelectorAll('div[data-baseweb="slider"] > div > div');
-                                    for (var k = 0; k < tracks.length; k++) {
-                                        var bg = window.getComputedStyle(tracks[k]).backgroundColor;
-                                        if (bg && bg.indexOf('255') === -1 && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
-                                            tracks[k].style.setProperty('background-color', '#198754', 'important');
+                    # --- JS: เปลี่ยนสี Slider Harmonic เป็นสีเขียว (ใช้ img onload trick เพื่อรันใน main DOM) ---
+                    st.markdown("""
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                         onload="
+                            var self = this;
+                            var attempts = 0;
+                            var timer = setInterval(function() {
+                                attempts++;
+                                if (attempts > 50) { clearInterval(timer); return; }
+                                var labels = document.querySelectorAll('label');
+                                for (var i = 0; i < labels.length; i++) {
+                                    if (labels[i].textContent.indexOf('Harmonic') !== -1) {
+                                        var sc = labels[i].closest('div[data-testid=stSlider]');
+                                        if (!sc) continue;
+                                        var thumbs = sc.querySelectorAll('div[role=slider]');
+                                        for (var t = 0; t < thumbs.length; t++) {
+                                            thumbs[t].style.setProperty('background-color','#198754','important');
+                                            thumbs[t].style.setProperty('border-color','#198754','important');
                                         }
+                                        var allDivs = sc.querySelectorAll('div[data-baseweb=slider] div');
+                                        for (var k = 0; k < allDivs.length; k++) {
+                                            var bg = window.getComputedStyle(allDivs[k]).backgroundColor;
+                                            if (bg && bg.indexOf('rgb') !== -1 && bg.indexOf('255, 255, 255') === -1 && bg !== 'rgba(0, 0, 0, 0)') {
+                                                if (allDivs[k].getAttribute('role') !== 'slider') {
+                                                    allDivs[k].style.setProperty('background-color','#198754','important');
+                                                }
+                                            }
+                                        }
+                                        clearInterval(timer);
+                                        return;
                                     }
-                                    
-                                    clearInterval(timer);
-                                    return;
                                 }
-                            }
-                        }, 200);
-                    })();
-                    </script>
-                    """, height=0)
+                            }, 300);
+                         "
+                         style="display:none;">
+                    """, unsafe_allow_html=True)
                     
                     # --- Data Processing ---
                     filtered_df = df_record.copy()
