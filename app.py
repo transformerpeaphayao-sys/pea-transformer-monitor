@@ -2084,13 +2084,13 @@ if client:
                                             img_elements = []
                                             for i, u in enumerate(urls):
                                                 direct_url = u
-                                                if "drive.google.com/file/d/" in u:
-                                                    try:
-                                                        file_id = u.split("/d/")[1].split("/")[0]
-                                                        # ใช้ endpoint thumbnail ของ Google Drive ซึ่งอนุญาตให้แสดงผลข้ามเว็บได้
-                                                        direct_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w150-h150"
-                                                    except:
-                                                        pass
+                                                import re
+                                                # ใช้ Regex เพื่อดึง File ID รองรับทั้งรูปแบบ /d/ID/ และ ?id=ID
+                                                match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
+                                                if match:
+                                                    file_id = match.group(1)
+                                                    # ใช้ endpoint thumbnail ของ Google Drive ซึ่งอนุญาตให้แสดงผลข้ามเว็บได้
+                                                    direct_url = f"https://drive.google.com/thumbnail?id={file_id}&sz=w150-h150"
                                                 img_elements.append(f"<a href='{u}' target='_blank' style='flex: 1;'><img src='{direct_url}' style='width: 100%; height: 100%; min-height: 100px; object-fit: cover; display: block;' title='คลิกเพื่อดูรูปเต็ม' onerror=\"this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg';\"></a>")
                                             img_link = "<div style='display:flex; flex-direction:row; width:100%; height:100%;'>" + "".join(img_elements) + "</div>"
                                     
