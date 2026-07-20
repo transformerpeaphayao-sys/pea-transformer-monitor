@@ -803,7 +803,7 @@ with st.sidebar:
             pin = st.text_input("🔑 รหัส PIN", type="password", placeholder="ใส่รหัส 6 หลัก", label_visibility="visible")
             submitted = st.form_submit_button("🔓 เข้าสู่ระบบ", use_container_width=True)
             if submitted:
-                if pin == "123456": # สามารถเปลี่ยนรหัสผ่านตรงนี้ได้
+                if pin == "054449523": # สามารถเปลี่ยนรหัสผ่านตรงนี้ได้
                     st.session_state.backoffice_unlocked = True
                     st.rerun()
                 elif pin != "":
