@@ -771,23 +771,44 @@ with st.sidebar:
         st.rerun()
     
     st.markdown("<div style='font-size:0.75rem; color:#a0a0a0; font-weight:600; margin-bottom:8px; margin-top:15px; padding-left:5px; white-space:nowrap; letter-spacing:-0.2px;'>💻 สำหรับหลังบ้าน (Back Office)</div>", unsafe_allow_html=True)
-    
-    if st.button("📊  สรุปผลงาน", use_container_width=True):
-        st.session_state.page = "Summary"
-        st.rerun()
-        
-    if st.button("🔍  กรองข้อมูล (Filter)", use_container_width=True):
-        st.session_state.page = "Filter"
-        st.rerun()
-        
-    if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
-        st.session_state.page = "Profile"
-        st.session_state.selected_pea_for_profile = None 
-        st.rerun()
-        
-    if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
-        st.session_state.page = "Register"
-        st.rerun()
+    if "backoffice_unlocked" not in st.session_state:
+        st.session_state.backoffice_unlocked = False
+
+    if not st.session_state.backoffice_unlocked:
+        st.markdown("<div style='font-size:0.7rem; color:#a0a0a0; padding-left:5px;'>กรุณาใส่รหัสเพื่อเข้าถึงเมนูนี้</div>", unsafe_allow_html=True)
+        col_pin1, col_pin2 = st.columns([2, 1])
+        with col_pin1:
+            pin = st.text_input("PIN", type="password", label_visibility="collapsed", placeholder="รหัส PIN")
+        with col_pin2:
+            if st.button("เข้าสู่ระบบ", use_container_width=True):
+                if pin == "123456": # สามารถเปลี่ยนรหัสผ่านตรงนี้ได้
+                    st.session_state.backoffice_unlocked = True
+                    st.rerun()
+                elif pin != "":
+                    st.error("ผิด!")
+    else:
+        if st.button("📊  สรุปผลงาน", use_container_width=True):
+            st.session_state.page = "Summary"
+            st.rerun()
+            
+        if st.button("🔍  กรองข้อมูล (Filter)", use_container_width=True):
+            st.session_state.page = "Filter"
+            st.rerun()
+            
+        if st.button("📋  ประวัติหม้อแปลง", use_container_width=True):
+            st.session_state.page = "Profile"
+            st.session_state.selected_pea_for_profile = None 
+            st.rerun()
+            
+        if st.button("➕  ลงทะเบียนหม้อแปลง", use_container_width=True):
+            st.session_state.page = "Register"
+            st.rerun()
+            
+        st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+        if st.button("🔒 ออกจากระบบ (Lock)", use_container_width=True, type="primary"):
+            st.session_state.backoffice_unlocked = False
+            st.session_state.page = "Map" # เด้งกลับหน้าแผนที่
+            st.rerun()
 
     
     st.markdown("---")
