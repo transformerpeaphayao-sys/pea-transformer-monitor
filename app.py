@@ -775,17 +775,16 @@ with st.sidebar:
         st.session_state.backoffice_unlocked = False
 
     if not st.session_state.backoffice_unlocked:
-        st.markdown("<div style='font-size:0.7rem; color:#a0a0a0; padding-left:5px;'>กรุณาใส่รหัสเพื่อเข้าถึงเมนูนี้</div>", unsafe_allow_html=True)
-        col_pin1, col_pin2 = st.columns([2, 1])
-        with col_pin1:
-            pin = st.text_input("PIN", type="password", label_visibility="collapsed", placeholder="รหัส PIN")
-        with col_pin2:
-            if st.button("เข้าสู่ระบบ", use_container_width=True):
+        with st.form("pin_form", border=False):
+            st.markdown("<div style='font-size:0.7rem; color:#a0a0a0; padding-left:5px; margin-bottom:-10px;'>กรุณาใส่รหัสเพื่อเข้าถึงเมนูนี้</div>", unsafe_allow_html=True)
+            pin = st.text_input("PIN", type="password", label_visibility="collapsed", placeholder="รหัส PIN 6 หลัก")
+            submitted = st.form_submit_button("🔓 เข้าสู่ระบบ", use_container_width=True)
+            if submitted:
                 if pin == "123456": # สามารถเปลี่ยนรหัสผ่านตรงนี้ได้
                     st.session_state.backoffice_unlocked = True
                     st.rerun()
                 elif pin != "":
-                    st.error("ผิด!")
+                    st.error("รหัส PIN ไม่ถูกต้อง!")
     else:
         if st.button("📊  สรุปผลงาน", use_container_width=True):
             st.session_state.page = "Summary"
