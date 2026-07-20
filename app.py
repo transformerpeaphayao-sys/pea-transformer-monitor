@@ -775,16 +775,39 @@ with st.sidebar:
         st.session_state.backoffice_unlocked = False
 
     if not st.session_state.backoffice_unlocked:
-        with st.form("pin_form", border=False):
-            st.markdown("<div style='font-size:0.7rem; color:#a0a0a0; padding-left:5px; margin-bottom:-10px;'>กรุณาใส่รหัสเพื่อเข้าถึงเมนูนี้</div>", unsafe_allow_html=True)
-            pin = st.text_input("PIN", type="password", label_visibility="collapsed", placeholder="รหัส PIN 6 หลัก")
+        st.markdown("""
+        <style>
+        div[data-testid="stForm"] {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px 10px 8px 10px;
+        }
+        div[data-testid="stForm"] button[kind="secondaryFormSubmit"] {
+            background: linear-gradient(135deg, #198754, #20c997);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            padding: 6px 0;
+            margin-top: -5px;
+        }
+        div[data-testid="stForm"] button[kind="secondaryFormSubmit"]:hover {
+            background: linear-gradient(135deg, #20c997, #198754);
+            transform: scale(1.02);
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        with st.form("pin_form", border=True):
+            pin = st.text_input("🔑 รหัส PIN", type="password", placeholder="ใส่รหัส 6 หลัก", label_visibility="visible")
             submitted = st.form_submit_button("🔓 เข้าสู่ระบบ", use_container_width=True)
             if submitted:
                 if pin == "123456": # สามารถเปลี่ยนรหัสผ่านตรงนี้ได้
                     st.session_state.backoffice_unlocked = True
                     st.rerun()
                 elif pin != "":
-                    st.error("รหัส PIN ไม่ถูกต้อง!")
+                    st.error("❌ รหัส PIN ไม่ถูกต้อง!")
     else:
         if st.button("📊  สรุปผลงาน", use_container_width=True):
             st.session_state.page = "Summary"
