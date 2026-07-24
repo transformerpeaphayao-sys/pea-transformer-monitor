@@ -405,6 +405,11 @@ def load_custom_css():
         background-color: #f8fafc !important;
         border: 1px solid #cbd5e1 !important;
     }
+    div[data-testid="stSegmentedControl"] button {
+        font-size: 0.75rem !important;
+        padding: 0.25rem 0.6rem !important;
+        min-height: 1.8rem !important;
+    }
     
     /* บังคับให้ปุ่มและตัวกรองอยู่บรรทัดเดียวกันบนมือถือ (ถ้ารองรับ :has) */
     @media (max-width: 768px) {

@@ -187,47 +187,12 @@ if client:
             # หน้าที่ 1: MAP PAGE
             # ==============================
             if st.session_state.page == "Map":
-                col_title, col_ref = st.columns([1, 0.3], vertical_alignment="center")
-                with col_title:
-                    st.markdown("<div class='title-with-button-marker'></div><h4 style='margin:0;'>🗺️ แผนที่ตำแหน่งหม้อแปลง</h4>", unsafe_allow_html=True)
-                with col_ref:
-                    if st.button("🔄 รีเฟรช", use_container_width=False):
-                        load_completed_data.clear()
-                        load_task_data.clear()
-                        load_master_data.clear()
-                        st.rerun()
-                
-                # --- ใช้ JavaScript บังคับให้บรรทัดนี้เรียงแนวนอน 100% (แก้ปัญหา CSS บนมือถือบางรุ่น) ---
-                import streamlit.components.v1 as components
-                components.html("""
-                <script>
-                    const cols = window.parent.document.querySelectorAll('div[data-testid="column"]');
-                    cols.forEach(col => {
-                        const btn = col.querySelector('button');
-                        if(btn && btn.innerText.includes('รีเฟรช')) {
-                            const row = col.closest('div[data-testid="stHorizontalBlock"]');
-                            if(row) {
-                                row.style.setProperty('flex-direction', 'row', 'important');
-                                row.style.setProperty('flex-wrap', 'nowrap', 'important');
-                                row.style.setProperty('align-items', 'center', 'important');
-                                row.style.setProperty('justify-content', 'flex-start', 'important');
-                                row.style.setProperty('gap', '15px', 'important');
-                                col.style.setProperty('width', 'auto', 'important');
-                                col.style.setProperty('min-width', '0', 'important');
-                                col.style.setProperty('flex', '0 0 max-content', 'important');
-                                
-                                // ปรับคอลัมน์หัวข้อให้ยืดหยุ่น
-                                const titleCol = row.firstElementChild;
-                                if(titleCol) {
-                                    titleCol.style.setProperty('width', 'auto', 'important');
-                                    titleCol.style.setProperty('flex', '0 1 auto', 'important');
-                                    titleCol.style.setProperty('min-width', '0', 'important');
-                                }
-                            }
-                        }
-                    });
-                </script>
-                """, height=0)
+                st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
+                if st.button("🔄 รีเฟรช", use_container_width=False):
+                    load_completed_data.clear()
+                    load_task_data.clear()
+                    load_master_data.clear()
+                    st.rerun()
                 
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
