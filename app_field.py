@@ -104,20 +104,20 @@ if st.session_state.last_page != st.session_state.page:
 
 # --- 5. Header Banner ---
 import base64
-icon_html = '<div class="pea-logo-placeholder">PEA</div>'
+icon_html = '<div style="font-weight:bold; font-size:24px; color:white;">PEA</div>'
 if os.path.exists("pea-logo.png"):
     with open("pea-logo.png", "rb") as img_file:
         logo_base64 = base64.b64encode(img_file.read()).decode('utf-8')
-        icon_html = f'<img class="pea-logo" src="data:image/png;base64,{logo_base64}">'
+        icon_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 55px; height: 55px; object-fit: contain;">'
 
 st.markdown(f"""
-<div class="app-header">
-    <div class="header-logo-container">
+<div style="background: linear-gradient(90deg, #6d1852 0%, #8a1f68 100%); padding: 1.2rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; align-items: center; flex-wrap: wrap; gap: 15px; border-bottom: 4px solid #c7940a;">
+    <div style="display: flex; align-items: center; justify-content: center;">
         {icon_html}
     </div>
-    <div class="header-text-container">
-        <p class="title">ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA</p>
-        <p class="subtitle">Transformer Load Monitoring System</p>
+    <div style="flex: 1; min-width: 250px;">
+        <p style="font-size: 1.3rem; font-weight: 700; color: white; margin: 0; letter-spacing: 0.5px; line-height: 1.4; word-break: keep-all;">ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA</p>
+        <p style="font-size: 0.85rem; font-weight: 400; color: rgba(255, 255, 255, 0.85); margin: 0; margin-top: 2px;">Transformer Load Monitoring System</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
