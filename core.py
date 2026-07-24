@@ -367,6 +367,18 @@ def load_custom_css():
         font-size: 1.05rem;
         box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     }
+    
+    /* ปรับขนาดหัวข้อ Modal/Dialog (เช่น ข้อมูลหม้อแปลง) ให้เล็กลงบนมือถือ */
+    div[data-testid="stDialog"] h2 {
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
+        padding-bottom: 0px !important;
+        margin-bottom: 0px !important;
+    }
+    div[data-testid="stDialog"] header {
+        padding-bottom: 0.5rem !important;
+        min-height: auto !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
