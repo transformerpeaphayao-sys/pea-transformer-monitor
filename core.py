@@ -327,31 +327,32 @@ def load_custom_css():
     .tr-info-banner {
         display: flex;
         flex-wrap: wrap;
-        gap: 20px;
+        gap: 10px 12px; /* ลดช่องว่าง */
         background: linear-gradient(to right, #ffffff, #f8fafc);
         border: 1px solid #e2e8f0;
         border-left: 5px solid var(--pea-gold);
-        padding: 12px 20px;
+        padding: 10px 12px; /* ลดกรอบ */
         border-radius: 8px;
-        margin: 5px 0 15px 0;
+        margin: 5px 0 10px 0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .tr-info-item {
         display: flex;
         flex-direction: column;
-        flex: 1;
-        min-width: 120px;
+        flex: 1 1 45%; /* บังคับให้อยู่ 2 คอลัมน์แบบพอดีๆ */
+        min-width: 110px;
     }
     .tr-info-item .lbl {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: #64748b;
         font-weight: 600;
         margin-bottom: 2px;
     }
     .tr-info-item .val {
-        font-size: 0.95rem;
+        font-size: 0.85rem; /* ลดขนาดตัวอักษรเนื้อหา */
         font-weight: 700;
         color: var(--primary-pea);
+        line-height: 1.2;
     }
     /* Feeder Card Title */
     .feeder-card-title {
