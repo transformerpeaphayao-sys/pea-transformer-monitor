@@ -327,13 +327,36 @@ if client:
 
                 # === โหมดการทำงาน ===
                 st.markdown('<div class="section-card"><div class="pea-card-header">โหมดการบันทึกข้อมูล</div>', unsafe_allow_html=True)
-                task_mode = st.segmented_control(
-                    "เลือกฟังก์ชันที่ต้องการบันทึก:",
-                    options=["⚡ วัดกระแส (รวดเร็ว)", "📊 วัดโหลด+วิเคราะห์ไฟตก"],
-                    default="📊 วัดโหลด+วิเคราะห์ไฟตก"
-                )
-                if task_mode is None:
-                    task_mode = "📊 วัดโหลด+วิเคราะห์ไฟตก"
+                
+                if "task_mode_selected" not in st.session_state:
+                    st.session_state.task_mode_selected = "full"
+                
+                col_m1, col_m2 = st.columns(2)
+                with col_m1:
+                    if st.button("⚡ วัดกระแส\n(รวดเร็ว)", use_container_width=True, key="btn_mode_quick"):
+                        st.session_state.task_mode_selected = "quick"
+                        st.rerun()
+                with col_m2:
+                    if st.button("📊 วัดโหลด+\nวิเคราะห์ไฟตก", use_container_width=True, key="btn_mode_full"):
+                        st.session_state.task_mode_selected = "full"
+                        st.rerun()
+                
+                # ไฮไลท์ปุ่มที่ถูกเลือกอยู่ด้วย CSS
+                active_idx = 1 if st.session_state.task_mode_selected == "quick" else 2
+                st.markdown(f"""
+                <style>
+                    div[data-testid="stHorizontalBlock"]:has([data-testid="stButton"] button[kind="secondary"][key="btn_mode_quick"]) {{}}
+                    /* ไฮไลท์ปุ่มที่เลือก */
+                    div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child({active_idx}) button {{
+                        background: linear-gradient(135deg, #7b2d8e 0%, #5b1d6e 100%) !important;
+                        color: white !important;
+                        border: none !important;
+                        box-shadow: 0 4px 12px rgba(123, 45, 142, 0.4) !important;
+                    }}
+                </style>
+                """, unsafe_allow_html=True)
+                
+                task_mode = "⚡ วัดกระแส (รวดเร็ว)" if st.session_state.task_mode_selected == "quick" else "📊 วัดโหลด+วิเคราะห์ไฟตก"
                 st.markdown('</div>', unsafe_allow_html=True)
 
                 # === Section 1: ข้อมูลทั่วไป ===
