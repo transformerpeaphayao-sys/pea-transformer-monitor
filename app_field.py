@@ -104,16 +104,18 @@ if st.session_state.last_page != st.session_state.page:
 
 # --- 5. Header Banner ---
 import base64
-icon_html = '<div class="icon">⚡</div>'
+icon_html = '<div class="pea-logo-placeholder">PEA</div>'
 if os.path.exists("pea-logo.png"):
     with open("pea-logo.png", "rb") as img_file:
         logo_base64 = base64.b64encode(img_file.read()).decode('utf-8')
-        icon_html = f'<img src="data:image/png;base64,{logo_base64}" style="width:45px; height:45px; object-fit:contain; margin-right:15px;">'
+        icon_html = f'<img class="pea-logo" src="data:image/png;base64,{logo_base64}">'
 
 st.markdown(f"""
-<div class="app-header" style="display:flex; align-items:center;">
-    {icon_html}
-    <div>
+<div class="app-header">
+    <div class="header-logo-container">
+        {icon_html}
+    </div>
+    <div class="header-text-container">
         <p class="title">ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA</p>
         <p class="subtitle">Transformer Load Monitoring System</p>
     </div>
@@ -204,7 +206,7 @@ if client:
                     # --- [เพิ่มใหม่] ตัวกรองประเภทหมุด ---
                     map_filter = st.segmented_control(
                         "กรองประเภทงาน:",
-                        options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจสอบซ้ำ"],
+                        options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
                         default="ทั้งหมด",
                         label_visibility="collapsed"
                     )
@@ -214,7 +216,7 @@ if client:
                     # ตัดข้อมูลตามที่ผู้ใช้เลือก
                     if map_filter == "🔴 ยังไม่ตรวจ":
                         map_data = map_data[map_data['MarkerColor'] == 'red']
-                    elif map_filter == "🟠 สั่งตรวจสอบซ้ำ":
+                    elif map_filter == "🟠 สั่งตรวจซ้ำ":
                         map_data = map_data[map_data['MarkerColor'] == 'orange']
                     # -----------------------------------
                     

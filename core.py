@@ -58,11 +58,22 @@ def load_custom_css():
         background: linear-gradient(90deg, var(--primary-pea) 0%, #8a1f68 100%); /* ไล่ระดับสีม่วง PEA */
         padding: 1.2rem 2rem;
         border-radius: 12px;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         display: flex;
         align-items: center;
         border-bottom: 4px solid var(--pea-gold); /* แทรกสีทองให้ดูพรีเมียม */
+    }
+    .header-logo-container {
+        margin-right: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pea-logo {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
     }
     .app-header .title {
         font-size: 1.4rem;
@@ -70,6 +81,7 @@ def load_custom_css():
         color: white;
         margin: 0;
         letter-spacing: 0.5px;
+        line-height: 1.3;
     }
     .app-header .subtitle {
         font-size: 0.85rem;
@@ -77,6 +89,34 @@ def load_custom_css():
         color: rgba(255, 255, 255, 0.85);
         margin: 0;
         margin-top: 4px;
+    }
+    
+    /* Responsive Header for Mobile */
+    @media (max-width: 768px) {
+        .app-header {
+            flex-direction: column;
+            text-align: center;
+            padding: 1.2rem 1rem;
+            gap: 8px;
+        }
+        .header-logo-container {
+            margin-right: 0;
+            margin-bottom: 4px;
+        }
+        .pea-logo {
+            width: 55px;
+            height: 55px;
+        }
+        .app-header .title {
+            font-size: 1.15rem; /* ลดขนาดฟอนต์บนมือถือ ป้องกันคำตกหล่น */
+        }
+        .app-header .subtitle {
+            font-size: 0.75rem;
+        }
+        /* ย่อหัวข้อ Map ให้พอดีจอมือถือ */
+        h4 {
+            font-size: 1.15rem !important;
+        }
     }
     
     /* ===== Sidebar ===== */
