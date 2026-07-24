@@ -429,13 +429,13 @@ def load_custom_css():
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             align-items: center !important;
-            justify-content: space-between !important;
-            gap: 10px !important;
+            justify-content: flex-start !important; /* จัดให้อยู่ชิดซ้ายใกล้กัน */
+            gap: 15px !important; /* ระยะห่างระหว่างหัวข้อกับปุ่ม */
             margin-bottom: 5px !important;
         }
         div[data-testid="stHorizontalBlock"]:has(.title-with-button-marker) > div[data-testid="column"] {
             width: auto !important;
-            flex: 1 1 auto !important;
+            flex: 0 1 auto !important; /* ไม่ให้ขยายเต็มพื้นที่ */
             min-width: 0 !important;
             padding: 0 !important;
         }
