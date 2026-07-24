@@ -379,6 +379,51 @@ def load_custom_css():
         padding-bottom: 0.5rem !important;
         min-height: auto !important;
     }
+    
+    /* ตกแต่งปุ่ม (Button) ให้มีมิติและเล็กลง */
+    div[data-testid="stButton"] button {
+        border-radius: 8px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0,0,0,0.08) !important;
+        border: 1px solid #cbd5e1 !important;
+        transition: all 0.2s ease !important;
+        padding: 0.35rem 1rem !important; /* ลดความสูงของปุ่ม */
+        min-height: 2.2rem !important;
+        background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+        color: #334155 !important;
+        font-weight: 600 !important;
+    }
+    div[data-testid="stButton"] button:active {
+        transform: translateY(2px) !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    /* ตกแต่ง Segmented Control ให้มีมิติ */
+    div[data-testid="stSegmentedControl"] {
+        border-radius: 8px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0,0,0,0.08) !important;
+        padding: 2px !important;
+        background-color: #f8fafc !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    
+    /* บังคับให้ปุ่มและตัวกรองอยู่บรรทัดเดียวกันบนมือถือ (ถ้ารองรับ :has) */
+    @media (max-width: 768px) {
+        div[data-testid="stMarkdownContainer"]:has(.mobile-row-controls) + div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            gap: 10px !important;
+        }
+        div[data-testid="stMarkdownContainer"]:has(.mobile-row-controls) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            width: auto !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+        }
+        div[data-testid="stMarkdownContainer"]:has(.mobile-row-controls) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
+            flex: 0 0 max-content !important; /* ให้คอลัมน์ปุ่มกว้างเท่าขนาดปุ่มพอดี */
+        }
+    }
     </style>
     """, unsafe_allow_html=True)
 

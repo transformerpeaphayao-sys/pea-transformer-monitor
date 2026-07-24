@@ -193,35 +193,33 @@ if client:
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    # --- [แก้ไขใหม่] ยุบรวมปุ่ม Refresh เข้ากับ Segmented Control เพื่อประหยัดพื้นที่บนมือถือ ---
-                    def handle_filter_change():
-                        if st.session_state.map_filter_widget == "🔄 รีเฟรช":
-                            # ถ้ากดปุ่มรีเฟรช ให้ล้างแคชข้อมูล
+                    # --- [แก้ไขใหม่] แยกปุ่ม Refresh ออกมา และจัดให้อยู่บรรทัดเดียวกัน ---
+                    st.markdown('<div class="mobile-row-controls"></div>', unsafe_allow_html=True)
+                    col_ref, col_fil = st.columns([1, 4], vertical_alignment="center")
+                    
+                    with col_ref:
+                        if st.button("🔄 รีเฟรช", use_container_width=False):
                             load_completed_data.clear()
                             load_task_data.clear()
                             load_master_data.clear()
-                            # เด้งกลับไปที่แท็บ 'ทั้งหมด' อัตโนมัติ
-                            st.session_state.map_filter_widget = "ทั้งหมด"
+                            st.rerun()
+                            
+                    with col_fil:
+                        map_filter = st.segmented_control(
+                            "กรองประเภทงาน:",
+                            options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
+                            default="ทั้งหมด",
+                            selection_mode="single",
+                            label_visibility="collapsed"
+                        )
                     
-                    if "map_filter_widget" not in st.session_state:
-                        st.session_state.map_filter_widget = "ทั้งหมด"
-
-                    map_filter = st.segmented_control(
-                        "กรองประเภทงาน:",
-                        options=["🔄 รีเฟรช", "ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                        selection_mode="single",
-                        key="map_filter_widget",
-                        on_change=handle_filter_change,
-                        label_visibility="collapsed"
-                    )
-                    
-                    # ป้องกันกรณีไม่มีค่า (None)
-                    current_filter = st.session_state.map_filter_widget if st.session_state.map_filter_widget else "ทั้งหมด"
+                    if map_filter is None: 
+                        map_filter = "ทั้งหมด"
                     
                     # ตัดข้อมูลตามที่ผู้ใช้เลือก
-                    if current_filter == "🔴 ยังไม่ตรวจ":
+                    if map_filter == "🔴 ยังไม่ตรวจ":
                         map_data = map_data[map_data['MarkerColor'] == 'red']
-                    elif current_filter == "🟠 สั่งตรวจซ้ำ":
+                    elif map_filter == "🟠 สั่งตรวจซ้ำ":
                         map_data = map_data[map_data['MarkerColor'] == 'orange']
                     # -----------------------------------
                     
