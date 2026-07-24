@@ -188,7 +188,6 @@ if client:
             # ==============================
             if st.session_state.page == "Map":
                 st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
-                st.markdown("<p style='font-size: 0.75rem; color: #64748b; margin-top: -10px; margin-bottom: 10px; line-height: 1.4;'>💡 คลิกที่หมุดเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง (🔴=ยังไม่ตรวจ, 🟠=สั่งตรวจซ้ำ)</p>", unsafe_allow_html=True)
                 
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
