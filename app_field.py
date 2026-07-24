@@ -187,10 +187,9 @@ if client:
             # หน้าที่ 1: MAP PAGE
             # ==============================
             if st.session_state.page == "Map":
-                st.markdown('<div class="title-with-button"></div>', unsafe_allow_html=True)
                 col_title, col_ref = st.columns([1, 0.3], vertical_alignment="center")
                 with col_title:
-                    st.markdown("<h4 style='margin:0;'>🗺️ แผนที่ตำแหน่งหม้อแปลง</h4>", unsafe_allow_html=True)
+                    st.markdown("<div class='title-with-button-marker'></div><h4 style='margin:0;'>🗺️ แผนที่ตำแหน่งหม้อแปลง</h4>", unsafe_allow_html=True)
                 with col_ref:
                     if st.button("🔄 รีเฟรช", use_container_width=False):
                         load_completed_data.clear()

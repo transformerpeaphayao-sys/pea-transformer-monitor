@@ -424,22 +424,22 @@ def load_custom_css():
             flex: 0 0 max-content !important;
         }
         
-        /* สำหรับ Title ที่มีปุ่มต่อท้าย */
-        div[data-testid="stMarkdownContainer"]:has(.title-with-button) + div[data-testid="stHorizontalBlock"] {
+        /* สำหรับ Title ที่มีปุ่มต่อท้าย (ปรับปรุงให้แม่นยำขึ้น) */
+        div[data-testid="stHorizontalBlock"]:has(.title-with-button-marker) {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             align-items: center !important;
             justify-content: space-between !important;
             gap: 10px !important;
-            margin-bottom: 10px !important;
+            margin-bottom: 5px !important;
         }
-        div[data-testid="stMarkdownContainer"]:has(.title-with-button) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+        div[data-testid="stHorizontalBlock"]:has(.title-with-button-marker) > div[data-testid="column"] {
             width: auto !important;
             flex: 1 1 auto !important;
             min-width: 0 !important;
             padding: 0 !important;
         }
-        div[data-testid="stMarkdownContainer"]:has(.title-with-button) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child {
+        div[data-testid="stHorizontalBlock"]:has(.title-with-button-marker) > div[data-testid="column"]:last-child {
             flex: 0 0 max-content !important;
         }
     }
