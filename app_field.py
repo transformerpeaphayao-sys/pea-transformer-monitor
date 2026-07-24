@@ -187,30 +187,27 @@ if client:
             # หน้าที่ 1: MAP PAGE
             # ==============================
             if st.session_state.page == "Map":
-                st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
+                st.markdown('<div class="title-with-button"></div>', unsafe_allow_html=True)
+                col_title, col_ref = st.columns([1, 0.3], vertical_alignment="center")
+                with col_title:
+                    st.markdown("<h4 style='margin:0;'>🗺️ แผนที่ตำแหน่งหม้อแปลง</h4>", unsafe_allow_html=True)
+                with col_ref:
+                    if st.button("🔄 รีเฟรช", use_container_width=False):
+                        load_completed_data.clear()
+                        load_task_data.clear()
+                        load_master_data.clear()
+                        st.rerun()
                 
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    # --- [แก้ไขใหม่] แยกปุ่ม Refresh ออกมา และจัดให้อยู่บรรทัดเดียวกัน ---
-                    st.markdown('<div class="mobile-row-controls"></div>', unsafe_allow_html=True)
-                    col_ref, col_fil = st.columns([1, 4], vertical_alignment="center")
-                    
-                    with col_ref:
-                        if st.button("🔄 รีเฟรช", use_container_width=False):
-                            load_completed_data.clear()
-                            load_task_data.clear()
-                            load_master_data.clear()
-                            st.rerun()
-                            
-                    with col_fil:
-                        map_filter = st.segmented_control(
-                            "กรองประเภทงาน:",
-                            options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                            default="ทั้งหมด",
-                            selection_mode="single",
-                            label_visibility="collapsed"
-                        )
+                    map_filter = st.segmented_control(
+                        "กรองประเภทงาน:",
+                        options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
+                        default="ทั้งหมด",
+                        selection_mode="single",
+                        label_visibility="collapsed"
+                    )
                     
                     if map_filter is None: 
                         map_filter = "ทั้งหมด"

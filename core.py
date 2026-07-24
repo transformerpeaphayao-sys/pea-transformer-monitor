@@ -421,7 +421,26 @@ def load_custom_css():
             padding: 0 !important;
         }
         div[data-testid="stMarkdownContainer"]:has(.mobile-row-controls) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
-            flex: 0 0 max-content !important; /* ให้คอลัมน์ปุ่มกว้างเท่าขนาดปุ่มพอดี */
+            flex: 0 0 max-content !important;
+        }
+        
+        /* สำหรับ Title ที่มีปุ่มต่อท้าย */
+        div[data-testid="stMarkdownContainer"]:has(.title-with-button) + div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+            margin-bottom: 10px !important;
+        }
+        div[data-testid="stMarkdownContainer"]:has(.title-with-button) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            width: auto !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+        }
+        div[data-testid="stMarkdownContainer"]:has(.title-with-button) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child {
+            flex: 0 0 max-content !important;
         }
     }
     </style>
