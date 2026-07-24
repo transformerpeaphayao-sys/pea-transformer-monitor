@@ -162,13 +162,13 @@ if os.path.exists("pea-logo.png"):
         icon_html = f'<img src="data:image/png;base64,{logo_base64}" style="width: 55px; height: 55px; object-fit: contain;">'
 
 st.markdown(f"""
-<div style="background: linear-gradient(90deg, #6d1852 0%, #8a1f68 100%); padding: 1.2rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; align-items: center; flex-wrap: wrap; gap: 15px; border-bottom: 4px solid #c7940a;">
-    <div style="display: flex; align-items: center; justify-content: center;">
+<div style="background: linear-gradient(90deg, #6d1852 0%, #8a1f68 100%); padding: 1.5rem 1rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; border-bottom: 4px solid #c7940a;">
+    <div>
         {icon_html}
     </div>
-    <div style="flex: 1; min-width: 250px;">
-        <p style="font-size: 1.3rem; font-weight: 700; color: white; margin: 0; letter-spacing: 0.5px; line-height: 1.4; word-break: keep-all;">ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA</p>
-        <p style="font-size: 0.85rem; font-weight: 400; color: rgba(255, 255, 255, 0.85); margin: 0; margin-top: 2px;">Transformer Load Monitoring System</p>
+    <div>
+        <p style="font-size: 1.25rem; font-weight: 700; color: white; margin: 0; line-height: 1.4;">ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA</p>
+        <p style="font-size: 0.85rem; font-weight: 400; color: rgba(255, 255, 255, 0.85); margin: 0; margin-top: 4px;">Transformer Load Monitoring System</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
