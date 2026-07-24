@@ -187,36 +187,41 @@ if client:
             # หน้าที่ 1: MAP PAGE
             # ==============================
             if st.session_state.page == "Map":
-                col_map1, col_map2 = st.columns([3, 1])
-                with col_map1:
-                    st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
-                    st.markdown("<p style='font-size: 0.75rem; color: #64748b; margin-top: -10px; margin-bottom: 10px; line-height: 1.4;'>💡 คลิกที่หมุดเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง (🔴=ยังไม่ตรวจ, 🟠=สั่งตรวจซ้ำ)</p>", unsafe_allow_html=True)
-                with col_map2:
-                    st.markdown("<div style='margin-top:0.5rem;'></div>", unsafe_allow_html=True)
-                    if st.button("🔄 รีเฟรช", use_container_width=True):
-                        load_completed_data.clear()
-                        load_task_data.clear()
-                        load_master_data.clear()
-                        st.rerun()
-                
+                st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
+                st.markdown("<p style='font-size: 0.75rem; color: #64748b; margin-top: -10px; margin-bottom: 10px; line-height: 1.4;'>💡 คลิกที่หมุดเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง (🔴=ยังไม่ตรวจ, 🟠=สั่งตรวจซ้ำ)</p>", unsafe_allow_html=True)
                 
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    # --- [เพิ่มใหม่] ตัวกรองประเภทหมุด ---
+                    # --- [แก้ไขใหม่] ยุบรวมปุ่ม Refresh เข้ากับ Segmented Control เพื่อประหยัดพื้นที่บนมือถือ ---
+                    def handle_filter_change():
+                        if st.session_state.map_filter_widget == "🔄 รีเฟรช":
+                            # ถ้ากดปุ่มรีเฟรช ให้ล้างแคชข้อมูล
+                            load_completed_data.clear()
+                            load_task_data.clear()
+                            load_master_data.clear()
+                            # เด้งกลับไปที่แท็บ 'ทั้งหมด' อัตโนมัติ
+                            st.session_state.map_filter_widget = "ทั้งหมด"
+                    
+                    if "map_filter_widget" not in st.session_state:
+                        st.session_state.map_filter_widget = "ทั้งหมด"
+
                     map_filter = st.segmented_control(
                         "กรองประเภทงาน:",
-                        options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                        default="ทั้งหมด",
+                        options=["🔄 รีเฟรช", "ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
+                        selection_mode="single",
+                        key="map_filter_widget",
+                        on_change=handle_filter_change,
                         label_visibility="collapsed"
                     )
-                    if map_filter is None: 
-                        map_filter = "ทั้งหมด"
+                    
+                    # ป้องกันกรณีไม่มีค่า (None)
+                    current_filter = st.session_state.map_filter_widget if st.session_state.map_filter_widget else "ทั้งหมด"
                     
                     # ตัดข้อมูลตามที่ผู้ใช้เลือก
-                    if map_filter == "🔴 ยังไม่ตรวจ":
+                    if current_filter == "🔴 ยังไม่ตรวจ":
                         map_data = map_data[map_data['MarkerColor'] == 'red']
-                    elif map_filter == "🟠 สั่งตรวจซ้ำ":
+                    elif current_filter == "🟠 สั่งตรวจซ้ำ":
                         map_data = map_data[map_data['MarkerColor'] == 'orange']
                     # -----------------------------------
                     
