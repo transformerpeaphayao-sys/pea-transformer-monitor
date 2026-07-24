@@ -189,21 +189,8 @@ if client:
             if st.session_state.page == "Map":
                 col_map1, col_map2 = st.columns([3, 1])
                 with col_map1:
-                    st.markdown("""
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #6d1852; padding: 12px 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 10px;">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                            <span style="font-size: 1.4rem;">🗺️</span>
-                            <span style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">แผนที่ตำแหน่งหม้อแปลง</span>
-                        </div>
-                        <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">
-                            💡 คลิกที่หมุดเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง<br>
-                            <div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
-                                <span style="color: #ef4444; font-weight: 600; background: #fee2e2; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem;">🔴 ยังไม่ตรวจ</span> 
-                                <span style="color: #f97316; font-weight: 600; background: #ffedd5; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem;">🟠 สั่งตรวจซ้ำ</span>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
+                    st.info("💡 คลิกที่หมุดเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง (🔴=ยังไม่ตรวจ, 🟠=สั่งตรวจซ้ำ)")
                 with col_map2:
                     st.markdown("<div style='margin-top:0.5rem;'></div>", unsafe_allow_html=True)
                     if st.button("🔄 รีเฟรช", use_container_width=True):
