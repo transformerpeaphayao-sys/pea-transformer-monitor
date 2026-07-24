@@ -190,7 +190,7 @@ if client:
                 col_map1, col_map2 = st.columns([3, 1])
                 with col_map1:
                     st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
-                    st.info("💡 คลิกที่หมุดเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง (🔴=ยังไม่ตรวจ, 🟠=สั่งตรวจซ้ำ)")
+                    st.markdown("<p style='font-size: 0.75rem; color: #64748b; margin-top: -10px; margin-bottom: 10px; line-height: 1.4;'>💡 คลิกที่หมุดเพื่อดูข้อมูลและนำทางไปยังหม้อแปลง (🔴=ยังไม่ตรวจ, 🟠=สั่งตรวจซ้ำ)</p>", unsafe_allow_html=True)
                 with col_map2:
                     st.markdown("<div style='margin-top:0.5rem;'></div>", unsafe_allow_html=True)
                     if st.button("🔄 รีเฟรช", use_container_width=True):
