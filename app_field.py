@@ -329,11 +329,11 @@ if client:
                 st.markdown('<div class="section-card"><div class="pea-card-header">โหมดการบันทึกข้อมูล</div>', unsafe_allow_html=True)
                 task_mode = st.segmented_control(
                     "เลือกฟังก์ชันที่ต้องการบันทึก:",
-                    options=["วัดกระแสไฟฟ้า (รวดเร็ว)", "วัดโหลด + วิเคราะห์ไฟตก (ครบชุด)"],
-                    default="วัดโหลด + วิเคราะห์ไฟตก (ครบชุด)"
+                    options=["⚡ วัดกระแส (รวดเร็ว)", "📊 วัดโหลด+วิเคราะห์ไฟตก"],
+                    default="📊 วัดโหลด+วิเคราะห์ไฟตก"
                 )
                 if task_mode is None:
-                    task_mode = "วัดโหลด + วิเคราะห์ไฟตก (ครบชุด)"
+                    task_mode = "📊 วัดโหลด+วิเคราะห์ไฟตก"
                 st.markdown('</div>', unsafe_allow_html=True)
 
                 # === Section 1: ข้อมูลทั่วไป ===
