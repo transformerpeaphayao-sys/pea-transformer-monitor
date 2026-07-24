@@ -187,58 +187,22 @@ if client:
             # หน้าที่ 1: MAP PAGE
             # ==============================
             if st.session_state.page == "Map":
-                col_title, col_ref = st.columns([1, 0.3], vertical_alignment="center")
-                with col_title:
-                    st.markdown("<div class='title-with-button-marker'></div><h4 style='margin:0;'>🗺️ แผนที่ตำแหน่งหม้อแปลง</h4>", unsafe_allow_html=True)
-                with col_ref:
-                    if st.button("🔄 รีเฟรช", use_container_width=False):
-                        load_completed_data.clear()
-                        load_task_data.clear()
-                        load_master_data.clear()
-                        st.rerun()
-                
-                # --- ใช้ JavaScript บังคับให้บรรทัดนี้เรียงแนวนอน 100% (แก้ปัญหา CSS บนมือถือบางรุ่น) ---
-                import streamlit.components.v1 as components
-                components.html("""
-                <script>
-                    const cols = window.parent.document.querySelectorAll('div[data-testid="column"]');
-                    cols.forEach(col => {
-                        const btn = col.querySelector('button');
-                        if(btn && btn.innerText.includes('รีเฟรช')) {
-                            const row = col.closest('div[data-testid="stHorizontalBlock"]');
-                            if(row) {
-                                // 1. บังคับให้อยู่บรรทัดเดียวกัน
-                                row.style.setProperty('flex-direction', 'row', 'important');
-                                row.style.setProperty('flex-wrap', 'nowrap', 'important');
-                                row.style.setProperty('align-items', 'center', 'important');
-                                row.style.setProperty('justify-content', 'space-between', 'important'); // ดันปุ่มไปชิดขวา
-                                row.style.setProperty('gap', '10px', 'important');
-                                
-                                // 2. ตกแต่งให้เป็น "บาร์ (Bar)" สวยงาม
-                                row.style.setProperty('background', 'linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%)', 'important');
-                                row.style.setProperty('padding', '0.6rem 1rem', 'important');
-                                row.style.setProperty('border-radius', '12px', 'important');
-                                row.style.setProperty('box-shadow', '0 2px 4px rgba(0,0,0,0.05)', 'important');
-                                row.style.setProperty('border', '1px solid #e2e8f0', 'important');
-                                row.style.setProperty('margin-bottom', '1rem', 'important');
-
-                                // 3. จัดการขนาดคอลัมน์ของปุ่มรีเฟรช
-                                col.style.setProperty('width', 'auto', 'important');
-                                col.style.setProperty('min-width', '0', 'important');
-                                col.style.setProperty('flex', '0 0 max-content', 'important');
-                                
-                                // 4. จัดการขนาดคอลัมน์ของหัวข้อ
-                                const titleCol = row.firstElementChild;
-                                if(titleCol) {
-                                    titleCol.style.setProperty('width', 'auto', 'important');
-                                    titleCol.style.setProperty('flex', '0 1 auto', 'important');
-                                    titleCol.style.setProperty('min-width', '0', 'important');
-                                }
-                            }
-                        }
-                    });
-                </script>
-                """, height=0)
+                # --- แถบหัวข้อแผนที่ พร้อมไอคอนรีเฟรช ---
+                st.markdown("""
+                <div style="display:flex; align-items:center; justify-content:space-between; 
+                            background:linear-gradient(135deg,#f0f4ff 0%,#e8edf5 100%); 
+                            border:1px solid #cbd5e1; border-radius:10px; 
+                            padding:10px 14px; margin-bottom:8px;
+                            box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+                    <span style="font-size:1.05rem; font-weight:700; color:#1e293b;">🗺️ แผนที่ตำแหน่งหม้อแปลง</span>
+                    <span style="font-size:0.75rem; color:#64748b;">🔴 ยังไม่ตรวจ &nbsp; 🟠 ตรวจซ้ำ</span>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("🔄 รีเฟรช", use_container_width=True):
+                    load_completed_data.clear()
+                    load_task_data.clear()
+                    load_master_data.clear()
+                    st.rerun()
                 
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
