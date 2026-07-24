@@ -55,40 +55,46 @@ def load_custom_css():
     
     /* ===== App Header (Top Banner) ===== */
     .app-header {
-        background: linear-gradient(90deg, var(--primary-pea) 0%, #8a1f68 100%); /* ไล่ระดับสีม่วง PEA */
-        padding: 1.2rem 2rem;
+        background: linear-gradient(90deg, var(--primary-pea) 0%, #8a1f68 100%);
+        padding: 1.2rem 1.5rem;
         border-radius: 12px;
         margin-bottom: 1.5rem;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         display: flex;
         align-items: center;
-        border-bottom: 4px solid var(--pea-gold); /* แทรกสีทองให้ดูพรีเมียม */
+        flex-wrap: wrap; /* สำคัญมาก ป้องกันการบีบจอแล้วตัวอักษรตก */
+        gap: 15px;
+        border-bottom: 4px solid var(--pea-gold);
     }
     .header-logo-container {
-        margin-right: 15px;
         display: flex;
         align-items: center;
         justify-content: center;
     }
     .pea-logo {
-        width: 48px;
-        height: 48px;
+        width: 55px;
+        height: 55px;
         object-fit: contain;
     }
+    .header-text-container {
+        flex: 1;
+        min-width: 250px; /* ถ้าจอมือถือเล็กกว่านี้ จะปัดตกบรรทัดใหม่ทันที */
+    }
     .app-header .title {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         font-weight: 700;
         color: white;
         margin: 0;
         letter-spacing: 0.5px;
-        line-height: 1.3;
+        line-height: 1.4;
+        word-break: keep-all; /* ป้องกันภาษาไทยตัดคำแบบทีละตัวอักษร */
     }
     .app-header .subtitle {
         font-size: 0.85rem;
         font-weight: 400;
         color: rgba(255, 255, 255, 0.85);
         margin: 0;
-        margin-top: 4px;
+        margin-top: 2px;
     }
     
     /* Responsive Header for Mobile */
@@ -96,19 +102,15 @@ def load_custom_css():
         .app-header {
             flex-direction: column;
             text-align: center;
-            padding: 1.2rem 1rem;
-            gap: 8px;
+            padding: 1rem;
+            gap: 10px;
         }
         .header-logo-container {
-            margin-right: 0;
-            margin-bottom: 4px;
-        }
-        .pea-logo {
-            width: 55px;
-            height: 55px;
+            margin-bottom: 0px;
         }
         .app-header .title {
-            font-size: 1.15rem; /* ลดขนาดฟอนต์บนมือถือ ป้องกันคำตกหล่น */
+            font-size: 1.15rem;
+            line-height: 1.4;
         }
         .app-header .subtitle {
             font-size: 0.75rem;
