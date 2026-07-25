@@ -401,7 +401,7 @@ if client:
                         st.info("ไม่มีหม้อแปลงคงเหลือให้เลือก")
                         selected_pea = None
                 
-                tap_val = st.selectbox("แท็ปหม้อแปลง (Tap)", options=["1", "2", "3", "4", "5"], index=2)
+                tap_val = str(st.number_input("แท็ปหม้อแปลง (Tap)", min_value=1, max_value=10, value=3, step=1))
                 st.markdown('</div>', unsafe_allow_html=True)
 
                 # === โหมดการทำงาน ===
