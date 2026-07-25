@@ -196,6 +196,9 @@ if client:
                     if "map_filter_selected" not in st.session_state:
                         st.session_state.map_filter_selected = "ทั้งหมด"
                     
+                    # เปิดบาร์รวมปุ่ม
+                    st.markdown('<div class="map-filter-bar">', unsafe_allow_html=True)
+                    
                     # วางปุ่มตัวกรองและรีเฟรชเป็นแถวเดียวกัน (ใช้ st.button ให้เหมือนกันหมด)
                     c1, c2, c3, c4 = st.columns(4)
                     with c1:
@@ -217,17 +220,43 @@ if client:
                             load_master_data.clear()
                             st.rerun()
                     
-                    # ไฮไลท์ปุ่มที่ถูกเลือกอยู่ด้วย CSS (เปลี่ยนเป็นสีม่วง PEA)
+                    # ปิดบาร์รวมปุ่ม
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # CSS สำหรับบาร์รวมปุ่ม + ไฮไลท์ปุ่มที่ถูกเลือก
                     active_map = {"ทั้งหมด": 1, "🔴 ยังไม่ตรวจ": 2, "🟠 สั่งตรวจซ้ำ": 3}
                     active_col = active_map.get(st.session_state.map_filter_selected, 1)
                     st.markdown(f"""
                     <style>
-                        /* ไฮไลท์ปุ่มตัวกรองแผนที่ที่ถูกเลือก */
-                        div[data-testid="stHorizontalBlock"]:has(button[key="map_f_all"]) > div[data-testid="column"]:nth-child({active_col}) button {{
+                        /* === บาร์รวมปุ่ม 4 ปุ่มเป็นแถบเดียว === */
+                        .map-filter-bar {{
+                            background: #f1f5f9;
+                            border: 1px solid #cbd5e1;
+                            border-radius: 12px;
+                            padding: 5px;
+                            box-shadow: inset 0 2px 6px rgba(0,0,0,0.08);
+                        }}
+                        .map-filter-bar div[data-testid="stHorizontalBlock"] {{
+                            gap: 4px !important;
+                        }}
+                        .map-filter-bar div[data-testid="column"] {{
+                            padding: 0 !important;
+                        }}
+                        /* ปุ่มในบาร์ — ลดเงานอก เพิ่มมน */
+                        .map-filter-bar div[data-testid="stButton"] button {{
+                            border-radius: 8px !important;
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+                            font-size: 0.78rem !important;
+                            padding: 0.3rem 0.2rem !important;
+                            min-height: 2rem !important;
+                        }}
+                        /* ไฮไลท์ปุ่มตัวกรองที่ถูกเลือก */
+                        .map-filter-bar div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child({active_col}) button {{
                             background: linear-gradient(135deg, #7b2d8e 0%, #5b1d6e 100%) !important;
                             color: white !important;
                             border: none !important;
                             box-shadow: 0 4px 12px rgba(123, 45, 142, 0.4) !important;
+                            transform: translateY(-1px) !important;
                         }}
                     </style>
                     """, unsafe_allow_html=True)
