@@ -649,6 +649,8 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
     
     try:
         encoded_image = base64.b64encode(file_bytes).decode('utf-8')
+        
+        # --- รอบที่ 1: ลองอัปโหลดพร้อม folderId ปกติ ---
         payload = {
             "fileName": file_name,
             "mimeType": "image/jpeg",
@@ -656,15 +658,31 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "folderId": folder_id
         }
         
-        response = requests.post(web_app_url, json=payload, timeout=20)
+        response = requests.post(web_app_url, json=payload, timeout=30)
         
         if response.status_code == 200:
             response_text = str(response.text).strip()
             if not response_text.startswith("Error"):
-                return response_text 
+                return response_text
             else:
-                st.error(f"Apps Script Error: {response_text}")
-                return None
+                # --- รอบที่ 2 (Fallback): ถ้า folderId มีปัญหา ลองส่งโดยไม่ระบุ folderId ---
+                st.warning(f"⚠️ โฟลเดอร์ปลายทางมีปัญหา กำลังลองบันทึกไปที่ Drive หลัก...")
+                payload_fallback = {
+                    "fileName": file_name,
+                    "mimeType": "image/jpeg",
+                    "fileData": encoded_image
+                }
+                response2 = requests.post(web_app_url, json=payload_fallback, timeout=30)
+                if response2.status_code == 200:
+                    response_text2 = str(response2.text).strip()
+                    if not response_text2.startswith("Error"):
+                        return response_text2
+                    else:
+                        st.error(f"Apps Script Error: {response_text2}")
+                        return None
+                else:
+                    st.error(f"HTTP Error (Fallback): {response2.status_code}")
+                    return None
         else:
             st.error(f"HTTP Error: {response.status_code}")
             return None
