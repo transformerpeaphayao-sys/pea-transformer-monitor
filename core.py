@@ -397,38 +397,65 @@ def load_custom_css():
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
     }
     
-    /* ตกแต่ง Segmented Control ให้มีมิติ (3D Style) */
+    /* ตกแต่ง Segmented Control ให้มีมิติ (3D Style) สำหรับทุกตัวในแอป */
     div[data-testid="stSegmentedControl"] {
+        background: #f1f5f9 !important;
         border-radius: 12px !important;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.06) !important;
-        padding: 4px !important;
-        background-color: #f1f5f9 !important;
-        border: 1px solid #e2e8f0 !important;
-    }
-    div[data-testid="stSegmentedControl"] button {
-        font-size: 0.85rem !important;
-        padding: 0.35rem 0.8rem !important;
-        min-height: 2.2rem !important;
-        border-radius: 8px !important;
-        margin: 0 2px !important;
-        transition: all 0.2s ease !important;
-        background: transparent !important;
-        border: 1px solid transparent !important;
-        color: #64748b !important;
-        font-weight: 600 !important;
-    }
-    /* เมื่อถูกเลือก ให้ดูป๊อปอัพมีมิติ (3D Pop) */
-    div[data-testid="stSegmentedControl"] button[aria-selected="true"] {
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
-        color: #7b2d8e !important;
-        font-weight: 700 !important;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08), inset 0 -2px 0 rgba(0,0,0,0.04) !important;
+        padding: 6px !important;
+        box-shadow: inset 0 2px 6px rgba(0,0,0,0.1) !important;
         border: 1px solid #cbd5e1 !important;
-        transform: translateY(-1px) !important;
+        gap: 4px !important;
     }
-    div[data-testid="stSegmentedControl"] button:hover:not([aria-selected="true"]) {
-        color: #475569 !important;
-        background: rgba(255,255,255,0.5) !important;
+    
+    /* ล้างกรอบของปุ่มที่ติดกัน */
+    div[data-testid="stSegmentedControl"] > div {
+        gap: 4px !important;
+        background: transparent !important;
+    }
+    
+    /* แต่งปุ่มทุกปุ่มให้เป็นก้อนๆ 분리กัน */
+    div[data-testid="stSegmentedControl"] [data-testid="stMarkdownContainer"] p {
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        margin: 0 !important;
+    }
+    
+    /* สถานะไม่ได้เลือก (Unselected) */
+    div[data-testid="stSegmentedControl"] [aria-selected="false"],
+    div[data-testid="stSegmentedControl"] [data-selected="false"] {
+        background: white !important;
+        border-radius: 8px !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #64748b !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+        transition: all 0.2s ease !important;
+        min-height: 2.2rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* สถานะถูกเลือก (Selected) - ให้เด้งขึ้นมาแบบ 3D และเป็นสีม่วง PEA */
+    div[data-testid="stSegmentedControl"] [aria-selected="true"],
+    div[data-testid="stSegmentedControl"] [data-selected="true"],
+    div[data-testid="stSegmentedControl"] [aria-checked="true"],
+    div[data-testid="stSegmentedControl"] [data-baseweb="radio"]:checked {
+        background: linear-gradient(135deg, #7b2d8e 0%, #5b1d6e 100%) !important;
+        border-radius: 8px !important;
+        border: none !important;
+        box-shadow: 0 4px 10px rgba(123, 45, 142, 0.4), inset 0 1px 1px rgba(255,255,255,0.2) !important;
+        transform: translateY(-2px) !important;
+        z-index: 2 !important;
+        min-height: 2.2rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* เปลี่ยนสีตัวอักษรของปุ่มที่ถูกเลือกให้เป็นสีขาวเสมอ */
+    div[data-testid="stSegmentedControl"] [aria-selected="true"] [data-testid="stMarkdownContainer"] p,
+    div[data-testid="stSegmentedControl"] [data-selected="true"] [data-testid="stMarkdownContainer"] p {
+        color: white !important;
     }
     
     /* บังคับให้ปุ่มและตัวกรองอยู่บรรทัดเดียวกันบนมือถือ (ถ้ารองรับ :has) */
