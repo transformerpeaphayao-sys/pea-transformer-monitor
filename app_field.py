@@ -196,11 +196,10 @@ if client:
                     col_filter, col_ref = st.columns([1, 0.25], vertical_alignment="center")
                     with col_filter:
                         st.markdown("<div class='filter-with-button-marker'></div>", unsafe_allow_html=True)
-                        map_filter = st.segmented_control(
+                        map_filter = st.selectbox(
                             "กรองประเภทงาน:",
                             options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                            default="ทั้งหมด",
-                            selection_mode="single",
+                            index=0,
                             label_visibility="collapsed"
                         )
                     with col_ref:
