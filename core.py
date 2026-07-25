@@ -658,7 +658,7 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "folderId": folder_id
         }
         
-        response = requests.post(web_app_url, json=payload, timeout=30)
+        response = requests.post(web_app_url, json=payload, timeout=90)
         
         if response.status_code == 200:
             response_text = str(response.text).strip()
@@ -672,7 +672,7 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
                     "mimeType": "image/jpeg",
                     "fileData": encoded_image
                 }
-                response2 = requests.post(web_app_url, json=payload_fallback, timeout=30)
+                response2 = requests.post(web_app_url, json=payload_fallback, timeout=90)
                 if response2.status_code == 200:
                     response_text2 = str(response2.text).strip()
                     if not response_text2.startswith("Error"):
