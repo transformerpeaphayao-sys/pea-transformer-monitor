@@ -690,6 +690,23 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
         st.error(f"Upload Image Exception: {e}")
         return None
 
+def delete_image_from_drive(file_id):
+    if not file_id:
+        return False
+    web_app_url = st.secrets.get("gas_web_app_url", "")
+    if not web_app_url:
+        return False
+    try:
+        payload = {
+            "action": "delete",
+            "fileId": file_id
+        }
+        # ส่ง POST Request พร้อม action: delete
+        requests.post(web_app_url, json=payload, timeout=15)
+        return True
+    except:
+        return False
+
 
 # --- Master Data & Data Logic ---
 @st.cache_data(ttl=600)
@@ -796,10 +813,22 @@ def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
             sheet_record = sh.worksheet("Record Data")
             records = sheet_record.get_all_records()
             rows_to_delete = []
+            img_urls_to_delete = []
             for idx, row in enumerate(records):
                 if str(row.get('PEA NO', '')).strip() == pea_str:
                     rows_to_delete.append(idx + 2)
+                    if "รูปถ่าย" in row and row["รูปถ่าย"]:
+                        img_urls_to_delete.append(str(row["รูปถ่าย"]))
             batch_delete_rows(sheet_record, rows_to_delete)
+            
+            # ลบรูปถ่ายจาก Google Drive
+            import re
+            for urls_str in img_urls_to_delete:
+                urls = [u.strip() for u in urls_str.split(",") if u.strip().startswith("http")]
+                for u in urls:
+                    match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
+                    if match:
+                        delete_image_from_drive(match.group(1))
         except Exception as e:
             st.warning(f"ลบ Record Data: {e}")
             
@@ -829,15 +858,28 @@ def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str):
         records = sheet_record.get_all_records()
         
         rows_to_delete = []
+        img_urls_to_delete = []
         for idx, row in enumerate(records):
             if (str(row.get('PEA NO', '')).strip() == str(pea_no).strip() and 
                 str(row.get('วันที่', '')).strip() == str(date_str).strip() and 
                 str(row.get('เวลา', '')).strip() == str(time_str).strip()):
                 rows_to_delete.append(idx + 2) 
                 
+                if "รูปถ่าย" in row and row["รูปถ่าย"]:
+                    img_urls_to_delete.append(str(row["รูปถ่าย"]))
+                
         for row_idx in reversed(rows_to_delete):
             sheet_record.delete_row(row_idx)
             
+        # ลบรูปถ่ายจาก Google Drive
+        import re
+        for urls_str in img_urls_to_delete:
+            urls = [u.strip() for u in urls_str.split(",") if u.strip().startswith("http")]
+            for u in urls:
+                match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
+                if match:
+                    delete_image_from_drive(match.group(1))
+                    
         load_completed_data.clear()
         return True
     except Exception as e:
