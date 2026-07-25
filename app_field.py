@@ -675,7 +675,8 @@ if client:
                     with st.spinner("กำลังบันทึกข้อมูล... (ระบบอาจใช้เวลาสักครู่หากมีการใช้งานพร้อมกันหลายทีม)"):
                         
                         img_url_list = []
-                        folder_id = st.secrets.get("drive_folder_id", "")
+                        # ใช้ Fallback เผื่อลืมตั้งค่าใน Streamlit Cloud Secrets
+                        folder_id = st.secrets.get("drive_folder_id", "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC")
                         drive_upload_failed = False
                         
                         if final_img_bytes_list:
