@@ -188,22 +188,55 @@ if client:
             # ==============================
             if st.session_state.page == "Map":
                 st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
-                if st.button("🔄 รีเฟรช", use_container_width=False):
-                    load_completed_data.clear()
-                    load_task_data.clear()
-                    load_master_data.clear()
-                    st.rerun()
                 
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    map_filter = st.segmented_control(
-                        "กรองประเภทงาน:",
-                        options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                        default="ทั้งหมด",
-                        selection_mode="single",
-                        label_visibility="collapsed"
-                    )
+                    # วาง Filter และปุ่มรีเฟรชในบรรทัดเดียวกัน
+                    col_filter, col_ref = st.columns([1, 0.25], vertical_alignment="center")
+                    with col_filter:
+                        st.markdown("<div class='filter-with-button-marker'></div>", unsafe_allow_html=True)
+                        map_filter = st.segmented_control(
+                            "กรองประเภทงาน:",
+                            options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
+                            default="ทั้งหมด",
+                            selection_mode="single",
+                            label_visibility="collapsed"
+                        )
+                    with col_ref:
+                        if st.button("🔄 รีเฟรช", use_container_width=True):
+                            load_completed_data.clear()
+                            load_task_data.clear()
+                            load_master_data.clear()
+                            st.rerun()
+                            
+                    # บังคับให้อยู่บรรทัดเดียวกันบนมือถือด้วย JavaScript
+                    st.markdown("""
+                        <script>
+                            const fMarkers = window.parent.document.querySelectorAll('.filter-with-button-marker');
+                            fMarkers.forEach(marker => {
+                                const block = marker.closest('[data-testid="stHorizontalBlock"]');
+                                if (block) {
+                                    block.style.display = 'flex';
+                                    block.style.flexDirection = 'row';
+                                    block.style.flexWrap = 'nowrap';
+                                    block.style.alignItems = 'center';
+                                    block.style.justifyContent = 'flex-start';
+                                    block.style.gap = '8px';
+                                    
+                                    // ปรับความกว้างคอลัมน์ย่อย
+                                    const cols = block.querySelectorAll('[data-testid="column"]');
+                                    if (cols.length >= 2) {
+                                        cols[0].style.flex = '1 1 auto';
+                                        cols[0].style.minWidth = '0';
+                                        cols[0].style.width = 'auto';
+                                        cols[1].style.flex = '0 0 max-content';
+                                        cols[1].style.width = 'auto';
+                                    }
+                                }
+                            });
+                        </script>
+                    """, unsafe_allow_html=True)
                     
                     if map_filter is None: 
                         map_filter = "ทั้งหมด"
