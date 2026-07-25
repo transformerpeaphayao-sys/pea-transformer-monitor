@@ -1091,6 +1091,38 @@ if client:
                             st.session_state.selected_pea_for_profile = None
                             st.rerun()
                 
+                # --- จัดการคำสั่งลบรอบการวัด ---
+                delete_date = st.query_params.get("delete_date", "")
+                delete_time = st.query_params.get("delete_time", "")
+                if delete_date and delete_time and search_pea:
+                    st.warning(f"⚠️ คุณกำลังจะลบข้อมูลรอบ **{delete_date} เวลา {delete_time}** ของหม้อแปลง **{search_pea}**")
+                    col_del1, col_del2 = st.columns(2)
+                    with col_del1:
+                        if st.button("✅ ยืนยันลบ", type="primary", use_container_width=True):
+                            with st.spinner("กำลังลบข้อมูล..."):
+                                if delete_record_session(client, SHEET_NAME, search_pea, delete_date, delete_time):
+                                    st.success("✅ ลบข้อมูลรอบนี้เรียบร้อยแล้ว!")
+                                    time.sleep(1)
+                                    # ล้าง query params แล้ว rerun
+                                    st.query_params.clear()
+                                    st.query_params["page"] = "Profile"
+                                    st.query_params["profile_pea"] = search_pea
+                                    st.query_params["token"] = st.session_state.get("login_token", "")
+                                    st.query_params["auth_user"] = st.session_state.get("user_name", "Admin")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ เกิดข้อผิดพลาดในการลบข้อมูล")
+                    with col_del2:
+                        cancel_url = f"?profile_pea={search_pea}&page=Profile&token={st.session_state.get('login_token', '')}&auth_user={st.session_state.get('user_name', 'Admin')}"
+                        if st.button("❌ ยกเลิก", use_container_width=True):
+                            st.query_params.clear()
+                            st.query_params["page"] = "Profile"
+                            st.query_params["profile_pea"] = search_pea
+                            st.query_params["token"] = st.session_state.get("login_token", "")
+                            st.query_params["auth_user"] = st.session_state.get("user_name", "Admin")
+                            st.rerun()
+                    st.stop()
+                
                 if search_pea:
                     search_pea = search_pea.strip()
                     master_row = df_master[df_master['PEANO หม้อแปลง'].astype(str) == search_pea]
@@ -1354,9 +1386,12 @@ if client:
                                 
                                 td_manage = ""
                                 if is_first_row_of_session:
-                                    sess_date = row.get(col_date, '')
-                                    sess_time = row.get(col_time, '')
-                                    edit_btn = f"<a href='#edit-{session_idx}' style='background-color:#8b5cf6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; box-sizing:border-box; box-shadow: 0 1px 2px rgba(0,0,0,0.1); text-decoration:none; display:inline-block; white-space:nowrap;'>✏️ แก้ไข</a>"
+                                    sess_date = str(row.get(col_date, ''))
+                                    sess_time = str(row.get(col_time, ''))
+                                    rowspan = session_counts[current_session]
+                                    delete_url = f"?profile_pea={search_pea}&page=Profile&delete_date={sess_date}&delete_time={sess_time}&token={st.session_state.get('login_token', '')}&auth_user={st.session_state.get('user_name', 'Admin')}"
+                                    manage_content = f"<div style='display:flex; flex-direction:column; gap:6px; align-items:center;'><a href='{delete_url}' target='_self' style='background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; box-shadow: 0 2px 4px rgba(239,68,68,0.3); text-decoration:none; display:inline-block; white-space:nowrap;'>🗑️ ลบรอบนี้</a></div>"
+                                    td_manage = f"<td rowspan='{rowspan}' style='padding: 8px; text-align:center; border-bottom:1px solid #e2e8f0; vertical-align:middle; background: #ffffff; border-left: 1px solid #e2e8f0; min-width: 100px;'>{manage_content}</td>"
                                 tap_td_h = f"<td style='{td_style} font-weight:600;'>{row.get(col_tap_h, '-')}</td>" if col_tap_h else ""
                                 
                                 if is_total:
@@ -1367,9 +1402,9 @@ if client:
                                     td_i_total = f"<td style='{td_total_num}'>{fmt_v(a_val, '#dc2626')}</td><td style='{td_total_num}'>{fmt_v(b_val, '#16a34a')}</td><td style='{td_total_num}'>{fmt_v(c_val, '#2563eb')}</td><td style='{td_total_num}'>{fmt_v(n_val, '#475569')}</td>"
                                     
                                     colspan_val = 16 if is_hist_new_format else 15
-                                    rows_html += f"<tr style='background:#f3f0ff;' onmouseover=\"this.style.background='#ede9fe'\" onmouseout=\"this.style.background='#f3f0ff'\"><td colspan='{colspan_val}' style='{td_total}text-align:right;'>{feeder_display}</td>{td_i_total}<td style='{td_total_num}'>{kva_str}</td><td style='{td_total_num}'>{uf_str}</td><td style='{td_total_num}'>{unb_str}</td><td style='{td_total}text-align:left;color:#64748b;'>{note_val}</td>{td_img}</tr>"
+                                    rows_html += f"<tr style='background:#f3f0ff;' onmouseover=\"this.style.background='#ede9fe'\" onmouseout=\"this.style.background='#f3f0ff'\"><td colspan='{colspan_val}' style='{td_total}text-align:right;'>{feeder_display}</td>{td_i_total}<td style='{td_total_num}'>{kva_str}</td><td style='{td_total_num}'>{uf_str}</td><td style='{td_total_num}'>{unb_str}</td><td style='{td_total}text-align:left;color:#64748b;'>{note_val}</td>{td_img}{td_manage}</tr>"
                                 else:
-                                    rows_html += f"<tr style='background:{bg};' onmouseover=\"this.style.background='#f1f5f9'\" onmouseout=\"this.style.background='{bg}'\"><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style} font-weight:600; color:#1e293b;'>{feeder_val}</td>{tap_td_h}{td_v_t}{td_v_e}{td_i}{kva_td}{uf_td}{unb_td}<td style='{td_style}text-align:left;color:#64748b;'>{note_val}</td>{td_img}</tr>"
+                                    rows_html += f"<tr style='background:{bg};' onmouseover=\"this.style.background='#f1f5f9'\" onmouseout=\"this.style.background='{bg}'\"><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style} font-weight:600; color:#1e293b;'>{feeder_val}</td>{tap_td_h}{td_v_t}{td_v_e}{td_i}{kva_td}{uf_td}{unb_td}<td style='{td_style}text-align:left;color:#64748b;'>{note_val}</td>{td_img}{td_manage}</tr>"
                             
                             tap_th_h = f"<th rowspan='2' style=\"{th_style}\">🎛️ แท็ป</th>" if is_hist_new_format else ""
                             
@@ -1404,6 +1439,7 @@ if client:
                                 f"<th rowspan='2' style='{th_style}'>%Unb</th>"
                                 f"<th rowspan='2' style='{th_style}'>📝 หมายเหตุ</th>"
                                 f"<th rowspan='2' colspan='5' style='{th_style}'>📸 รูปถ่าย (สุงสุด 5 รูป)</th>"
+                                f"<th rowspan='2' style='{th_style}'>⚙️ จัดการ</th>"
                                 "</tr>"
                                 "<tr>"
                                 f"<th style='{sub_th_style_ll}'>A-B</th><th style='{sub_th_style_ll}'>B-C</th><th style='{sub_th_style_ll}'>C-A</th><th style='{sub_th_style_ln}'>A-N</th><th style='{sub_th_style_ln}'>B-N</th><th style='{sub_th_style_ln}'>C-N</th>"
