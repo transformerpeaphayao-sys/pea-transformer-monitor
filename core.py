@@ -55,7 +55,7 @@ def load_custom_css():
     
     /* ===== App Header (Top Banner) ===== */
     .app-header {
-        background: linear-gradient(135deg, #8a1f68 0%, var(--primary-pea) 50%, #4a148c 100%);
+        background: linear-gradient(135deg, #4a0e3a 0%, var(--primary-pea) 35%, #a8326e 70%, #c74b8a 100%);
         padding: 1.2rem 1.5rem;
         border-radius: 12px;
         margin-bottom: 1.5rem;
@@ -123,7 +123,7 @@ def load_custom_css():
     
     /* ===== Sidebar ===== */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #8a1f68 0%, var(--primary-pea) 40%, #311b92 100%) !important;
+        background: linear-gradient(180deg, #5c1845 0%, var(--primary-pea) 40%, #4a0e3a 100%) !important;
         border-right: none !important;
         box-shadow: 4px 0px 15px rgba(0,0,0,0.15) !important;
         border-radius: 0 20px 20px 0 !important; /* ขอบโค้งด้านขวา */
@@ -242,7 +242,7 @@ def load_custom_css():
     
     /* ===== Card Header (Purple Bar) ===== */
     .pea-card-header {
-        background: linear-gradient(135deg, #8a1f68 0%, var(--primary-pea) 50%, #4a148c 100%);
+        background: linear-gradient(135deg, #4a0e3a 0%, var(--primary-pea) 40%, #a8326e 75%, #c74b8a 100%); /* ไล่ระดับสีม่วง → ชมพู PEA */
         color: white;
         padding: 12px 18px;
         font-weight: 500;
@@ -283,7 +283,7 @@ def load_custom_css():
     }
     /* หัวตารางพื้นหลังสีเข้ม (Dark Header) */
     .pea-table th {
-        background: linear-gradient(180deg, #8a1f68 0%, var(--primary-pea) 100%) !important;
+        background-color: var(--primary-pea) !important; /* สีม่วงเข้ม PEA */
         color: white !important;
         padding: 18px 12px !important;
         font-size: 0.85rem !important;
@@ -328,7 +328,7 @@ def load_custom_css():
         display: flex;
         flex-wrap: wrap;
         gap: 10px 12px; /* ลดช่องว่าง */
-        background: linear-gradient(to right, #ffffff, #f8fafc);
+        background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 40%, #f5f7fa 100%);
         border: 1px solid #e2e8f0;
         border-left: 5px solid var(--pea-gold);
         padding: 10px 12px; /* ลดกรอบ */
@@ -356,16 +356,16 @@ def load_custom_css():
     }
     /* Feeder Card Title */
     .feeder-card-title {
-        background: linear-gradient(135deg, #8a1f68 0%, var(--primary-pea) 50%, #4a148c 100%);
-        color: white;
-        border: 1px solid #4a148c;
-        border-left: 5px solid var(--pea-gold);
+        background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 30%, #ffffff 100%);
+        border: 1px solid #f3d5e8;
+        border-left: 5px solid #a8326e; /* PEA Pink Accent */
         padding: 10px 15px;
         border-radius: 6px;
-        font-weight: 600;
-        margin-bottom: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 15px;
         font-size: 1.05rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     }
     
     /* ปรับขนาดหัวข้อ Modal/Dialog (เช่น ข้อมูลหม้อแปลง) ให้เล็กลงบนมือถือ */
@@ -440,7 +440,7 @@ def load_custom_css():
     div[data-testid="stSegmentedControl"] [data-selected="true"],
     div[data-testid="stSegmentedControl"] [aria-checked="true"],
     div[data-testid="stSegmentedControl"] [data-baseweb="radio"]:checked {
-        background: linear-gradient(135deg, #7b2d8e 0%, #5b1d6e 100%) !important;
+        background: linear-gradient(135deg, #5c1845 0%, #a8326e 50%, #c74b8a 100%) !important;
         border-radius: 8px !important;
         border: none !important;
         box-shadow: 0 4px 10px rgba(123, 45, 142, 0.4), inset 0 1px 1px rgba(255,255,255,0.2) !important;
