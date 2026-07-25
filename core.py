@@ -55,7 +55,7 @@ def load_custom_css():
     
     /* ===== App Header (Top Banner) ===== */
     .app-header {
-        background: linear-gradient(90deg, var(--primary-pea) 0%, #8a1f68 100%);
+        background: linear-gradient(135deg, #8a1f68 0%, var(--primary-pea) 50%, #4a148c 100%);
         padding: 1.2rem 1.5rem;
         border-radius: 12px;
         margin-bottom: 1.5rem;
@@ -123,7 +123,7 @@ def load_custom_css():
     
     /* ===== Sidebar ===== */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, var(--primary-pea) 0%, #4a1038 100%) !important;
+        background: linear-gradient(180deg, #8a1f68 0%, var(--primary-pea) 40%, #311b92 100%) !important;
         border-right: none !important;
         box-shadow: 4px 0px 15px rgba(0,0,0,0.15) !important;
         border-radius: 0 20px 20px 0 !important; /* ขอบโค้งด้านขวา */
@@ -242,7 +242,7 @@ def load_custom_css():
     
     /* ===== Card Header (Purple Bar) ===== */
     .pea-card-header {
-        background: linear-gradient(90deg, var(--primary-pea) 0%, #8a1f68 100%); /* ไล่ระดับสีม่วง PEA */
+        background: linear-gradient(135deg, #8a1f68 0%, var(--primary-pea) 50%, #4a148c 100%);
         color: white;
         padding: 12px 18px;
         font-weight: 500;
@@ -283,7 +283,7 @@ def load_custom_css():
     }
     /* หัวตารางพื้นหลังสีเข้ม (Dark Header) */
     .pea-table th {
-        background-color: var(--primary-pea) !important; /* สีม่วงเข้ม PEA */
+        background: linear-gradient(180deg, #8a1f68 0%, var(--primary-pea) 100%) !important;
         color: white !important;
         padding: 18px 12px !important;
         font-size: 0.85rem !important;
@@ -356,16 +356,16 @@ def load_custom_css():
     }
     /* Feeder Card Title */
     .feeder-card-title {
-        background: linear-gradient(90deg, #f8fafc, #ffffff);
-        border: 1px solid #e2e8f0;
-        border-left: 5px solid #ef4444; /* PEA Red / Accent */
+        background: linear-gradient(135deg, #8a1f68 0%, var(--primary-pea) 50%, #4a148c 100%);
+        color: white;
+        border: 1px solid #4a148c;
+        border-left: 5px solid var(--pea-gold);
         padding: 10px 15px;
         border-radius: 6px;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 15px;
+        font-weight: 600;
+        margin-bottom: 1rem;
         font-size: 1.05rem;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     
     /* ปรับขนาดหัวข้อ Modal/Dialog (เช่น ข้อมูลหม้อแปลง) ให้เล็กลงบนมือถือ */
