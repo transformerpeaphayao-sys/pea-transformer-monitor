@@ -419,6 +419,64 @@ if client:
                     label_visibility="collapsed"
                 )
                 
+                # เพิ่ม CSS บังคับให้ปุ่ม Segmented Control มีมิติ 3D ขั้นสุด
+                st.markdown("""
+                <style>
+                    /* ล้างพื้นหลังเดิมของ Container และทำรางสไลด์ 3D */
+                    div[data-testid="stSegmentedControl"] {
+                        background: #f1f5f9 !important;
+                        border-radius: 12px !important;
+                        padding: 6px !important;
+                        box-shadow: inset 0 2px 6px rgba(0,0,0,0.1) !important;
+                        border: 1px solid #cbd5e1 !important;
+                        gap: 4px !important;
+                    }
+                    
+                    /* ล้างกรอบของปุ่มที่ติดกัน */
+                    div[data-testid="stSegmentedControl"] > div {
+                        gap: 4px !important;
+                        background: transparent !important;
+                    }
+                    
+                    /* แต่งปุ่มทุกปุ่มให้เป็นก้อนๆ 분리กัน */
+                    div[data-testid="stSegmentedControl"] [data-testid="stMarkdownContainer"] {
+                        font-weight: 600 !important;
+                        font-size: 0.9rem !important;
+                    }
+                    
+                    /* สถานะไม่ได้เลือก (Unselected) */
+                    div[data-testid="stSegmentedControl"] [aria-selected="false"],
+                    div[data-testid="stSegmentedControl"] [data-selected="false"] {
+                        background: white !important;
+                        border-radius: 8px !important;
+                        border: 1px solid #e2e8f0 !important;
+                        color: #64748b !important;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+                        transition: all 0.2s ease !important;
+                    }
+                    
+                    /* สถานะถูกเลือก (Selected) - ให้เด้งขึ้นมาแบบ 3D และเป็นสีม่วง PEA */
+                    div[data-testid="stSegmentedControl"] [aria-selected="true"],
+                    div[data-testid="stSegmentedControl"] [data-selected="true"],
+                    div[data-testid="stSegmentedControl"] [aria-checked="true"],
+                    div[data-testid="stSegmentedControl"] [data-baseweb="radio"]:checked {
+                        background: linear-gradient(135deg, #7b2d8e 0%, #5b1d6e 100%) !important;
+                        color: white !important;
+                        border-radius: 8px !important;
+                        border: none !important;
+                        box-shadow: 0 4px 10px rgba(123, 45, 142, 0.4), inset 0 1px 1px rgba(255,255,255,0.2) !important;
+                        transform: translateY(-2px) !important;
+                        z-index: 2 !important;
+                    }
+                    
+                    /* เปลี่ยนสีตัวอักษรของปุ่มที่ถูกเลือกให้เป็นสีขาวเสมอ */
+                    div[data-testid="stSegmentedControl"] [aria-selected="true"] [data-testid="stMarkdownContainer"] p,
+                    div[data-testid="stSegmentedControl"] [data-selected="true"] [data-testid="stMarkdownContainer"] p {
+                        color: white !important;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+                
                 # จัดการเผื่อผู้ใช้ไม่ได้เลือกอะไรเลย
                 selected_feeders = selected_feeders_input if selected_feeders_input is not None else []
                 total_checked = False
