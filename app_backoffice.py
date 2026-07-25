@@ -1105,9 +1105,13 @@ if client:
                 def edit_session_dialog(pea, edit_date, edit_time):
                     st.markdown(f"**PEA No:** {pea} | **วันที่:** {edit_date} | **เวลา:** {edit_time}")
                     
-                    hist_df = df_record[(df_record["PEANO หม้อแปลง"].astype(str) == str(pea)) & 
-                                        (df_record["วันที่"].astype(str) == str(edit_date)) & 
-                                        (df_record["เวลา"].astype(str) == str(edit_time))]
+                    col_date = "วันที่" if "วันที่" in df_record.columns else df_record.columns[0]
+                    col_time = "เวลา" if "เวลา" in df_record.columns else df_record.columns[1]
+                    col_pea_rec = "PEA NO" if "PEA NO" in df_record.columns else df_record.columns[2]
+                    
+                    hist_df = df_record[(df_record[col_pea_rec].astype(str) == str(pea)) & 
+                                        (df_record[col_date].astype(str) == str(edit_date)) & 
+                                        (df_record[col_time].astype(str) == str(edit_time))]
                     
                     if hist_df.empty:
                         st.warning("ไม่พบข้อมูลในรอบการวัดที่เลือก")
