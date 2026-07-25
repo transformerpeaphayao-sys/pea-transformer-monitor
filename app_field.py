@@ -409,22 +409,20 @@ if client:
                 # === Section 2: เลือกฟีดเดอร์ ===
                 st.markdown('<div class="section-card"><div class="pea-card-header">เลือกฟีดเดอร์ที่ต้องการบันทึก</div>', unsafe_allow_html=True)
                 
-                # จัด Layout สำหรับมือถือให้เป็น 2 แถว เพื่อไม่ให้เบียดกัน
-                chk_c1, chk_c2, chk_c3 = st.columns(3)
-                f1_checked = chk_c1.checkbox("F1", value=("F1" in edit_data))
-                f2_checked = chk_c2.checkbox("F2", value=("F2" in edit_data))
-                f3_checked = chk_c3.checkbox("F3", value=("F3" in edit_data))
+                # เปลี่ยนจาก Checkbox ที่ตกบรรทัดในมือถือ มาเป็น Segmented Control แบบเลือกได้หลายอัน
+                default_feeders = [f for f in ["F1", "F2", "F3", "F4"] if f in edit_data]
+                selected_feeders_input = st.segmented_control(
+                    "ฟีดเดอร์", 
+                    options=["F1", "F2", "F3", "F4"], 
+                    default=default_feeders,
+                    selection_mode="multi",
+                    label_visibility="collapsed"
+                )
                 
-                chk_c4, chk_c5, _ = st.columns(3)
-                f4_checked = chk_c4.checkbox("F4", value=("F4" in edit_data))
-                total_checked = False
+                # จัดการเผื่อผู้ใช้ไม่ได้เลือกอะไรเลย
+                selected_feeders = selected_feeders_input if selected_feeders_input is not None else []
+                
                 st.markdown('</div>', unsafe_allow_html=True)
-                
-                selected_feeders = []
-                if f1_checked: selected_feeders.append("F1")
-                if f2_checked: selected_feeders.append("F2")
-                if f3_checked: selected_feeders.append("F3")
-                if f4_checked: selected_feeders.append("F4")
                 
                 # === Section 3: กรอกข้อมูลแต่ละฟีดเดอร์ ===
                 feeder_inputs = {}
