@@ -1188,7 +1188,7 @@ if client:
                             }
                             
                         st.markdown("#### 📸 เพิ่มรูปภาพประกอบ")
-                        uploaded_imgs = st.file_uploader("เลือกรูปภาพเพื่ออัปโหลดเพิ่มเติม (ระบบจะรวมกับรูปเดิม สูงสุดรวมกันไม่เกิน 5 รูป)", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="edit_uploader")
+                        uploaded_imgs = st.file_uploader("เลือกรูปภาพเพื่ออัปโหลดเพิ่มเติม (ระบบจะนำรูปใหม่ไปต่อท้ายรูปเดิม)", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="edit_uploader")
 
                         col_btn1, col_btn2 = st.columns(2)
                         with col_btn1:
@@ -1226,7 +1226,7 @@ if client:
                                     if new_urls:
                                         all_urls = [u.strip() for u in img_url.split(",") if u.strip()] if img_url else []
                                         all_urls.extend(new_urls)
-                                        img_url = ", ".join(all_urls[:5]) # จำกัดสูงสุด 5 รูป
+                                        img_url = ", ".join(all_urls) # นำรูปทั้งหมดมาต่อกันโดยไม่จำกัด 5 รูป
 
                                 tap_val = first_row.get("แท็ป", "") if first_row is not None else ""
                                 cable_val = first_row.get("ขนาดสาย", "") if first_row is not None else ""
@@ -1419,6 +1419,15 @@ if client:
                                 except:
                                     pass
                             
+                            # คำนวณจำนวนรูปภาพสูงสุดในประวัติชุดนี้ เพื่อกำหนดจำนวนคอลัมน์รูปภาพ
+                            max_img_count = 1
+                            for _, r in hist_df.iterrows():
+                                img_url_str = str(r.get("รูปถ่าย", ""))
+                                if img_url_str:
+                                    urls = [u.strip() for u in img_url_str.split(",") if u.strip().startswith("http")]
+                                    if len(urls) > max_img_count:
+                                        max_img_count = len(urls)
+
                             rows_html = ""
                             for _, row in hist_df.iterrows():
                                 current_session = f"{row.get(col_date, '')}-{row.get(col_time, '')}"
@@ -1519,7 +1528,7 @@ if client:
                                         
                                     rowspan = session_counts[current_session]
                                     img_tds = []
-                                    for i in range(5):
+                                    for i in range(max_img_count):
                                         if i < len(urls):
                                             u = urls[i]
                                             direct_url = u
@@ -1592,7 +1601,7 @@ if client:
                                 f"<th rowspan='2' style='{th_style}'>%UF</th>"
                                 f"<th rowspan='2' style='{th_style}'>%Unb</th>"
                                 f"<th rowspan='2' style='{th_style}'>📝 หมายเหตุ</th>"
-                                f"<th rowspan='2' colspan='5' style='{th_style}'>📸 รูปถ่าย (สุงสุด 5 รูป)</th>"
+                                f"<th rowspan='2' colspan='{max_img_count}' style='{th_style}'>📸 รูปถ่าย</th>"
                                 f"<th rowspan='2' style='{th_style}'>⚙️ จัดการ</th>"
                                 "</tr>"
                                 "<tr>"
