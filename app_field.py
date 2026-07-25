@@ -421,6 +421,7 @@ if client:
                 
                 # จัดการเผื่อผู้ใช้ไม่ได้เลือกอะไรเลย
                 selected_feeders = selected_feeders_input if selected_feeders_input is not None else []
+                total_checked = False
                 
                 st.markdown('</div>', unsafe_allow_html=True)
                 
