@@ -1091,37 +1091,152 @@ if client:
                             st.session_state.selected_pea_for_profile = None
                             st.rerun()
                 
-                # --- จัดการคำสั่งลบรอบการวัด ---
-                delete_date = st.query_params.get("delete_date", "")
-                delete_time = st.query_params.get("delete_time", "")
-                if delete_date and delete_time and search_pea:
-                    st.warning(f"⚠️ คุณกำลังจะลบข้อมูลรอบ **{delete_date} เวลา {delete_time}** ของหม้อแปลง **{search_pea}**")
-                    col_del1, col_del2 = st.columns(2)
-                    with col_del1:
-                        if st.button("✅ ยืนยันลบ", type="primary", use_container_width=True):
-                            with st.spinner("กำลังลบข้อมูล..."):
-                                if delete_record_session(client, SHEET_NAME, search_pea, delete_date, delete_time):
-                                    st.success("✅ ลบข้อมูลรอบนี้เรียบร้อยแล้ว!")
-                                    time.sleep(1)
-                                    # ล้าง query params แล้ว rerun
-                                    st.query_params.clear()
-                                    st.query_params["page"] = "Profile"
-                                    st.query_params["profile_pea"] = search_pea
-                                    st.query_params["token"] = st.session_state.get("login_token", "")
-                                    st.query_params["auth_user"] = st.session_state.get("user_name", "Admin")
-                                    st.rerun()
+                @st.dialog("✏️ แก้ไขข้อมูลโหลด (รอบการวัด)", width="large")
+                def edit_session_dialog(pea, edit_date, edit_time):
+                    st.markdown(f"**PEA No:** {pea} | **วันที่:** {edit_date} | **เวลา:** {edit_time}")
+                    
+                    hist_df = df_record[(df_record["PEANO หม้อแปลง"].astype(str) == str(pea)) & 
+                                        (df_record["วันที่"].astype(str) == str(edit_date)) & 
+                                        (df_record["เวลา"].astype(str) == str(edit_time))]
+                    
+                    if hist_df.empty:
+                        st.warning("ไม่พบข้อมูลในรอบการวัดที่เลือก")
+                        return
+
+                    with st.form("edit_session_form"):
+                        edited_data = {}
+                        first_row = None
+                        
+                        for idx, row in hist_df.iterrows():
+                            if first_row is None:
+                                first_row = row
+                                
+                            f_name = str(row.get("ฟีดเดอร์", row.get("ฟิดเดอร์", row.get("Feeder", ""))))
+                            if f_name == "รวม":
+                                continue
+                                
+                            st.markdown(f"#### 🔌 ฟีดเดอร์: {f_name}")
+                            col1, col2, col3, col4 = st.columns(4)
+                            
+                            a_val = float(row.get("กระแส A", 0) or 0)
+                            b_val = float(row.get("กระแส B", 0) or 0)
+                            c_val = float(row.get("กระแส C", 0) or 0)
+                            n_val = float(row.get("กระแส N", 0) or 0)
+                            
+                            vt_ab = float(row.get("V. ใต้หม้อแปลง (A-B)", 0) or 0)
+                            vt_bc = float(row.get("V. ใต้หม้อแปลง (B-C)", 0) or 0)
+                            vt_ca = float(row.get("V. ใต้หม้อแปลง (C-A)", 0) or 0)
+                            vt_an = float(row.get("V. ใต้หม้อแปลง (A-N)", 0) or 0)
+                            vt_bn = float(row.get("V. ใต้หม้อแปลง (B-N)", 0) or 0)
+                            vt_cn = float(row.get("V. ใต้หม้อแปลง (C-N)", 0) or 0)
+                            
+                            ve_ab = float(row.get("V. ปลายสาย (A-B)", 0) or 0)
+                            ve_bc = float(row.get("V. ปลายสาย (B-C)", 0) or 0)
+                            ve_ca = float(row.get("V. ปลายสาย (C-A)", 0) or 0)
+                            ve_an = float(row.get("V. ปลายสาย (A-N)", 0) or 0)
+                            ve_bn = float(row.get("V. ปลายสาย (B-N)", 0) or 0)
+                            ve_cn = float(row.get("V. ปลายสาย (C-N)", 0) or 0)
+                            
+                            note_val = str(row.get("หมายเหตุ", row.get("Note", "")))
+                            if note_val == 'nan' or note_val == 'None': note_val = ""
+                            
+                            with col1: e_a = st.number_input(f"กระแส A", value=a_val, min_value=0.0, format="%.2f", key=f"a_{f_name}")
+                            with col2: e_b = st.number_input(f"กระแส B", value=b_val, min_value=0.0, format="%.2f", key=f"b_{f_name}")
+                            with col3: e_c = st.number_input(f"กระแส C", value=c_val, min_value=0.0, format="%.2f", key=f"c_{f_name}")
+                            with col4: e_n = st.number_input(f"กระแส N", value=n_val, min_value=0.0, format="%.2f", key=f"n_{f_name}")
+                            
+                            st.markdown("<span style='font-size:0.8rem; color:#64748b;'>แรงดันใต้หม้อแปลง</span>", unsafe_allow_html=True)
+                            cv1, cv2, cv3, cv4, cv5, cv6 = st.columns(6)
+                            with cv1: e_vt_ab = st.number_input(f"V(A-B)", value=vt_ab, min_value=0.0, format="%.1f", key=f"vtab_{f_name}")
+                            with cv2: e_vt_bc = st.number_input(f"V(B-C)", value=vt_bc, min_value=0.0, format="%.1f", key=f"vtbc_{f_name}")
+                            with cv3: e_vt_ca = st.number_input(f"V(C-A)", value=vt_ca, min_value=0.0, format="%.1f", key=f"vtca_{f_name}")
+                            with cv4: e_vt_an = st.number_input(f"V(A-N)", value=vt_an, min_value=0.0, format="%.1f", key=f"vtan_{f_name}")
+                            with cv5: e_vt_bn = st.number_input(f"V(B-N)", value=vt_bn, min_value=0.0, format="%.1f", key=f"vtbn_{f_name}")
+                            with cv6: e_vt_cn = st.number_input(f"V(C-N)", value=vt_cn, min_value=0.0, format="%.1f", key=f"vtcn_{f_name}")
+                            
+                            st.markdown("<span style='font-size:0.8rem; color:#64748b;'>แรงดันปลายสาย</span>", unsafe_allow_html=True)
+                            ce1, ce2, ce3, ce4, ce5, ce6 = st.columns(6)
+                            with ce1: e_ve_ab = st.number_input(f"ปลาย(A-B)", value=ve_ab, min_value=0.0, format="%.1f", key=f"veab_{f_name}")
+                            with ce2: e_ve_bc = st.number_input(f"ปลาย(B-C)", value=ve_bc, min_value=0.0, format="%.1f", key=f"vebc_{f_name}")
+                            with ce3: e_ve_ca = st.number_input(f"ปลาย(C-A)", value=ve_ca, min_value=0.0, format="%.1f", key=f"veca_{f_name}")
+                            with ce4: e_ve_an = st.number_input(f"ปลาย(A-N)", value=ve_an, min_value=0.0, format="%.1f", key=f"vean_{f_name}")
+                            with ce5: e_ve_bn = st.number_input(f"ปลาย(B-N)", value=ve_bn, min_value=0.0, format="%.1f", key=f"vebn_{f_name}")
+                            with ce6: e_ve_cn = st.number_input(f"ปลาย(C-N)", value=ve_cn, min_value=0.0, format="%.1f", key=f"vecn_{f_name}")
+                            
+                            e_note = st.text_input(f"หมายเหตุ", value=note_val, key=f"note_{f_name}")
+                            st.markdown("---")
+                            
+                            edited_data[f_name] = {
+                                "A": e_a, "B": e_b, "C": e_c, "N": e_n,
+                                "vt_ab": e_vt_ab, "vt_bc": e_vt_bc, "vt_ca": e_vt_ca, "vt_an": e_vt_an, "vt_bn": e_vt_bn, "vt_cn": e_vt_cn,
+                                "ve_ab": e_ve_ab, "ve_bc": e_ve_bc, "ve_ca": e_ve_ca, "ve_an": e_ve_an, "ve_bn": e_ve_bn, "ve_cn": e_ve_cn,
+                                "note": e_note
+                            }
+                            
+                        col_btn1, col_btn2 = st.columns(2)
+                        with col_btn1:
+                            submitted = st.form_submit_button("💾 บันทึกการแก้ไข", type="primary", use_container_width=True)
+                        with col_btn2:
+                            cancel_url = f"?profile_pea={pea}&page=Profile&token={st.session_state.get('login_token', '')}&auth_user={st.session_state.get('user_name', 'Admin')}"
+                            st.markdown(f"<a href='{cancel_url}' target='_self' style='display:block; text-align:center; padding:0.4rem 1rem; background-color:#f1f5f9; color:#475569; border-radius:0.5rem; text-decoration:none; font-weight:600; border:1px solid #cbd5e1;'>❌ ยกเลิก</a>", unsafe_allow_html=True)
+                        
+                        if submitted:
+                            with st.spinner("กำลังบันทึกข้อมูล..."):
+                                rows_to_insert = []
+                                
+                                tot_a = sum(d["A"] for d in edited_data.values())
+                                tot_b = sum(d["B"] for d in edited_data.values())
+                                tot_c = sum(d["C"] for d in edited_data.values())
+                                tot_n = sum(d["N"] for d in edited_data.values())
+                                
+                                img_url = first_row.get("รูปถ่าย", "") if first_row is not None else ""
+                                tap_val = first_row.get("แท็ป", "") if first_row is not None else ""
+                                cable_val = first_row.get("ขนาดสาย", "") if first_row is not None else ""
+                                
+                                notes = [d["note"] for d in edited_data.values() if d["note"]]
+                                tot_note = " / ".join(notes)
+                                
+                                for f_name, data in edited_data.items():
+                                    rows_to_insert.append([
+                                        edit_date, edit_time, pea, f_name,
+                                        data["A"], data["B"], data["C"], data["N"],
+                                        data["note"], img_url, tap_val, cable_val,
+                                        data["vt_ab"], data["vt_bc"], data["vt_ca"],
+                                        data["vt_an"], data["vt_bn"], data["vt_cn"],
+                                        data["ve_ab"], data["ve_bc"], data["ve_ca"],
+                                        data["ve_an"], data["ve_bn"], data["ve_cn"]
+                                    ])
+                                
+                                rows_to_insert.append([
+                                    edit_date, edit_time, pea, "รวม",
+                                    tot_a, tot_b, tot_c, tot_n,
+                                    tot_note, img_url, tap_val, cable_val,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                                ])
+                                
+                                if delete_record_session(client, SHEET_NAME, pea, edit_date, edit_time, delete_images=False):
+                                    try:
+                                        sheet_record = client.open(SHEET_NAME).worksheet("Record Data")
+                                        sheet_record.append_rows(rows_to_insert, value_input_option="USER_ENTERED")
+                                        st.success("✅ บันทึกข้อมูลเรียบร้อย!")
+                                        time.sleep(1)
+                                        st.query_params.clear()
+                                        st.query_params["page"] = "Profile"
+                                        st.query_params["profile_pea"] = pea
+                                        st.query_params["token"] = st.session_state.get("login_token", "")
+                                        st.query_params["auth_user"] = st.session_state.get("user_name", "Admin")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"❌ เกิดข้อผิดพลาดในการเพิ่มข้อมูลใหม่: {e}")
                                 else:
-                                    st.error("❌ เกิดข้อผิดพลาดในการลบข้อมูล")
-                    with col_del2:
-                        cancel_url = f"?profile_pea={search_pea}&page=Profile&token={st.session_state.get('login_token', '')}&auth_user={st.session_state.get('user_name', 'Admin')}"
-                        if st.button("❌ ยกเลิก", use_container_width=True):
-                            st.query_params.clear()
-                            st.query_params["page"] = "Profile"
-                            st.query_params["profile_pea"] = search_pea
-                            st.query_params["token"] = st.session_state.get("login_token", "")
-                            st.query_params["auth_user"] = st.session_state.get("user_name", "Admin")
-                            st.rerun()
-                    st.stop()
+                                    st.error("❌ เกิดข้อผิดพลาดในการลบข้อมูลเดิม")
+                
+                # --- จัดการคำสั่งแก้ไขรอบการวัด ---
+                is_edit_session = st.query_params.get("edit_session", "")
+                edit_date = st.query_params.get("edit_date", "")
+                edit_time = st.query_params.get("edit_time", "")
+                if is_edit_session == "true" and edit_date and edit_time and search_pea:
+                    edit_session_dialog(search_pea, edit_date, edit_time)
                 
                 if search_pea:
                     search_pea = search_pea.strip()
@@ -1389,8 +1504,8 @@ if client:
                                     sess_date = str(row.get(col_date, ''))
                                     sess_time = str(row.get(col_time, ''))
                                     rowspan = session_counts[current_session]
-                                    delete_url = f"?profile_pea={search_pea}&page=Profile&delete_date={sess_date}&delete_time={sess_time}&token={st.session_state.get('login_token', '')}&auth_user={st.session_state.get('user_name', 'Admin')}"
-                                    manage_content = f"<div style='display:flex; flex-direction:column; gap:6px; align-items:center;'><a href='{delete_url}' target='_self' style='background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; box-shadow: 0 2px 4px rgba(239,68,68,0.3); text-decoration:none; display:inline-block; white-space:nowrap;'>🗑️ ลบรอบนี้</a></div>"
+                                    edit_url = f"?profile_pea={search_pea}&page=Profile&edit_session=true&edit_date={sess_date}&edit_time={sess_time}&token={st.session_state.get('login_token', '')}&auth_user={st.session_state.get('user_name', 'Admin')}"
+                                    manage_content = f"<div style='display:flex; flex-direction:column; gap:6px; align-items:center;'><a href='{edit_url}' target='_self' style='background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; box-shadow: 0 2px 4px rgba(168,85,247,0.3); text-decoration:none; display:inline-block; white-space:nowrap;'>✏️ แก้ไข</a></div>"
                                     td_manage = f"<td rowspan='{rowspan}' style='padding: 8px; text-align:center; border-bottom:1px solid #e2e8f0; vertical-align:middle; background: #ffffff; border-left: 1px solid #e2e8f0; min-width: 100px;'>{manage_content}</td>"
                                 tap_td_h = f"<td style='{td_style} font-weight:600;'>{row.get(col_tap_h, '-')}</td>" if col_tap_h else ""
                                 

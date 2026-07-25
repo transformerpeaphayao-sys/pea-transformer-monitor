@@ -851,7 +851,7 @@ def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
         st.error(f"Error deleting from sheets: {e}")
         return False
 
-def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str):
+def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str, delete_images=True):
     try:
         sh = client.open(spreadsheet_name)
         sheet_record = sh.worksheet("Record Data")
@@ -872,13 +872,14 @@ def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str):
             sheet_record.delete_row(row_idx)
             
         # ลบรูปถ่ายจาก Google Drive
-        import re
-        for urls_str in img_urls_to_delete:
-            urls = [u.strip() for u in urls_str.split(",") if u.strip().startswith("http")]
-            for u in urls:
-                match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
-                if match:
-                    delete_image_from_drive(match.group(1))
+        if delete_images:
+            import re
+            for urls_str in img_urls_to_delete:
+                urls = [u.strip() for u in urls_str.split(",") if u.strip().startswith("http")]
+                for u in urls:
+                    match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
+                    if match:
+                        delete_image_from_drive(match.group(1))
                     
         load_completed_data.clear()
         return True
