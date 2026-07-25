@@ -40,6 +40,9 @@ if 'page' not in st.session_state:
 query_token = st.query_params.get("token")
 query_profile = st.query_params.get("profile_pea")
 query_page = st.query_params.get("page")
+query_edit_session = st.query_params.get("edit_session")
+query_edit_date = st.query_params.get("edit_date")
+query_edit_time = st.query_params.get("edit_time")
 
 # 2. ตรวจสอบสิทธิ์ด้วย Token (ปลอดภัยกว่า)
 if query_token and query_token in get_active_sessions():
@@ -48,11 +51,18 @@ if query_token and query_token in get_active_sessions():
     st.session_state.emp_id = get_active_sessions()[query_token]["emp_id"]
     st.session_state.login_token = query_token
 
-# 3. นำทางไปยังหน้าที่ต้องการ
+# 3. นำทางไปยังหน้าที่ต้องการและตั้งค่า Trigger
 if st.session_state.get("logged_in", False):
     if query_profile:
         st.session_state.page = "Profile"
         st.session_state.selected_pea_for_profile = query_profile
+        
+        # จัดการ Edit Session
+        if query_edit_session == "true":
+            st.session_state.trigger_edit_session = True
+            st.session_state.edit_date_for_dialog = query_edit_date
+            st.session_state.edit_time_for_dialog = query_edit_time
+            
     elif query_page:
         st.session_state.page = query_page
 
@@ -1232,10 +1242,11 @@ if client:
                                     st.error("❌ เกิดข้อผิดพลาดในการลบข้อมูลเดิม")
                 
                 # --- จัดการคำสั่งแก้ไขรอบการวัด ---
-                is_edit_session = st.query_params.get("edit_session", "")
-                edit_date = st.query_params.get("edit_date", "")
-                edit_time = st.query_params.get("edit_time", "")
-                if is_edit_session == "true" and edit_date and edit_time and search_pea:
+                is_edit_session = st.session_state.get("trigger_edit_session", False)
+                edit_date = st.session_state.get("edit_date_for_dialog", "")
+                edit_time = st.session_state.get("edit_time_for_dialog", "")
+                if is_edit_session and edit_date and edit_time and search_pea:
+                    st.session_state.trigger_edit_session = False
                     edit_session_dialog(search_pea, edit_date, edit_time)
                 
                 if search_pea:
