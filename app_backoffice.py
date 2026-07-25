@@ -1187,6 +1187,9 @@ if client:
                                 "note": e_note
                             }
                             
+                        st.markdown("#### 📸 เพิ่มรูปภาพประกอบ")
+                        uploaded_imgs = st.file_uploader("เลือกรูปภาพเพื่ออัปโหลดเพิ่มเติม (ระบบจะรวมกับรูปเดิม สูงสุดรวมกันไม่เกิน 5 รูป)", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="edit_uploader")
+
                         col_btn1, col_btn2 = st.columns(2)
                         with col_btn1:
                             submitted = st.form_submit_button("💾 บันทึกการแก้ไข", type="primary", use_container_width=True)
@@ -1203,7 +1206,28 @@ if client:
                                 tot_c = sum(d["C"] for d in edited_data.values())
                                 tot_n = sum(d["N"] for d in edited_data.values())
                                 
-                                img_url = first_row.get("รูปถ่าย", "") if first_row is not None else ""
+                                img_url = str(first_row.get("รูปถ่าย", "")) if first_row is not None else ""
+                                
+                                # --- จัดการรูปภาพใหม่ ---
+                                if uploaded_imgs:
+                                    st.info("กำลังอัปโหลดรูปภาพใหม่ลง Google Drive...")
+                                    folder_id = st.secrets.get("drive_folder_id", "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC")
+                                    new_urls = []
+                                    for i, img_file in enumerate(uploaded_imgs):
+                                        try:
+                                            compressed_bytes = compress_image(img_file.getvalue())
+                                            file_name = f"{pea}_{edit_date.replace('/','')}_{edit_time.replace(':','')}_edit_{i+1}.jpg"
+                                            url = upload_image_to_drive(compressed_bytes, folder_id, file_name)
+                                            if url:
+                                                new_urls.append(url)
+                                        except Exception as e:
+                                            st.warning(f"ไม่สามารถอัปโหลดรูปที่ {i+1} ได้: {e}")
+                                            
+                                    if new_urls:
+                                        all_urls = [u.strip() for u in img_url.split(",") if u.strip()] if img_url else []
+                                        all_urls.extend(new_urls)
+                                        img_url = ", ".join(all_urls[:5]) # จำกัดสูงสุด 5 รูป
+
                                 tap_val = first_row.get("แท็ป", "") if first_row is not None else ""
                                 cable_val = first_row.get("ขนาดสาย", "") if first_row is not None else ""
                                 
