@@ -654,11 +654,15 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
         
         # --- รอบที่ 1: ลองอัปโหลดพร้อม folderId ปกติ ---
         payload = {
+            "action": "upload",
             "fileName": file_name,
             "mimeType": "image/jpeg",
             "fileData": encoded_image,
             "folderId": folder_id_clean,
-            "folder_id": folder_id_clean  # เผื่อโค้ดฝั่ง Apps Script คาดหวังตัวแปรชื่อนี้
+            "folder_id": folder_id_clean,
+            "folderID": folder_id_clean,
+            "folder": folder_id_clean,
+            "id": folder_id_clean
         }
         
         response = requests.post(web_app_url, json=payload, timeout=90)
@@ -671,6 +675,7 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
                 # --- รอบที่ 2 (Fallback): ถ้า folderId มีปัญหา ลองส่งโดยไม่ระบุ folderId ---
                 st.warning(f"⚠️ โฟลเดอร์ปลายทางมีปัญหา ({response_text}) กำลังลองบันทึกไปที่ Drive หลัก...")
                 payload_fallback = {
+                    "action": "upload",
                     "fileName": file_name,
                     "mimeType": "image/jpeg",
                     "fileData": encoded_image
