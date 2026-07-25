@@ -786,7 +786,7 @@ def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
             records = sheet_master.get_all_records()
             for idx, row in enumerate(records):
                 if str(row.get('PEANO หม้อแปลง', '')).strip() == pea_str:
-                    sheet_master.delete_row(idx + 2)
+                    sheet_master.delete_rows(idx + 2)
                     break
         except Exception as e:
             st.warning(f"ลบ MasterData: {e}")
@@ -868,9 +868,20 @@ def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str, 
                 if "รูปถ่าย" in row and row["รูปถ่าย"]:
                     img_urls_to_delete.append(str(row["รูปถ่าย"]))
                 
-        for row_idx in reversed(rows_to_delete):
-            sheet_record.delete_row(row_idx)
-            
+        requests = []
+        for row_idx in sorted(rows_to_delete, reverse=True):
+            requests.append({
+                "deleteDimension": {
+                    "range": {
+                        "sheetId": sheet_record.id,
+                        "dimension": "ROWS",
+                        "startIndex": row_idx - 1,
+                        "endIndex": row_idx
+                    }
+                }
+            })
+        if requests:
+            sh.batch_update({"requests": requests})
         # ลบรูปถ่ายจาก Google Drive
         if delete_images:
             import re
