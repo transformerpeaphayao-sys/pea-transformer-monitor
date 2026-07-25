@@ -1327,27 +1327,30 @@ if client:
                                 td_img = ""
                                 if is_first_row_of_session:
                                     img_url_str = str(row.get("รูปถ่าย", ""))
-                                    img_link = "-"
+                                    urls = []
                                     if img_url_str:
                                         urls = [u.strip() for u in img_url_str.split(",") if u.strip().startswith("http")]
-                                        if urls:
-                                            img_elements = []
-                                            for i, u in enumerate(urls):
-                                                direct_url = u
-                                                import re
-                                                match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
-                                                if match:
-                                                    file_id = match.group(1)
-                                                    b64_img = fetch_google_drive_image_base64(file_id)
-                                                    if b64_img:
-                                                        direct_url = b64_img
-                                                    else:
-                                                        direct_url = f"https://drive.google.com/uc?id={file_id}"
-                                                img_elements.append(f"<a href='{u}' target='_blank' style='flex: 1; display: block; margin: 0; text-decoration: none;'><img src='{direct_url}' style='width: 100%; height: 100%; min-height: 150px; object-fit: cover; display: block; border-radius:4px;' title='คลิกเพื่อดูรูปเต็ม' alt='🖼️ ดูรูปภาพ'></a>")
-                                            img_link = "<div style='display:flex; flex-direction:row; width:100%; height:100%; align-items: stretch; gap:4px; padding:4px;'>" + "".join(img_elements) + "</div>"
-                                    
+                                        
                                     rowspan = session_counts[current_session]
-                                    td_img = f"<td rowspan='{rowspan}' style='padding: 0; text-align:center; border-bottom:1px solid #e2e8f0; vertical-align:middle; background: #ffffff; border-left: 1px solid #e2e8f0; width: 150px;'>{img_link}</td>"
+                                    img_tds = []
+                                    for i in range(5):
+                                        if i < len(urls):
+                                            u = urls[i]
+                                            direct_url = u
+                                            import re
+                                            match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
+                                            if match:
+                                                file_id = match.group(1)
+                                                b64_img = fetch_google_drive_image_base64(file_id)
+                                                if b64_img:
+                                                    direct_url = b64_img
+                                                else:
+                                                    direct_url = f"https://drive.google.com/uc?id={file_id}"
+                                            content = f"<a href='{u}' target='_blank' style='display:block;'><img src='{direct_url}' style='width:120px; height:120px; object-fit:cover; border-radius:4px; margin:0 auto;' title='คลิกเพื่อดูรูปเต็ม'></a>"
+                                        else:
+                                            content = "-"
+                                        img_tds.append(f"<td rowspan='{rowspan}' style='padding: 8px; text-align:center; border-bottom:1px solid #e2e8f0; vertical-align:middle; background: #ffffff; border-left: 1px solid #e2e8f0; min-width: 130px;'>{content}</td>")
+                                    td_img = "".join(img_tds)
                                 
                                 td_manage = ""
                                 if is_first_row_of_session:
@@ -1400,7 +1403,7 @@ if client:
                                 f"<th rowspan='2' style='{th_style}'>%UF</th>"
                                 f"<th rowspan='2' style='{th_style}'>%Unb</th>"
                                 f"<th rowspan='2' style='{th_style}'>📝 หมายเหตุ</th>"
-                                f"<th rowspan='2' style='{th_style}'>📸 รูปถ่าย</th>"
+                                f"<th rowspan='2' colspan='5' style='{th_style}'>📸 รูปถ่าย (สุงสุด 5 รูป)</th>"
                                 "</tr>"
                                 "<tr>"
                                 f"<th style='{sub_th_style_ll}'>A-B</th><th style='{sub_th_style_ll}'>B-C</th><th style='{sub_th_style_ll}'>C-A</th><th style='{sub_th_style_ln}'>A-N</th><th style='{sub_th_style_ln}'>B-N</th><th style='{sub_th_style_ln}'>C-N</th>"
