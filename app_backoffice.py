@@ -452,6 +452,14 @@ if client:
                     if completed_peas:
                         df_completed_master = df_master[df_master['PEANO หม้อแปลง'].astype(str).isin(completed_peas)]
                         
+                        # --- กู้คืน Token สำหรับ session เก่า ---
+                        if not st.session_state.get("login_token"):
+                            for t, v in get_active_sessions().items():
+                                if v.get("emp_id") == st.session_state.get("emp_id"):
+                                    st.session_state.login_token = t
+                                    break
+                        # ------------------------------------
+                        
                         # 1. กรองด้วยข้อความ Search
                         mask = df_completed_master['PEANO หม้อแปลง'].astype(str).str.contains(search_completed, case=False, na=False) | \
                                df_completed_master['สถานที่'].astype(str).str.contains(search_completed, case=False, na=False)
@@ -531,6 +539,14 @@ if client:
                         mask_p = df_pending['PEANO หม้อแปลง'].astype(str).str.contains(search_pending, case=False, na=False) | \
                                  df_pending['สถานที่'].astype(str).str.contains(search_pending, case=False, na=False)
                         filtered_df_p = df_pending[mask_p]
+                        
+                        # --- กู้คืน Token สำหรับ session เก่า ---
+                        if not st.session_state.get("login_token"):
+                            for t, v in get_active_sessions().items():
+                                if v.get("emp_id") == st.session_state.get("emp_id"):
+                                    st.session_state.login_token = t
+                                    break
+                        # ------------------------------------
                         
                         table_html = "<div class='pea-table-wrapper'><table class='pea-table'><thead><tr><th>PEA No.</th><th>สถานที่ติดตั้ง</th><th>ขนาด (kVA)</th><th>ระบบเฟส</th></tr></thead><tbody>"
                         
@@ -919,7 +935,7 @@ if client:
                                 if pea_val != prev_pea:
                                     prev_pea = pea_val
                                 
-                                current_token = st.query_params.get("token", "")
+                                current_token = st.session_state.get("login_token", "")
                                 token_param = f"&token={current_token}" if current_token else ""
                                 auth_param = f"&auth_user={st.session_state.get('user_name', 'Admin')}"
                                 pea_link = f"<a href='?profile_pea={pea_val}&page=Profile{token_param}{auth_param}' target='_self' style='color:var(--text-dark);font-weight:600;text-decoration:none;white-space:nowrap;'>🔗 {pea_val}</a>"
