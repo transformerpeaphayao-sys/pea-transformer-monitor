@@ -650,12 +650,15 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
     try:
         encoded_image = base64.b64encode(file_bytes).decode('utf-8')
         
+        folder_id_clean = folder_id.strip() if folder_id else ""
+        
         # --- รอบที่ 1: ลองอัปโหลดพร้อม folderId ปกติ ---
         payload = {
             "fileName": file_name,
             "mimeType": "image/jpeg",
             "fileData": encoded_image,
-            "folderId": folder_id
+            "folderId": folder_id_clean,
+            "folder_id": folder_id_clean  # เผื่อโค้ดฝั่ง Apps Script คาดหวังตัวแปรชื่อนี้
         }
         
         response = requests.post(web_app_url, json=payload, timeout=90)
