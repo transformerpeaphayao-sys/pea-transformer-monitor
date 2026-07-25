@@ -192,54 +192,47 @@ if client:
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    # วาง Filter และปุ่มรีเฟรชในบรรทัดเดียวกัน
-                    col_filter, col_ref = st.columns([1, 0.25], vertical_alignment="center")
-                    with col_filter:
-                        st.markdown("<div class='filter-with-button-marker'></div>", unsafe_allow_html=True)
-                        map_filter = st.segmented_control(
-                            "กรองประเภทงาน:",
-                            options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                            default="ทั้งหมด",
-                            selection_mode="single",
-                            label_visibility="collapsed"
-                        )
-                    with col_ref:
-                        if st.button("🔄 รีเฟรช", use_container_width=True):
+                    # ตั้งค่าเริ่มต้นสำหรับตัวกรอง
+                    if "map_filter_selected" not in st.session_state:
+                        st.session_state.map_filter_selected = "ทั้งหมด"
+                    
+                    # วางปุ่มตัวกรองและรีเฟรชเป็นแถวเดียวกัน (ใช้ st.button ให้เหมือนกันหมด)
+                    c1, c2, c3, c4 = st.columns(4)
+                    with c1:
+                        if st.button("ทั้งหมด", use_container_width=True, key="map_f_all"):
+                            st.session_state.map_filter_selected = "ทั้งหมด"
+                            st.rerun()
+                    with c2:
+                        if st.button("🔴 ยังไม่ตรวจ", use_container_width=True, key="map_f_red"):
+                            st.session_state.map_filter_selected = "🔴 ยังไม่ตรวจ"
+                            st.rerun()
+                    with c3:
+                        if st.button("🟠 สั่งตรวจซ้ำ", use_container_width=True, key="map_f_orange"):
+                            st.session_state.map_filter_selected = "🟠 สั่งตรวจซ้ำ"
+                            st.rerun()
+                    with c4:
+                        if st.button("🔄 รีเฟรช", use_container_width=True, key="map_f_refresh"):
                             load_completed_data.clear()
                             load_task_data.clear()
                             load_master_data.clear()
                             st.rerun()
-                            
-                    # บังคับให้อยู่บรรทัดเดียวกันบนมือถือด้วย JavaScript
-                    st.markdown("""
-                        <script>
-                            const fMarkers = window.parent.document.querySelectorAll('.filter-with-button-marker');
-                            fMarkers.forEach(marker => {
-                                const block = marker.closest('[data-testid="stHorizontalBlock"]');
-                                if (block) {
-                                    block.style.display = 'flex';
-                                    block.style.flexDirection = 'row';
-                                    block.style.flexWrap = 'nowrap';
-                                    block.style.alignItems = 'center';
-                                    block.style.justifyContent = 'flex-start';
-                                    block.style.gap = '8px';
-                                    
-                                    // ปรับความกว้างคอลัมน์ย่อย
-                                    const cols = block.querySelectorAll('[data-testid="column"]');
-                                    if (cols.length >= 2) {
-                                        cols[0].style.flex = '1 1 auto';
-                                        cols[0].style.minWidth = '0';
-                                        cols[0].style.width = 'auto';
-                                        cols[1].style.flex = '0 0 max-content';
-                                        cols[1].style.width = 'auto';
-                                    }
-                                }
-                            });
-                        </script>
+                    
+                    # ไฮไลท์ปุ่มที่ถูกเลือกอยู่ด้วย CSS (เปลี่ยนเป็นสีม่วง PEA)
+                    active_map = {"ทั้งหมด": 1, "🔴 ยังไม่ตรวจ": 2, "🟠 สั่งตรวจซ้ำ": 3}
+                    active_col = active_map.get(st.session_state.map_filter_selected, 1)
+                    st.markdown(f"""
+                    <style>
+                        /* ไฮไลท์ปุ่มตัวกรองแผนที่ที่ถูกเลือก */
+                        div[data-testid="stHorizontalBlock"]:has(button[key="map_f_all"]) > div[data-testid="column"]:nth-child({active_col}) button {{
+                            background: linear-gradient(135deg, #7b2d8e 0%, #5b1d6e 100%) !important;
+                            color: white !important;
+                            border: none !important;
+                            box-shadow: 0 4px 12px rgba(123, 45, 142, 0.4) !important;
+                        }}
+                    </style>
                     """, unsafe_allow_html=True)
                     
-                    if map_filter is None: 
-                        map_filter = "ทั้งหมด"
+                    map_filter = st.session_state.map_filter_selected
                     
                     # ตัดข้อมูลตามที่ผู้ใช้เลือก
                     if map_filter == "🔴 ยังไม่ตรวจ":
