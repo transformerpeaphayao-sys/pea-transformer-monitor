@@ -46,6 +46,7 @@ if query_token and query_token in get_active_sessions():
     st.session_state.logged_in = True
     st.session_state.user_name = get_active_sessions()[query_token]["name"]
     st.session_state.emp_id = get_active_sessions()[query_token]["emp_id"]
+    st.session_state.login_token = query_token
 
 # 3. นำทางไปยังหน้าที่ต้องการ
 if st.session_state.get("logged_in", False):
@@ -263,6 +264,7 @@ if client:
                                 # Generate token for session persistence
                                 token = str(uuid.uuid4())
                                 get_active_sessions()[token] = {"name": name, "emp_id": emp_id}
+                                st.session_state.login_token = token
                                 st.query_params["token"] = token
                                 
                                 st.success("เข้าสู่ระบบสำเร็จ!")
@@ -502,7 +504,7 @@ if client:
                             
                             row_class = "group-odd" if i % 2 == 1 else "group-even"
                             
-                            current_token = st.query_params.get("token", "")
+                            current_token = st.session_state.get("login_token", "")
                             token_param = f"&token={current_token}" if current_token else ""
                             auth_param = f"&auth_user={st.session_state.get('user_name', 'Admin')}"
                             pea_link = f"<a href='?profile_pea={pea}&page=Profile{token_param}{auth_param}' target='_self' style='color:var(--text-dark);font-weight:600;text-decoration:none;'>🔗 {pea}</a>"
@@ -540,7 +542,7 @@ if client:
                             
                             row_class = "group-odd" if i % 2 == 1 else "group-even"
                             
-                            current_token = st.query_params.get("token", "")
+                            current_token = st.session_state.get("login_token", "")
                             token_param = f"&token={current_token}" if current_token else ""
                             auth_param = f"&auth_user={st.session_state.get('user_name', 'Admin')}"
                             pea_link = f"<a href='?profile_pea={pea}&page=Profile{token_param}{auth_param}' target='_self' style='color:var(--text-dark);font-weight:600;text-decoration:none;'>🔗 {pea}</a>"
