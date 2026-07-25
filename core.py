@@ -666,7 +666,7 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
                 return response_text
             else:
                 # --- รอบที่ 2 (Fallback): ถ้า folderId มีปัญหา ลองส่งโดยไม่ระบุ folderId ---
-                st.warning(f"⚠️ โฟลเดอร์ปลายทางมีปัญหา กำลังลองบันทึกไปที่ Drive หลัก...")
+                st.warning(f"⚠️ โฟลเดอร์ปลายทางมีปัญหา ({response_text}) กำลังลองบันทึกไปที่ Drive หลัก...")
                 payload_fallback = {
                     "fileName": file_name,
                     "mimeType": "image/jpeg",
