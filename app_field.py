@@ -187,7 +187,11 @@ if client:
             # หน้าที่ 1: MAP PAGE
             # ==============================
             if st.session_state.page == "Map":
-                st.markdown("#### 🗺️ แผนที่ตำแหน่งหม้อแปลง")
+                st.markdown("""
+                <div class="pea-card-header" style="margin-bottom: 1rem;">
+                    🗺️ แผนที่ตำแหน่งหม้อแปลง
+                </div>
+                """, unsafe_allow_html=True)
                 
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
