@@ -1195,9 +1195,21 @@ if client:
                             st.markdown("#### 📸 รูปภาพปัจจุบัน")
                             st.caption("ติ๊กถูกที่ช่องสี่เหลี่ยมใต้รูปที่ต้องการลบ (ระบบจะลบรูปเมื่อกดบันทึก)")
                             cols = st.columns(min(len(existing_urls), 5))
+                            import re
                             for idx, url in enumerate(existing_urls):
                                 with cols[idx % len(cols)]:
-                                    st.image(url, use_container_width=True)
+                                    display_url = url
+                                    match = re.search(r'(?:/d/|id=)([-\w]{25,})', url)
+                                    if match:
+                                        file_id = match.group(1)
+                                        b64_img = fetch_google_drive_image_base64(file_id)
+                                        if b64_img:
+                                            display_url = b64_img
+                                    
+                                    try:
+                                        st.image(display_url, use_container_width=True)
+                                    except:
+                                        st.error("รูปภาพมีปัญหา")
                                     if st.checkbox(f"ลบรูปที่ {idx+1}", key=f"del_img_{idx}_{pea}_{edit_time}"):
                                         images_to_delete.append(url)
                                         
