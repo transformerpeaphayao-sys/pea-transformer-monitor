@@ -623,6 +623,48 @@ if client:
                 st.markdown("<br>", unsafe_allow_html=True)
                 tot_note = st.text_input("หมายเหตุ (รวม)", key="tot_note_global", value=edit_data.get("รวม", {}).get("note", ""), placeholder="หมายเหตุรวมทั้งหมด...")
                 
+                # --- [เพิ่มใหม่] โชว์ผลการคำนวณและแจ้งเตือนแบบเรียลไทม์ (โชว์ก่อนกดปุ่ม) ---
+                if selected_pea:
+                    t_info_df = df_master[df_master['PEANO หม้อแปลง'].astype(str) == str(selected_pea)]
+                    if not t_info_df.empty:
+                        t_info_row = t_info_df.iloc[0]
+                        k_val = safe_float(t_info_row['ค่าพิกัด kVA หม้อแปลง'])
+                        if k_val > 0.0:
+                            i_m = (k_val * 1000) / (math.sqrt(3) * 400)
+                            max_i_measured = max(tot_a, tot_b, tot_c)
+                            p_load = (max_i_measured / i_m) * 100 if i_m > 0 else 0
+                            
+                            a_current = (tot_a + tot_b + tot_c) / 3
+                            if a_current > 0:
+                                d_a = abs(tot_a - a_current)
+                                d_b = abs(tot_b - a_current)
+                                d_c = abs(tot_c - a_current)
+                                m_dev = max(d_a, d_b, d_c)
+                                p_unb = (m_dev / a_current) * 100
+                            else:
+                                p_unb = 0.0
+                            
+                            st.write("---")
+                            st.markdown(f"**⚡ พิกัดหม้อแปลง:** {k_val} kVA | **พิกัดกระแสสูงสุด (I_max):** {i_m:.2f} A")
+                            st.markdown(f"**📊 กระแสเฉลี่ย 3 เฟส:** {a_current:.2f} A")
+                            
+                            c_alt1, c_alt2 = st.columns(2)
+                            with c_alt1:
+                                if p_load > 100:
+                                    st.error(f"🔴 **Overload!**\n\nโหลดใช้งาน {p_load:.2f}%\n(กระแสเฟสสูงสุด {max_i_measured:.2f} A)")
+                                elif p_load > 80:
+                                    st.warning(f"🟡 **เกินเกณฑ์ 80%!**\n\nโหลดใช้งาน {p_load:.2f}%\n(ควรวางแผนลดโหลด)")
+                                else:
+                                    st.success(f"🟢 **โหลดปกติ**\n\nโหลดใช้งาน {p_load:.2f}%")
+                                    
+                            with c_alt2:
+                                if p_unb > 30:
+                                    st.error(f"🔴 **Unbalance สูงมาก!**\n\nความไม่สมดุล {p_unb:.2f}%")
+                                elif p_unb > 20:
+                                    st.warning(f"🟡 **Unbalance เกินเกณฑ์!**\n\nความไม่สมดุล {p_unb:.2f}%")
+                                else:
+                                    st.success(f"🟢 **กระแสสมดุลดี**\n\nความไม่สมดุล {p_unb:.2f}%")
+                
                 st.write("")
                 btn_label = "บันทึกการแก้ไข (อัปเดตข้อมูล)" if is_edit_mode else "บันทึกข้อมูลและตรวจสอบ"
                 submitted = st.button(btn_label, type="primary", use_container_width=True)
@@ -635,41 +677,6 @@ if client:
                     if kva_value == 0.0:
                         st.error("❌ ข้อมูล kVA ใน MasterData ไม่ถูกต้อง โปรดแก้ไขที่ฐานข้อมูลก่อนบันทึกครับ")
                         st.stop()
-                    
-                    i_max = (kva_value * 1000) / (math.sqrt(3) * 400)
-                    max_current_measured = max(tot_a, tot_b, tot_c)
-                    percent_load = (max_current_measured / i_max) * 100 if i_max > 0 else 0
-                    
-                    avg_current = (tot_a + tot_b + tot_c) / 3
-                    if avg_current > 0:
-                        dev_a = abs(tot_a - avg_current)
-                        dev_b = abs(tot_b - avg_current)
-                        dev_c = abs(tot_c - avg_current)
-                        max_dev = max(dev_a, dev_b, dev_c)
-                        percent_unbalance = (max_dev / avg_current) * 100
-                    else:
-                        percent_unbalance = 0.0
-                    
-                    st.write("---")
-                    st.markdown(f"**⚡ พิกัดหม้อแปลง:** {kva_value} kVA | **พิกัดกระแสสูงสุด (I_max):** {i_max:.2f} A")
-                    st.markdown(f"**📊 กระแสเฉลี่ย 3 เฟส:** {avg_current:.2f} A")
-                    
-                    col_alert1, col_alert2 = st.columns(2)
-                    with col_alert1:
-                        if percent_load > 100:
-                            st.error(f"🔴 **Overload!**\n\nโหลดใช้งาน {percent_load:.2f}%\n(กระแสเฟสสูงสุด {max_current_measured:.2f} A)")
-                        elif percent_load > 80:
-                            st.warning(f"🟡 **เกินเกณฑ์ 80%!**\n\nโหลดใช้งาน {percent_load:.2f}%\n(ควรวางแผนลดโหลด)")
-                        else:
-                            st.success(f"🟢 **โหลดปกติ**\n\nโหลดใช้งาน {percent_load:.2f}%")
-                            
-                    with col_alert2:
-                        if percent_unbalance > 30:
-                            st.error(f"🔴 **Unbalance สูงมาก!**\n\nความไม่สมดุล {percent_unbalance:.2f}%")
-                        elif percent_unbalance > 20:
-                            st.warning(f"🟡 **Unbalance เกินเกณฑ์!**\n\nความไม่สมดุล {percent_unbalance:.2f}%")
-                        else:
-                            st.success(f"🟢 **กระแสสมดุลดี**\n\nความไม่สมดุล {percent_unbalance:.2f}%")
 
                     # ตรวจสอบการเลือกฟีดเดอร์ก่อนบันทึก
                     if len(selected_feeders) == 0 and not total_checked:
