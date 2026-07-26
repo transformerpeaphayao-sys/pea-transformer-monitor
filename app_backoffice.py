@@ -1187,6 +1187,20 @@ if client:
                                 "note": e_note
                             }
                             
+                        img_url_str = str(first_row.get("รูปถ่าย", "")) if first_row is not None else ""
+                        existing_urls = [u.strip() for u in img_url_str.split(",") if u.strip()]
+                        
+                        images_to_delete = []
+                        if existing_urls:
+                            st.markdown("#### 📸 รูปภาพปัจจุบัน")
+                            st.caption("ติ๊กถูกที่ช่องสี่เหลี่ยมใต้รูปที่ต้องการลบ (ระบบจะลบรูปเมื่อกดบันทึก)")
+                            cols = st.columns(min(len(existing_urls), 5))
+                            for idx, url in enumerate(existing_urls):
+                                with cols[idx % len(cols)]:
+                                    st.image(url, use_container_width=True)
+                                    if st.checkbox(f"ลบรูปที่ {idx+1}", key=f"del_img_{idx}_{pea}_{edit_time}"):
+                                        images_to_delete.append(url)
+                                        
                         st.markdown("#### 📸 เพิ่มรูปภาพประกอบ")
                         uploaded_imgs = st.file_uploader("เลือกรูปภาพเพื่ออัปโหลดเพิ่มเติม (ระบบจะนำรูปใหม่ไปต่อท้ายรูปเดิม)", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="edit_uploader")
 
@@ -1206,7 +1220,19 @@ if client:
                                 tot_c = sum(d["C"] for d in edited_data.values())
                                 tot_n = sum(d["N"] for d in edited_data.values())
                                 
-                                img_url = str(first_row.get("รูปถ่าย", "")) if first_row is not None else ""
+                                img_url_str = str(first_row.get("รูปถ่าย", "")) if first_row is not None else ""
+                                all_urls = [u.strip() for u in img_url_str.split(",") if u.strip()]
+                                
+                                # --- ลบรูปภาพเก่า ---
+                                if images_to_delete:
+                                    st.info("กำลังลบรูปภาพเดิมออกจาก Google Drive...")
+                                    import re
+                                    for d_url in images_to_delete:
+                                        if d_url in all_urls:
+                                            all_urls.remove(d_url)
+                                            match = re.search(r'id=([a-zA-Z0-9_-]+)', d_url)
+                                            if match:
+                                                delete_image_from_drive(match.group(1))
                                 
                                 # --- จัดการรูปภาพใหม่ ---
                                 if uploaded_imgs:
@@ -1224,9 +1250,9 @@ if client:
                                             st.warning(f"ไม่สามารถอัปโหลดรูปที่ {i+1} ได้: {e}")
                                             
                                     if new_urls:
-                                        all_urls = [u.strip() for u in img_url.split(",") if u.strip()] if img_url else []
                                         all_urls.extend(new_urls)
-                                        img_url = ", ".join(all_urls) # นำรูปทั้งหมดมาต่อกันโดยไม่จำกัด 5 รูป
+                                        
+                                img_url = ", ".join(all_urls)
 
                                 tap_val = first_row.get("แท็ป", "") if first_row is not None else ""
                                 cable_val = first_row.get("ขนาดสาย", "") if first_row is not None else ""
