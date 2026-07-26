@@ -257,6 +257,25 @@ if client:
                         
                         m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
                         
+                        # เพิ่มชั้นข้อมูลแผนที่ดาวเทียม (Google Hybrid)
+                        folium.TileLayer(
+                            tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                            attr='Google',
+                            name='ดาวเทียม (Google Hybrid)',
+                            max_zoom=20
+                        ).add_to(m)
+                        
+                        # เพิ่มชั้นข้อมูลแผนที่ถนน (Google Maps)
+                        folium.TileLayer(
+                            tiles='https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                            attr='Google',
+                            name='แผนที่ถนน (Google Maps)',
+                            max_zoom=20
+                        ).add_to(m)
+                        
+                        # ปุ่มสลับชั้นข้อมูลแผนที่
+                        folium.LayerControl(position='topright').add_to(m)
+                        
                         # เพิ่มปุ่มค้นหาตำแหน่งปัจจุบันของผู้ใช้ (GPS)
                         LocateControl(
                             position="topleft",
