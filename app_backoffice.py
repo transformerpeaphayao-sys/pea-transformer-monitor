@@ -7,30 +7,6 @@ import pytz
 import requests
 import base64
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_google_drive_image_base64(file_id):
-    """ฟังก์ชันดึงรูปภาพจาก Google Drive ผ่าน GAS Web App (ป้องกัน Google บล็อก)"""
-    web_app_url = st.secrets.get("gas_web_app_url", "")
-    
-    if not web_app_url:
-        return None
-        
-    try:
-        # ส่ง GET Request ไปที่ GAS ของเราเอง พร้อมแนบพารามิเตอร์ ?id=
-        url = f"{web_app_url}?id={file_id}"
-        response = requests.get(url, timeout=15)
-        
-        if response.status_code == 200:
-            # GAS ของคุณรีเทิร์นกลับมาเป็น JSON: {"base64": "data:image/jpeg;base64,... "}
-            data = response.json()
-            if "base64" in data:
-                return data["base64"]
-    except Exception as e:
-        # เงียบไว้หากรูปมีปัญหา จะได้ไม่ทำให้ตารางพัง
-        return None
-        
-    return None
-
 st.set_page_config(page_title='ระบบบันทึกและตรวจสอบโหลดหม้อแปลง PEA (Back Office)', page_icon='💻', layout='wide', initial_sidebar_state='expanded')
 load_custom_css()
 
