@@ -7,6 +7,7 @@ import pytz
 import requests
 import base64
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def fetch_google_drive_image_base64(file_id):
     """ฟังก์ชันดึงรูปภาพจาก Google Drive ผ่าน GAS Web App (ป้องกัน Google บล็อก)"""
     web_app_url = st.secrets.get("gas_web_app_url", "")

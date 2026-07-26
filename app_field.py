@@ -751,15 +751,25 @@ if client:
                                             str(row.get('เวลา', '')).strip() == str(st.session_state.edit_time).strip()):
                                             rows_to_delete.append(idx + 2) # +2 เพราะ index เริ่ม 0 และมี Header
                                             
-# --- [แก้ไขใหม่] ลบและแทรกแบบส่งคำสั่งครั้งเดียว ป้องกัน API บล็อก ---
                                     if rows_to_delete:
+                                        # ลบข้อมูลเดิมแบบ batch_update เพื่อป้องกันแถวที่ไม่ติดกัน
+                                        requests = []
+                                        for row_idx in sorted(rows_to_delete, reverse=True):
+                                            requests.append({
+                                                "deleteDimension": {
+                                                    "range": {
+                                                        "sheetId": sheet_record.id,
+                                                        "dimension": "ROWS",
+                                                        "startIndex": row_idx - 1,
+                                                        "endIndex": row_idx
+                                                    }
+                                                }
+                                            })
+                                        if requests:
+                                            sh.batch_update({"requests": requests})
+                                        
+                                        # แทรกข้อมูลใหม่เข้าไปที่ตำแหน่งเดิมเป๊ะๆ (อิงจากตำแหน่งบนสุด)
                                         start_index = min(rows_to_delete)
-                                        end_index = max(rows_to_delete)
-                                        
-                                        # ลบข้อมูลเดิมทิ้งทั้งช่วงฟีดเดอร์ในรอบนั้นทีเดียว (ยิง API รอบเดียว)
-                                        sheet_record.delete_rows(start_index, end_index)
-                                        
-                                        # แทรกข้อมูลใหม่เข้าไปที่ตำแหน่งเดิมเป๊ะๆ
                                         sheet_record.insert_rows(rows_to_insert, row=start_index)
                                     else:
                                         # ถ้าหาประวัติเดิมไม่เจอจริงๆ ให้ต่อท้าย
