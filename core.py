@@ -12,7 +12,7 @@ import random
 import io
 import base64
 import requests
-from PIL import Image
+from PIL import Image, ImageOps
 import bcrypt
 import pytz
 
@@ -627,6 +627,7 @@ def init_connection():
 def compress_image(img_bytes, max_width=1024, quality=75):
     try:
         img = Image.open(io.BytesIO(img_bytes))
+        img = ImageOps.exif_transpose(img)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
         if img.width > max_width:
