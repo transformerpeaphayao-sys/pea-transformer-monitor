@@ -255,7 +255,13 @@ if client:
                         center_lat = map_data['LATITUDE'].mean()
                         center_lon = map_data['LONGITUDE'].mean()
                         
-                        m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
+                        m = folium.Map(location=[center_lat, center_lon], zoom_start=12, tiles=None)
+                        
+                        # เพิ่มแผนที่พื้นฐาน (OpenStreetMap)
+                        folium.TileLayer(
+                            tiles='OpenStreetMap',
+                            name='แผนที่ปกติ (OpenStreetMap)'
+                        ).add_to(m)
                         
                         # เพิ่มชั้นข้อมูลแผนที่ดาวเทียม (Google Hybrid)
                         folium.TileLayer(
@@ -306,8 +312,8 @@ if client:
                                     st.session_state.selected_pea_from_map = pea_no
                                     st.rerun()
 
-                        # สร้าง MarkerCluster เพื่อยุบรวมหมุดที่อยู่ใกล้กัน
-                        marker_cluster = MarkerCluster().add_to(m)
+                        # สร้าง MarkerCluster เพื่อยุบรวมหมุดที่อยู่ใกล้กัน (ซ่อนจากเมนู Layer Control)
+                        marker_cluster = MarkerCluster(name="หม้อแปลง", control=False).add_to(m)
                         
                         # ปักหมุดลงใน MarkerCluster
                         for idx, row in map_data.iterrows():
