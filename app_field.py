@@ -183,29 +183,15 @@ if client:
             
             df_pending = df_map.copy() if not df_map.empty else pd.DataFrame(columns=df_master.columns)
             
-            # ==============================
-            # หน้าที่ 1: MAP PAGE
-            # ==============================
-            if st.session_state.page == "Map":
-                st.markdown("""
-                <div class="pea-card-header" style="margin-bottom: 1rem;">
-                    🗺️ แผนที่ตำแหน่งหม้อแปลง
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
-                    map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
+                # ==============================
+                # หน้าที่ 1: MAP PAGE
+                # ==============================
+                if st.session_state.page == "Map":
                     
-                    # วาง Filter และปุ่มรีเฟรชในบรรทัดเดียวกัน
-                    col_filter, col_ref = st.columns([1, 0.25], vertical_alignment="center")
-                    with col_filter:
-                        st.markdown("<div class='filter-with-button-marker'></div>", unsafe_allow_html=True)
-                        map_filter = st.selectbox(
-                            "กรองประเภทงาน:",
-                            options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                            index=0,
-                            label_visibility="collapsed"
-                        )
+                    st.markdown("<div id='map-header-marker'></div>", unsafe_allow_html=True)
+                    col_title, col_ref = st.columns([1, 0.3], vertical_alignment="center")
+                    with col_title:
+                        st.markdown("<div style='font-size: 1.1rem; font-weight: 500; color: white;'>🗺️ แผนที่ตำแหน่งหม้อแปลง</div>", unsafe_allow_html=True)
                     with col_ref:
                         if st.button("🔄 รีเฟรช", use_container_width=True):
                             load_completed_data.clear()
@@ -213,36 +199,34 @@ if client:
                             load_master_data.clear()
                             st.rerun()
                             
-                    # บังคับให้อยู่บรรทัดเดียวกันบนมือถือด้วย JavaScript
                     st.markdown("""
                         <script>
-                            const fMarkers = window.parent.document.querySelectorAll('.filter-with-button-marker');
-                            fMarkers.forEach(marker => {
-                                const block = marker.closest('[data-testid="stHorizontalBlock"]');
-                                if (block) {
-                                    block.style.display = 'flex';
-                                    block.style.flexDirection = 'row';
-                                    block.style.flexWrap = 'nowrap';
+                            const marker = window.parent.document.getElementById('map-header-marker');
+                            if (marker) {
+                                const block = marker.nextElementSibling;
+                                if (block && block.getAttribute('data-testid') === 'stHorizontalBlock') {
+                                    block.classList.add('pea-card-header');
+                                    block.style.marginBottom = '1rem';
                                     block.style.alignItems = 'center';
-                                    block.style.justifyContent = 'flex-start';
-                                    block.style.gap = '8px';
-                                    
-                                    // ปรับความกว้างคอลัมน์ย่อย
-                                    const cols = block.querySelectorAll('[data-testid="column"]');
-                                    if (cols.length >= 2) {
-                                        cols[0].style.flex = '1 1 auto';
-                                        cols[0].style.minWidth = '0';
-                                        cols[0].style.width = 'auto';
-                                        cols[1].style.flex = '0 0 max-content';
-                                        cols[1].style.width = 'auto';
-                                    }
+                                    block.style.padding = '8px 18px'; // ปรับ padding ให้พอดีกับปุ่ม
                                 }
-                            });
+                            }
                         </script>
                     """, unsafe_allow_html=True)
                     
-                    if map_filter is None: 
-                        map_filter = "ทั้งหมด"
+                    if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
+                        map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
+                        
+                        # วาง Filter แบบเต็มหน้าจอ (เมื่อย้ายปุ่มรีเฟรชไปด้านบนแล้ว)
+                        map_filter = st.selectbox(
+                            "กรองประเภทงาน:",
+                            options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
+                            index=0,
+                            label_visibility="collapsed"
+                        )
+                        
+                        if map_filter is None: 
+                            map_filter = "ทั้งหมด"
                     
                     # ตัดข้อมูลตามที่ผู้ใช้เลือก
                     if map_filter == "🔴 ยังไม่ตรวจ":
