@@ -1,0 +1,109 @@
+function doGet(e) {
+  var fileId = e.parameter.id;
+  if (!fileId) {
+    return ContentService.createTextOutput("Error: No file ID provided.");
+  }
+  
+  try {
+    var file = DriveApp.getFileById(fileId);
+    var blob = file.getBlob();
+    var base64 = Utilities.base64Encode(blob.getBytes());
+    var mimeType = blob.getContentType();
+    
+    var result = {
+      base64: "data:" + mimeType + ";base64," + base64
+    };
+    
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput("Error: " + error.toString());
+  }
+}
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    
+    // -----------------------------------------
+    // [เพิ่มใหม่] โหมดสำหรับลบรูปภาพ
+    // -----------------------------------------
+    if (data.action === "delete") {
+      var fileId = data.fileId;
+      if (fileId) {
+        DriveApp.getFileById(fileId).setTrashed(true);
+        return ContentService.createTextOutput("Success: File moved to trash");
+      }
+      return ContentService.createTextOutput("Error: No fileId provided");
+    }
+    
+    // -----------------------------------------
+    // โหมดสำหรับอัปโหลดรูปภาพ (โค้ดเดิม)
+    // -----------------------------------------
+    var folderId = data.folderId;
+    var fileData = data.fileData; // ฐาน 64 String แบบเพียวๆ
+    var fileName = data.fileName;
+    var mimeType = data.mimeType;
+
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (!fileData) {
+      return ContentService.createTextOutput("Error: No fileData provided");
+    }
+    if (!fileName) {
+      return ContentService.createTextOutput("Error: No fileName provided");
+    }
+    if (!mimeType) {
+      mimeType = "image/jpeg";
+    }
+
+    // ขั้นตอนที่ 1: แปลง Base64 เป็น Byte Array
+    var byteCharacters;
+    try {
+      byteCharacters = Utilities.base64Decode(fileData);
+    } catch (decodeErr) {
+      return ContentService.createTextOutput("Error: [Step1-base64Decode] " + decodeErr.toString());
+    }
+    
+    // ขั้นตอนที่ 2: สร้าง Blob
+    var blob;
+    try {
+      blob = Utilities.newBlob(byteCharacters, mimeType, fileName);
+    } catch (blobErr) {
+      return ContentService.createTextOutput("Error: [Step2-newBlob] " + blobErr.toString());
+    }
+
+    // ขั้นตอนที่ 3: หาโฟลเดอร์ปลายทาง
+    var folder;
+    if (folderId && String(folderId).trim() !== "") {
+      try {
+        folder = DriveApp.getFolderById(String(folderId).trim());
+      } catch (folderErr) {
+        // ถ้าหา Folder ไม่เจอ ให้เซฟลง Root
+        folder = DriveApp.getRootFolder();
+      }
+    } else {
+      folder = DriveApp.getRootFolder();
+    }
+
+    // ขั้นตอนที่ 4: สร้างไฟล์ในโฟลเดอร์
+    var file;
+    try {
+      file = folder.createFile(blob);
+    } catch (createErr) {
+      return ContentService.createTextOutput("Error: [Step4-createFile] " + createErr.toString());
+    }
+    
+    // ขั้นตอนที่ 5: ตั้งค่าสิทธิ์การแชร์
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (shareErr) {
+      // ถ้า setSharing ล้มเหลว ยังคืน URL กลับไปได้ (แค่รูปอาจจะเปิดดูไม่ได้จากคนอื่น)
+      // ไม่ต้อง return error ปล่อยผ่านได้
+    }
+    
+    return ContentService.createTextOutput(file.getUrl());
+
+  } catch (error) {
+    return ContentService.createTextOutput("Error: " + error.toString());
+  }
+}

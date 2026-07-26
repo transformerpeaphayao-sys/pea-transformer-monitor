@@ -1120,13 +1120,24 @@ def check_bitcoin_harmonic_risk(a, b, c, n, threshold_diff=15.0):
     return is_risk, n_theory, diff
 
 def fetch_google_drive_image_base64(file_id):
-    """ฟังก์ชันสำหรับดึงรูปภาพจาก Google Drive แปลงเป็น Base64 เพื่อให้ Streamlit แสดงผลได้"""
-    try:
-        url = f"https://drive.google.com/uc?id={file_id}"
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            encoded_image = base64.b64encode(response.content).decode('utf-8')
-            return f"data:image/jpeg;base64,{encoded_image}"
-    except Exception as e:
+    """ฟังก์ชันดึงรูปภาพจาก Google Drive ผ่าน GAS Web App (ป้องกัน Google บล็อก)"""
+    web_app_url = st.secrets.get("gas_web_app_url", "")
+    
+    if not web_app_url:
         return None
+        
+    try:
+        # ส่ง GET Request ไปที่ GAS ของเราเอง พร้อมแนบพารามิเตอร์ ?id=
+        url = f"{web_app_url}?id={file_id}"
+        response = requests.get(url, timeout=15)
+        
+        if response.status_code == 200:
+            # GAS ของคุณรีเทิร์นกลับมาเป็น JSON: {"base64": "data:image/jpeg;base64,... "}
+            data = response.json()
+            if "base64" in data:
+                return data["base64"]
+    except Exception as e:
+        # เงียบไว้หากรูปมีปัญหา จะได้ไม่ทำให้ตารางพัง
+        return None
+        
     return None
