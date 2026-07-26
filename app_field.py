@@ -183,57 +183,57 @@ if client:
             
             df_pending = df_map.copy() if not df_map.empty else pd.DataFrame(columns=df_master.columns)
             
-                # ==============================
-                # หน้าที่ 1: MAP PAGE
-                # ==============================
-                if st.session_state.page == "Map":
-                    
-                    st.markdown("<div id='map-header-marker'></div>", unsafe_allow_html=True)
-                    col_title, col_ref = st.columns([1, 0.3], vertical_alignment="center")
-                    with col_title:
-                        st.markdown("<div style='font-size: 1.1rem; font-weight: 500; color: white;'>🗺️ แผนที่ตำแหน่งหม้อแปลง</div>", unsafe_allow_html=True)
-                    with col_ref:
-                        if st.button("🔄 รีเฟรช", use_container_width=True):
-                            load_completed_data.clear()
-                            load_task_data.clear()
-                            load_master_data.clear()
-                            st.rerun()
-                            
-                    st.markdown("""
-                        <script>
-                            const marker = window.parent.document.getElementById('map-header-marker');
-                            if (marker) {
-                                const block = marker.nextElementSibling;
-                                if (block && block.getAttribute('data-testid') === 'stHorizontalBlock') {
-                                    block.classList.add('pea-card-header');
-                                    block.style.marginBottom = '1rem';
-                                    block.style.alignItems = 'center';
-                                    block.style.padding = '8px 18px'; // ปรับ padding ให้พอดีกับปุ่ม
-                                }
+            # ==============================
+            # หน้าที่ 1: MAP PAGE
+            # ==============================
+            if st.session_state.page == "Map":
+                
+                st.markdown("<div id='map-header-marker'></div>", unsafe_allow_html=True)
+                col_title, col_ref = st.columns([1, 0.3], vertical_alignment="center")
+                with col_title:
+                    st.markdown("<div style='font-size: 1.1rem; font-weight: 500; color: white;'>🗺️ แผนที่ตำแหน่งหม้อแปลง</div>", unsafe_allow_html=True)
+                with col_ref:
+                    if st.button("🔄 รีเฟรช", use_container_width=True):
+                        load_completed_data.clear()
+                        load_task_data.clear()
+                        load_master_data.clear()
+                        st.rerun()
+                        
+                st.markdown("""
+                    <script>
+                        const marker = window.parent.document.getElementById('map-header-marker');
+                        if (marker) {
+                            const block = marker.nextElementSibling;
+                            if (block && block.getAttribute('data-testid') === 'stHorizontalBlock') {
+                                block.classList.add('pea-card-header');
+                                block.style.marginBottom = '1rem';
+                                block.style.alignItems = 'center';
+                                block.style.padding = '8px 18px'; // ปรับ padding ให้พอดีกับปุ่ม
                             }
-                        </script>
-                    """, unsafe_allow_html=True)
+                        }
+                    </script>
+                """, unsafe_allow_html=True)
+                
+                if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
+                    map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
-                        map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
-                        
-                        # วาง Filter แบบเต็มหน้าจอ (เมื่อย้ายปุ่มรีเฟรชไปด้านบนแล้ว)
-                        map_filter = st.selectbox(
-                            "กรองประเภทงาน:",
-                            options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                            index=0,
-                            label_visibility="collapsed"
-                        )
-                        
-                        if map_filter is None: 
-                            map_filter = "ทั้งหมด"
+                    # วาง Filter แบบเต็มหน้าจอ (เมื่อย้ายปุ่มรีเฟรชไปด้านบนแล้ว)
+                    map_filter = st.selectbox(
+                        "กรองประเภทงาน:",
+                        options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
+                        index=0,
+                        label_visibility="collapsed"
+                    )
                     
-                    # ตัดข้อมูลตามที่ผู้ใช้เลือก
-                    if map_filter == "🔴 ยังไม่ตรวจ":
-                        map_data = map_data[map_data['MarkerColor'] == 'red']
-                    elif map_filter == "🟠 สั่งตรวจซ้ำ":
-                        map_data = map_data[map_data['MarkerColor'] == 'orange']
-                    # -----------------------------------
+                    if map_filter is None: 
+                        map_filter = "ทั้งหมด"
+                
+                # ตัดข้อมูลตามที่ผู้ใช้เลือก
+                if map_filter == "🔴 ยังไม่ตรวจ":
+                    map_data = map_data[map_data['MarkerColor'] == 'red']
+                elif map_filter == "🟠 สั่งตรวจซ้ำ":
+                    map_data = map_data[map_data['MarkerColor'] == 'orange']
+                # -----------------------------------
                     
                     if not map_data.empty:
                         center_lat = map_data['LATITUDE'].mean()
