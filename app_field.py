@@ -261,20 +261,15 @@ if client:
                         folium.TileLayer(
                             tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
                             attr='Google',
-                            name='ดาวเทียม (Google Hybrid)',
-                            max_zoom=20
+                            name='ดาวเทียม (Google Hybrid)'
                         ).add_to(m)
                         
                         # เพิ่มชั้นข้อมูลแผนที่ถนน (Google Maps)
                         folium.TileLayer(
                             tiles='https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
                             attr='Google',
-                            name='แผนที่ถนน (Google Maps)',
-                            max_zoom=20
+                            name='แผนที่ถนน (Google Maps)'
                         ).add_to(m)
-                        
-                        # ปุ่มสลับชั้นข้อมูลแผนที่
-                        folium.LayerControl(position='topright').add_to(m)
                         
                         # เพิ่มปุ่มค้นหาตำแหน่งปัจจุบันของผู้ใช้ (GPS)
                         LocateControl(
@@ -323,6 +318,9 @@ if client:
                                 tooltip=pea_no_str,
                                 icon=folium.Icon(color=color, icon="info-sign")
                             ).add_to(marker_cluster)
+                        
+                        # ปุ่มสลับชั้นข้อมูลแผนที่ (ต้องอยู่ท้ายสุด)
+                        folium.LayerControl(position='topright').add_to(m)
                         
                         st_data = st_folium(m, width="100%", height=500, returned_objects=["last_object_clicked_tooltip"])
                         
