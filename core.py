@@ -1204,7 +1204,9 @@ def save_ai_report_to_sheet(pea_no, ai_result, spreadsheet_name="PEA_Transformer
             worksheet.append_row(["Timestamp", "PEA NO", "AI Report"])
             
         import datetime
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        import pytz
+        thai_tz = pytz.timezone('Asia/Bangkok')
+        timestamp = datetime.datetime.now(thai_tz).strftime("%Y-%m-%d %H:%M:%S")
         
         # เพิ่มข้อมูลลงแถวใหม่
         worksheet.append_row([timestamp, str(pea_no), str(ai_result)])
