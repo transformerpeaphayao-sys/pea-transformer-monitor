@@ -1186,3 +1186,26 @@ def analyze_transformer_data_with_ai(df_str):
         return "เกิดข้อผิดพลาด: ไม่พบไลบรารี google-generativeai กรุณาติดตั้งเพิ่มเติม"
     except Exception as e:
         return f"เกิดข้อผิดพลาดในการเรียกใช้ AI: {str(e)}"
+
+def save_ai_report_to_sheet(pea_no, ai_result):
+    """บันทึกผลวิเคราะห์ของ AI ลง Google Sheets (สร้างชีตใหม่ AI Reports อัตโนมัติถ้ายังไม่มี)"""
+    try:
+        sh = get_google_sheet()
+        if not sh:
+            return False, "ไม่สามารถเชื่อมต่อ Google Sheets ได้"
+            
+        try:
+            worksheet = sh.worksheet("AI Reports")
+        except gspread.exceptions.WorksheetNotFound:
+            # สร้างชีตใหม่ถ้ายังไม่มี
+            worksheet = sh.add_worksheet(title="AI Reports", rows="1000", cols="5")
+            worksheet.append_row(["Timestamp", "PEA NO", "AI Report"])
+            
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # เพิ่มข้อมูลลงแถวใหม่
+        worksheet.append_row([timestamp, str(pea_no), str(ai_result)])
+        return True, "บันทึกสำเร็จ"
+    except Exception as e:
+        return False, str(e)

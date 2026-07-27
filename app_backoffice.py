@@ -1185,16 +1185,35 @@ if client:
                             st.caption("ติ๊กถูกที่ช่องสี่เหลี่ยมใต้รูปที่ต้องการลบ (ระบบจะลบรูปเมื่อกดบันทึก)")
                             cols = st.columns(min(len(existing_urls), 5))
                             import re
+                            import concurrent.futures
+                            
+                            # Prefetch images concurrently สำหรับหน้าต่างแก้ไข
+                            edit_file_ids = set()
+                            for url in existing_urls:
+                                match = re.search(r'(?:/d/|id=)([-\w]{25,})', url)
+                                if match:
+                                    edit_file_ids.add(match.group(1))
+                            
+                            prefetched_edit_images = {}
+                            if edit_file_ids:
+                                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                                    future_to_id = {executor.submit(fetch_google_drive_image_base64, fid): fid for fid in edit_file_ids}
+                                    for future in concurrent.futures.as_completed(future_to_id):
+                                        fid = future_to_id[future]
+                                        try:
+                                            prefetched_edit_images[fid] = future.result()
+                                        except:
+                                            prefetched_edit_images[fid] = None
+
                             for idx, url in enumerate(existing_urls):
                                 with cols[idx % len(cols)]:
                                     display_url = url
                                     match = re.search(r'(?:/d/|id=)([-\w]{25,})', url)
                                     if match:
                                         file_id = match.group(1)
-                                        b64_img = fetch_google_drive_image_base64(file_id)
+                                        b64_img = prefetched_edit_images.get(file_id)
                                         if b64_img:
                                             display_url = b64_img
-                                    
                                     try:
                                         st.image(display_url, use_container_width=True)
                                     except:
@@ -1446,14 +1465,33 @@ if client:
                                 except:
                                     pass
                             
-                            # คำนวณจำนวนรูปภาพสูงสุดในประวัติชุดนี้ เพื่อกำหนดจำนวนคอลัมน์รูปภาพ
+                            # คำนวณจำนวนรูปภาพสูงสุดและเตรียมโหลดรูปภาพแบบขนาน (Concurrent Prefetch)
                             max_img_count = 1
+                            all_file_ids = set()
+                            import re
                             for _, r in hist_df.iterrows():
                                 img_url_str = str(r.get("รูปถ่าย", ""))
                                 if img_url_str:
                                     urls = [u.strip() for u in img_url_str.split(",") if u.strip().startswith("http")]
                                     if len(urls) > max_img_count:
                                         max_img_count = len(urls)
+                                    for u in urls:
+                                        match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
+                                        if match:
+                                            all_file_ids.add(match.group(1))
+                            
+                            # Prefetch images concurrently (เร่งความเร็ว 10 เท่า)
+                            prefetched_images = {}
+                            if all_file_ids:
+                                import concurrent.futures
+                                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                                    future_to_id = {executor.submit(fetch_google_drive_image_base64, fid): fid for fid in all_file_ids}
+                                    for future in concurrent.futures.as_completed(future_to_id):
+                                        fid = future_to_id[future]
+                                        try:
+                                            prefetched_images[fid] = future.result()
+                                        except Exception:
+                                            prefetched_images[fid] = None
 
                             rows_html = ""
                             for _, row in hist_df.iterrows():
@@ -1559,16 +1597,15 @@ if client:
                                         if i < len(urls):
                                             u = urls[i]
                                             direct_url = u
-                                            import re
                                             match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
                                             if match:
                                                 file_id = match.group(1)
-                                                b64_img = fetch_google_drive_image_base64(file_id)
+                                                b64_img = prefetched_images.get(file_id)
                                                 if b64_img:
                                                     direct_url = b64_img
                                                 else:
                                                     direct_url = f"https://drive.google.com/uc?id={file_id}"
-                                            content = f"<a href='{u}' target='_blank' style='display:block;'><img src='{direct_url}' style='width:120px; height:120px; object-fit:cover; border-radius:4px; margin:0 auto;' title='คลิกเพื่อดูรูปเต็ม'></a>"
+                                            content = f"<a href='{u}' target='_blank' style='display:block;'><img src='{direct_url}' loading='lazy' style='width:120px; height:120px; object-fit:cover; border-radius:4px; margin:0 auto;' title='คลิกเพื่อดูรูปเต็ม'></a>"
                                         else:
                                             content = "-"
                                         img_tds.append(f"<td rowspan='{rowspan}' style='padding: 8px; text-align:center; border-bottom:1px solid #e2e8f0; vertical-align:middle; background: #ffffff; border-left: 1px solid #e2e8f0; min-width: 130px;'>{content}</td>")
@@ -1648,23 +1685,50 @@ if client:
                             
                             # --- [เพิ่มใหม่] ปุ่ม AI วิเคราะห์ข้อมูล ---
                             if st.button("✨ ให้ AI ช่วยวิเคราะห์ข้อมูลโหลด", key=f"ai_btn_{search_pea}", type="primary"):
+                                st.session_state[f"ai_trigger_{search_pea}"] = True
+                                
+                            if st.session_state.get(f"ai_trigger_{search_pea}", False):
                                 with st.spinner("🤖 AI กำลังวิเคราะห์ข้อมูลเชิงลึก..."):
-                                    # คัดกรองข้อมูลระบุตัวตนออกก่อนส่งให้ AI
-                                    ai_df = hist_df.copy()
-                                    cols_to_drop = ['PEA NO', 'สถานที่', 'LATITUDE', 'LONGITUDE', 'รูปถ่าย', 'MarkerColor', 'MarkerSize']
-                                    for col in cols_to_drop:
-                                        if col in ai_df.columns:
-                                            ai_df = ai_df.drop(columns=[col])
+                                    # เช็คว่ามีผลลัพธ์ใน Session State หรือยัง จะได้ไม่ต้องเรียก API ซ้ำเมื่อกดปุ่มย่อย
+                                    ai_cache_key = f"ai_result_{search_pea}"
+                                    if ai_cache_key not in st.session_state:
+                                        ai_df = hist_df.copy()
+                                        cols_to_drop = ['PEA NO', 'สถานที่', 'LATITUDE', 'LONGITUDE', 'รูปถ่าย', 'MarkerColor', 'MarkerSize']
+                                        for col in cols_to_drop:
+                                            if col in ai_df.columns:
+                                                ai_df = ai_df.drop(columns=[col])
+                                        
+                                        # แปลงเป็น CSV String เพื่อส่งให้ AI วิเคราะห์
+                                        df_str = ai_df.to_csv(index=False)
+                                        st.session_state[ai_cache_key] = analyze_transformer_data_with_ai(df_str)
                                     
-                                    # แปลงเป็น CSV String เพื่อส่งให้ AI วิเคราะห์
-                                    df_str = ai_df.to_csv(index=False)
-                                    
-                                    ai_result = analyze_transformer_data_with_ai(df_str)
+                                    ai_result = st.session_state[ai_cache_key]
                                     
                                     st.success("✅ วิเคราะห์ข้อมูลเสร็จสิ้น")
                                     with st.container(border=True):
                                         st.markdown("<h5 style='color:#6d1852;'>🤖 บทวิเคราะห์และข้อเสนอแนะจาก AI</h5>", unsafe_allow_html=True)
                                         st.markdown(ai_result)
+                                        
+                                    st.markdown("<br>", unsafe_allow_html=True)
+                                    
+                                    # --- กลุ่มปุ่มจัดการรายงาน AI ---
+                                    col_dl, col_save, _ = st.columns([1.5, 1.5, 1])
+                                    with col_dl:
+                                        st.download_button(
+                                            label="📥 ดาวน์โหลดรายงาน (Text)",
+                                            data=ai_result,
+                                            file_name=f"AI_Report_{search_pea}.txt",
+                                            mime="text/plain",
+                                            use_container_width=True
+                                        )
+                                    with col_save:
+                                        if st.button("💾 บันทึกผลลง Google Sheets", key=f"save_ai_{search_pea}", use_container_width=True):
+                                            with st.spinner("กำลังบันทึก..."):
+                                                success, msg = save_ai_report_to_sheet(search_pea, ai_result)
+                                                if success:
+                                                    st.success("บันทึกสำเร็จ! ข้อมูลถูกเก็บในชีต 'AI Reports' แล้ว")
+                                                else:
+                                                    st.error(msg)
                                     
                             st.markdown("<br>", unsafe_allow_html=True)
                             
