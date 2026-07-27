@@ -1142,3 +1142,39 @@ def fetch_google_drive_image_base64(file_id):
         return None
         
     return None
+
+def analyze_transformer_data_with_ai(df_str):
+    """ส่งข้อมูลตารางประวัติโหลด (ที่ลบข้อมูลระบุตัวตนออกแล้ว) ไปวิเคราะห์ด้วย Google Gemini API"""
+    try:
+        import google.generativeai as genai
+        
+        api_key = st.secrets.get("gemini_api_key", "")
+        if not api_key:
+            return "ไม่พบ API Key ของ Gemini ในระบบ กรุณาตั้งค่าใน secrets.toml ก่อนใช้งาน"
+            
+        genai.configure(api_key=api_key)
+        
+        # เลือกโมเดลที่ต้องการ (gemini-1.5-flash หรือ gemini-1.5-pro)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+คุณคือวิศวกรไฟฟ้าผู้เชี่ยวชาญด้านระบบจำหน่ายไฟฟ้าและหม้อแปลงไฟฟ้าของการไฟฟ้าส่วนภูมิภาค (PEA) ประเทศไทย
+กรุณาวิเคราะห์ข้อมูลประวัติการวัดโหลดของหม้อแปลงเครื่องนี้ และให้คำแนะนำเชิงลึก (เขียนสรุปเป็นภาษาไทยให้วิศวกรหรือช่างไฟอ่านเข้าใจง่าย ไม่เกิน 15-20 บรรทัด)
+
+ข้อมูลการวัดโหลด (Format เป็น Markdown Table):
+{df_str}
+
+สิ่งที่ควรวิเคราะห์:
+1. การจ่ายโหลด (Overload หรือไม่? kVA ใช้งานเทียบกับพิกัดเป็นอย่างไร)
+2. ความไม่สมดุลของกระแสไฟฟ้า (%Unbalance สูงเกินเกณฑ์มาตรฐานหรือไม่? เฟสไหนจ่ายมากสุด/น้อยสุด)
+3. แรงดันไฟฟ้าตกหรือเกิน (Voltage Drop ที่ปลายสาย หรือแรงดันต้นทาง)
+4. ข้อเสนอแนะในการปรับปรุง (เช่น ควรเกลี่ยโหลดจากเฟสไหนไปเฟสไหน, ควรปรับแท็ปหม้อแปลงหรือไม่, หรือควรขยายขนาดหม้อแปลง)
+
+จัดรูปแบบให้อ่านง่าย มี Bullet point และใช้ Emoji ประกอบได้
+"""
+        response = model.generate_content(prompt)
+        return response.text
+    except ImportError:
+        return "เกิดข้อผิดพลาด: ไม่พบไลบรารี google-generativeai กรุณาติดตั้งเพิ่มเติม"
+    except Exception as e:
+        return f"เกิดข้อผิดพลาดในการเรียกใช้ AI: {str(e)}"

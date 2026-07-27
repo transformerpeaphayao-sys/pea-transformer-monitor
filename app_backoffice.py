@@ -1646,6 +1646,24 @@ if client:
 
                             st.markdown("<br>", unsafe_allow_html=True)
                             
+                            # --- [เพิ่มใหม่] ปุ่ม AI วิเคราะห์ข้อมูล ---
+                            if st.button("✨ ให้ AI ช่วยวิเคราะห์ข้อมูลโหลด", key=f"ai_btn_{search_pea}", type="primary"):
+                                with st.spinner("🤖 AI กำลังวิเคราะห์ข้อมูลเชิงลึก..."):
+                                    # คัดกรองข้อมูลระบุตัวตนออกก่อนส่งให้ AI
+                                    ai_df = hist_df.copy()
+                                    cols_to_drop = ['PEA NO', 'สถานที่', 'LATITUDE', 'LONGITUDE', 'รูปถ่าย', 'MarkerColor', 'MarkerSize']
+                                    for col in cols_to_drop:
+                                        if col in ai_df.columns:
+                                            ai_df = ai_df.drop(columns=[col])
+                                    
+                                    # แปลงเป็น CSV String เพื่อส่งให้ AI วิเคราะห์
+                                    df_str = ai_df.to_csv(index=False)
+                                    
+                                    ai_result = analyze_transformer_data_with_ai(df_str)
+                                    st.info(ai_result, icon="💡")
+                                    
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            
                             # --- Smart Alerts (ดึงจากฟังก์ชันกลาง) ---
                             try:
                                 pct_load, pct_unb = calculate_transformer_status(df_master, df_record, search_pea)
