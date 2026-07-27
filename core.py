@@ -1121,24 +1121,32 @@ def check_bitcoin_harmonic_risk(a, b, c, n, threshold_diff=15.0):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_google_drive_image_base64(file_id):
-    """ฟังก์ชันดึงรูปภาพจาก Google Drive ผ่าน GAS Web App (ป้องกัน Google บล็อก)"""
+    """ฟังก์ชันดึงรูปภาพจาก Google Drive ผ่าน GAS Web App (มีระบบ Fallback กลับไปใช้ Direct URL ถ้าระบบ GAS ล่ม)"""
     web_app_url = st.secrets.get("gas_web_app_url", "")
     
-    if not web_app_url:
-        return None
-        
+    # 1. พยายามดึงผ่าน GAS ก่อน (เพื่อเลี่ยงการโดนบล็อก)
+    if web_app_url:
+        try:
+            url = f"{web_app_url}?id={file_id}"
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    if "base64" in data:
+                        return data["base64"]
+                except ValueError:
+                    pass # ไม่ใช่ JSON (อาจเป็นหน้า Error ของ Google)
+        except Exception:
+            pass # ถ้า GAS พัง ให้ไปทำวิธีที่ 2 ต่อ
+            
+    # 2. Fallback: ถ้าผ่าน GAS ไม่สำเร็จ หรือไม่มี URL ให้ยิงตรงไปที่ Google Drive
     try:
-        # ส่ง GET Request ไปที่ GAS ของเราเอง พร้อมแนบพารามิเตอร์ ?id=
-        url = f"{web_app_url}?id={file_id}"
-        response = requests.get(url, timeout=15)
-        
+        direct_url = f"https://drive.google.com/uc?id={file_id}"
+        response = requests.get(direct_url, timeout=10)
         if response.status_code == 200:
-            # GAS ของคุณรีเทิร์นกลับมาเป็น JSON: {"base64": "data:image/jpeg;base64,... "}
-            data = response.json()
-            if "base64" in data:
-                return data["base64"]
-    except Exception as e:
-        # เงียบไว้หากรูปมีปัญหา จะได้ไม่ทำให้ตารางพัง
+            encoded_image = base64.b64encode(response.content).decode('utf-8')
+            return f"data:image/jpeg;base64,{encoded_image}"
+    except Exception:
         return None
         
     return None
@@ -1154,8 +1162,8 @@ def analyze_transformer_data_with_ai(df_str):
             
         genai.configure(api_key=api_key)
         
-        # เลือกโมเดลที่ต้องการ (gemini-1.5-flash หรือ gemini-1.5-pro)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # เลือกโมเดลที่ต้องการ (ปรับเป็นเวอร์ชันใหม่ล่าสุด)
+        model = genai.GenerativeModel('gemini-flash-latest')
         
         prompt = f"""
 คุณคือวิศวกรไฟฟ้าผู้เชี่ยวชาญด้านระบบจำหน่ายไฟฟ้าและหม้อแปลงไฟฟ้าของการไฟฟ้าส่วนภูมิภาค (PEA) ประเทศไทย
