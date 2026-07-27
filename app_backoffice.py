@@ -1660,7 +1660,11 @@ if client:
                                     df_str = ai_df.to_csv(index=False)
                                     
                                     ai_result = analyze_transformer_data_with_ai(df_str)
-                                    st.info(ai_result, icon="💡")
+                                    
+                                    st.success("✅ วิเคราะห์ข้อมูลเสร็จสิ้น")
+                                    with st.container(border=True):
+                                        st.markdown("<h5 style='color:#6d1852;'>🤖 บทวิเคราะห์และข้อเสนอแนะจาก AI</h5>", unsafe_allow_html=True)
+                                        st.markdown(ai_result)
                                     
                             st.markdown("<br>", unsafe_allow_html=True)
                             
