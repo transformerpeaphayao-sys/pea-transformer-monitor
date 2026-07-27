@@ -1162,8 +1162,8 @@ def analyze_transformer_data_with_ai(df_str):
             
         genai.configure(api_key=api_key)
         
-        # เลือกโมเดลที่ต้องการ (ปรับเป็นเวอร์ชันใหม่ล่าสุด)
-        model = genai.GenerativeModel('gemini-flash-latest')
+        # เลือกโมเดลที่ต้องการ
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""
 คุณคือวิศวกรไฟฟ้าผู้เชี่ยวชาญด้านระบบจำหน่ายไฟฟ้าและหม้อแปลงไฟฟ้าของการไฟฟ้าส่วนภูมิภาค (PEA) ประเทศไทย
