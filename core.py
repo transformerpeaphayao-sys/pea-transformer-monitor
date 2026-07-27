@@ -1187,12 +1187,14 @@ def analyze_transformer_data_with_ai(df_str):
     except Exception as e:
         return f"เกิดข้อผิดพลาดในการเรียกใช้ AI: {str(e)}"
 
-def save_ai_report_to_sheet(pea_no, ai_result):
+def save_ai_report_to_sheet(pea_no, ai_result, spreadsheet_name="PEA_Transformer_DB"):
     """บันทึกผลวิเคราะห์ของ AI ลง Google Sheets (สร้างชีตใหม่ AI Reports อัตโนมัติถ้ายังไม่มี)"""
     try:
-        sh = get_google_sheet()
-        if not sh:
+        client = init_connection()
+        if not client:
             return False, "ไม่สามารถเชื่อมต่อ Google Sheets ได้"
+            
+        sh = client.open(spreadsheet_name)
             
         try:
             worksheet = sh.worksheet("AI Reports")
@@ -1208,4 +1210,6 @@ def save_ai_report_to_sheet(pea_no, ai_result):
         worksheet.append_row([timestamp, str(pea_no), str(ai_result)])
         return True, "บันทึกสำเร็จ"
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return False, str(e)

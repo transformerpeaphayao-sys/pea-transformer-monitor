@@ -1724,7 +1724,7 @@ if client:
                                     with col_save:
                                         if st.button("💾 บันทึกผลลง Google Sheets", key=f"save_ai_{search_pea}", use_container_width=True):
                                             with st.spinner("กำลังบันทึก..."):
-                                                success, msg = save_ai_report_to_sheet(search_pea, ai_result)
+                                                success, msg = save_ai_report_to_sheet(search_pea, ai_result, SHEET_NAME)
                                                 if success:
                                                     st.success("บันทึกสำเร็จ! ข้อมูลถูกเก็บในชีต 'AI Reports' แล้ว")
                                                 else:
