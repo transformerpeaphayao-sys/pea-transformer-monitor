@@ -1700,7 +1700,7 @@ if client:
                                         
                                         # แปลงเป็น CSV String เพื่อส่งให้ AI วิเคราะห์
                                         df_str = ai_df.to_csv(index=False)
-                                        st.session_state[ai_cache_key] = analyze_transformer_data_with_ai(df_str)
+                                        st.session_state[ai_cache_key] = analyze_transformer_data_with_ai(df_str, kva_capacity=t_kva)
                                     
                                     ai_result = st.session_state[ai_cache_key]
                                     

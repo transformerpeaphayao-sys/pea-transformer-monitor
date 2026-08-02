@@ -1151,7 +1151,7 @@ def fetch_google_drive_image_base64(file_id):
         
     return None
 
-def analyze_transformer_data_with_ai(df_str):
+def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
     """ส่งข้อมูลตารางประวัติโหลด (ที่ลบข้อมูลระบุตัวตนออกแล้ว) ไปวิเคราะห์ด้วย Google Gemini API"""
     try:
         import google.generativeai as genai
@@ -1165,9 +1165,13 @@ def analyze_transformer_data_with_ai(df_str):
         # 2. เรียกใช้งานโมเดล (กลับไปใช้ flash-latest ตาม API ล่าสุดของ Google)
         model = genai.GenerativeModel('gemini-flash-latest')
         
+        kva_text = f"{kva_capacity} kVA" if kva_capacity else "ไม่ทราบขนาด (โปรดประเมินจากข้อมูลที่มี)"
+        
         prompt = f"""
 คุณคือวิศวกรไฟฟ้าผู้เชี่ยวชาญด้านระบบจำหน่ายไฟฟ้าและหม้อแปลงไฟฟ้าของการไฟฟ้าส่วนภูมิภาค (PEA) ประเทศไทย
 กรุณาวิเคราะห์ข้อมูลประวัติการวัดโหลดของหม้อแปลงเครื่องนี้ และให้คำแนะนำเชิงลึก (เขียนสรุปเป็นภาษาไทยให้วิศวกรหรือช่างไฟอ่านเข้าใจง่าย ไม่เกิน 15-20 บรรทัด)
+
+พิกัดหม้อแปลง (Capacity): {kva_text}
 
 ข้อมูลการวัดโหลด (Format เป็น CSV):
 {df_str}
