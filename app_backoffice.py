@@ -1517,6 +1517,12 @@ if client:
                                 a_val_num = safe_float(a_val)
                                 b_val_num = safe_float(b_val)
                                 c_val_num = safe_float(c_val)
+                                n_val_num = safe_float(n_val)
+                                
+                                import math
+                                in_calc = math.sqrt(max(0, a_val_num**2 + b_val_num**2 + c_val_num**2 - a_val_num*b_val_num - b_val_num*c_val_num - c_val_num*a_val_num))
+                                harmonic = max(0, n_val_num - in_calc)
+
                                 
                                 col_van = "Vใต้หม้อแปลง_an" if "Vใต้หม้อแปลง_an" in hist_df.columns else ""
                                 col_vbn = "Vใต้หม้อแปลง_bn" if "Vใต้หม้อแปลง_bn" in hist_df.columns else ""
@@ -1581,6 +1587,8 @@ if client:
                                 unb_str = f"<span style='font-weight:600; color:#0f172a;'>{unb:.2f}%</span>"
                                 
                                 # ปรับ kVA, %UF, %Unb ให้ชิดขวาด้วย td_num_style
+                                in_calc_td = f"<td style='{td_num_style}'>{fmt_v(f'{in_calc:.2f}', '#475569', False)}</td>"
+                                harmonic_td = f"<td style='{td_num_style}'>{fmt_v(f'{harmonic:.2f}', '#ef4444', False)}</td>"
                                 kva_td = f"<td style='{td_num_style}'>{kva_str}</td>"
                                 uf_td = f"<td style='{td_num_style}'>{uf_str}</td>"
                                 unb_td = f"<td style='{td_num_style}'>{unb_str}</td>"
@@ -1626,12 +1634,12 @@ if client:
                                     td_total_num = td_num_style + "font-weight:700; background-color:#f3f0ff; border-top:2px solid #d8b4fe; border-bottom:2px solid #d8b4fe;"
                                     feeder_display = f"<span style='color:#4b0082; font-weight:700;'>✨ สรุปผลรวมหม้อแปลง รอบที่ {session_idx} ➡️</span>"
                                     
-                                    td_i_total = f"<td style='{td_total_num}'>{fmt_v(a_val, '#dc2626')}</td><td style='{td_total_num}'>{fmt_v(b_val, '#16a34a')}</td><td style='{td_total_num}'>{fmt_v(c_val, '#2563eb')}</td><td style='{td_total_num}'>{fmt_v(n_val, '#475569')}</td>"
+                                    td_i_total = f"<td style='{td_total_num}'>{fmt_v(a_val, '#dc2626')}</td><td style='{td_total_num}'>{fmt_v(b_val, '#16a34a')}</td><td style='{td_total_num}'>{fmt_v(c_val, '#2563eb')}</td><td style='{td_total_num}'>{fmt_v(n_val, '#475569')}</td><td style='{td_total_num}'>{fmt_v(f'{in_calc:.2f}', '#475569', False)}</td><td style='{td_total_num}'>{fmt_v(f'{harmonic:.2f}', '#ef4444', False)}</td>"
                                     
                                     colspan_val = 16 if is_hist_new_format else 15
                                     rows_html += f"<tr style='background:#f3f0ff;' onmouseover=\"this.style.background='#ede9fe'\" onmouseout=\"this.style.background='#f3f0ff'\"><td colspan='{colspan_val}' style='{td_total}text-align:right;'>{feeder_display}</td>{td_i_total}<td style='{td_total_num}'>{kva_str}</td><td style='{td_total_num}'>{uf_str}</td><td style='{td_total_num}'>{unb_str}</td><td style='{td_total}text-align:left;color:#64748b;'>{note_val}</td>{td_img}{td_manage}</tr>"
                                 else:
-                                    rows_html += f"<tr style='background:{bg};' onmouseover=\"this.style.background='#f1f5f9'\" onmouseout=\"this.style.background='{bg}'\"><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style} font-weight:600; color:#1e293b;'>{feeder_val}</td>{tap_td_h}{td_v_t}{td_v_e}{td_i}{kva_td}{uf_td}{unb_td}<td style='{td_style}text-align:left;color:#64748b;'>{note_val}</td>{td_img}{td_manage}</tr>"
+                                    rows_html += f"<tr style='background:{bg};' onmouseover=\"this.style.background='#f1f5f9'\" onmouseout=\"this.style.background='{bg}'\"><td style='{td_style}'>{row.get(col_date, '-')}</td><td style='{td_style}'>{row.get(col_time, '-')}</td><td style='{td_style} font-weight:600; color:#1e293b;'>{feeder_val}</td>{tap_td_h}{td_v_t}{td_v_e}{td_i}{in_calc_td}{harmonic_td}{kva_td}{uf_td}{unb_td}<td style='{td_style}text-align:left;color:#64748b;'>{note_val}</td>{td_img}{td_manage}</tr>"
                             
                             tap_th_h = f"<th rowspan='2' style=\"{th_style}\">🎛️ แท็ป</th>" if is_hist_new_format else ""
                             
@@ -1661,6 +1669,8 @@ if client:
                                 f"<th colspan='6' style='{th_style}'>แรงดันใต้หม้อแปลง (V)</th>"
                                 f"<th colspan='6' style='{th_style}'>แรงดันปลายสาย (V)</th>"
                                 f"<th colspan='4' style='{th_style}'>กระแสไฟฟ้า (A)</th>"
+                                f"<th rowspan='2' style='{th_style}'>นิวตรอล<br>คำนวณ (A)</th>"
+                                f"<th rowspan='2' style='{th_style}'>HARMONIC<br>แฝง (A)</th>"
                                 f"<th rowspan='2' style='{th_style}'>โหลด (kVA)</th>"
                                 f"<th rowspan='2' style='{th_style}'>%UF</th>"
                                 f"<th rowspan='2' style='{th_style}'>%Unb</th>"
@@ -1697,7 +1707,24 @@ if client:
                                         for col in cols_to_drop:
                                             if col in ai_df.columns:
                                                 ai_df = ai_df.drop(columns=[col])
+                                                
+                                        # --- เพิ่มคอลัมน์ นิวตรอลคำนวณ และ Harmonic แฝง ให้ AI นำไปวิเคราะห์ ---
+                                        import math
+                                        def calc_harm(r):
+                                            a = safe_float(r.get('I A', 0)) if 'I A' in r else 0
+                                            b = safe_float(r.get('I B', 0)) if 'I B' in r else 0
+                                            c = safe_float(r.get('I C', 0)) if 'I C' in r else 0
+                                            n = safe_float(r.get('I N', 0)) if 'I N' in r else 0
+                                            in_c = math.sqrt(max(0, a**2 + b**2 + c**2 - a*b - b*c - c*a))
+                                            harm = max(0, n - in_c)
+                                            return round(in_c, 2), round(harm, 2)
+                                            
+                                        if len(ai_df) > 0:
+                                            res = ai_df.apply(calc_harm, axis=1)
+                                            ai_df['In_calc (A)'] = [x[0] for x in res]
+                                            ai_df['Harmonic (A)'] = [x[1] for x in res]
                                         
+
                                         # แปลงเป็น CSV String เพื่อส่งให้ AI วิเคราะห์
                                         df_str = ai_df.to_csv(index=False)
                                         st.session_state[ai_cache_key] = analyze_transformer_data_with_ai(df_str, kva_capacity=t_kva)
