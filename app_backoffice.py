@@ -1711,10 +1711,10 @@ if client:
                                         # --- เพิ่มคอลัมน์ นิวตรอลคำนวณ และ Harmonic แฝง ให้ AI นำไปวิเคราะห์ ---
                                         import math
                                         def calc_harm(r):
-                                            a = safe_float(r.get('I A', 0)) if 'I A' in r else 0
-                                            b = safe_float(r.get('I B', 0)) if 'I B' in r else 0
-                                            c = safe_float(r.get('I C', 0)) if 'I C' in r else 0
-                                            n = safe_float(r.get('I N', 0)) if 'I N' in r else 0
+                                            a = safe_float(r.get(col_a_h, 0)) if col_a_h in r else 0
+                                            b = safe_float(r.get(col_b_h, 0)) if col_b_h in r else 0
+                                            c = safe_float(r.get(col_c_h, 0)) if col_c_h in r else 0
+                                            n = safe_float(r.get(col_n_h, 0)) if col_n_h and col_n_h in r else 0
                                             in_c = math.sqrt(max(0, a**2 + b**2 + c**2 - a*b - b*c - c*a))
                                             harm = max(0, n - in_c)
                                             return round(in_c, 2), round(harm, 2)
