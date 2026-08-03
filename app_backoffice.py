@@ -1345,7 +1345,14 @@ if client:
                         if not hist_df.empty:
                             col_date = "วันที่" if "วันที่" in hist_df.columns else hist_df.columns[0]
                             col_time = "เวลา" if "เวลา" in hist_df.columns else hist_df.columns[1]
-                            unique_sessions = len(hist_df.drop_duplicates(subset=[col_date, col_time]))
+                            
+                            # --- สลับลำดับให้รอบล่าสุดอยู่บนสุด แต่คงลำดับฟีดเดอร์ไว้เหมือนเดิม ---
+                            hist_df['_sess_id'] = hist_df[col_date].astype(str) + '-' + hist_df[col_time].astype(str)
+                            unique_sess_list = hist_df['_sess_id'].unique()
+                            hist_df = pd.concat([hist_df[hist_df['_sess_id'] == s] for s in unique_sess_list[::-1]])
+                            hist_df = hist_df.drop(columns=['_sess_id'])
+                            
+                            unique_sessions = len(unique_sess_list)
                         
                         st.markdown("""
                         <div class="pea-card-header" style="border-radius: 8px 8px 0 0; margin-bottom: 0; border-left: 5px solid var(--pea-gold);">
@@ -1446,7 +1453,7 @@ if client:
                                 session_counts[sess] = session_counts.get(sess, 0) + 1
                                 
                             session_colors = ["#ffffff", "#f8fafc"] # ขาว สลับ เทาอ่อนสุด
-                            session_idx = 0
+                            session_idx = unique_sessions + 1
                             prev_session = None
                             
                             # สไตล์ของหัวตารางหลัก (Header) - พื้นสว่าง ตัวหนังสือเข้ม ขอบบาง
@@ -1499,7 +1506,7 @@ if client:
                                 
                                 is_first_row_of_session = False
                                 if current_session != prev_session:
-                                    session_idx += 1
+                                    session_idx -= 1
                                     prev_session = current_session
                                     is_first_row_of_session = True
                                 
