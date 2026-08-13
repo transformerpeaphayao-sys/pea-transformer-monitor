@@ -662,8 +662,21 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
         encoded_image = base64.b64encode(file_bytes).decode('utf-8')
         
         # ป้องกันกรณี folder_id เป็นค่าว่าง หรือไม่ได้ตั้งค่าใน Secrets
-        folder_id_clean = folder_id.strip() if folder_id else ""
-        if not folder_id_clean:
+        folder_id_clean = str(folder_id).strip() if folder_id else ""
+        
+        # ถ้าเผลอใส่มาเป็น URL เต็มๆ ให้ดึงมาเฉพาะ ID
+        if "drive.google.com" in folder_id_clean:
+            import re
+            match = re.search(r'/folders/([a-zA-Z0-9_-]+)', folder_id_clean)
+            if match:
+                folder_id_clean = match.group(1)
+            else:
+                match2 = re.search(r'id=([a-zA-Z0-9_-]+)', folder_id_clean)
+                if match2:
+                    folder_id_clean = match2.group(1)
+
+        # ถ้า ID สั้นเกินไป หรือมีช่องว่าง (แสดงว่าผิดรูปแบบ) ให้ใช้ค่าเริ่มต้น
+        if not folder_id_clean or len(folder_id_clean) < 15 or " " in folder_id_clean:
             folder_id_clean = "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC" # Fallback ID หลัก
             
         payload = {
