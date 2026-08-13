@@ -677,14 +677,17 @@ if client:
                                     f_name = f"{selected_pea}_{record_date.strftime('%Y%m%d')}_{record_time.strftime('%H%M%S')}_{i+1}.jpg"
                                     
                                     # Call the API directly to capture specific errors
-                                    web_app_url = st.secrets.get("gas_web_app_url", "")
+                                    web_app_url = str(st.secrets.get("gas_web_app_url", "")).strip()
                                     import base64
                                     payload = {"action": "upload", "fileName": f_name, "mimeType": "image/jpeg", 
                                                "fileData": base64.b64encode(compressed).decode('utf-8'),
                                                "folderId": folder_id, "folder_id": folder_id, "id": folder_id}
+                                    
+                                    # ใส่ query_params กลับมาเผื่อ Apps Script ตัวเก่ายังต้องการ
+                                    query_params = {"folderId": folder_id, "folder_id": folder_id, "id": folder_id}
+                                    
                                     import requests
-                                    # เอา params=query_params ออก เพราะทำให้ Google Apps Script บางทีเกิด 404
-                                    resp = requests.post(web_app_url, json=payload, timeout=90)
+                                    resp = requests.post(web_app_url, params=query_params, json=payload, timeout=90, allow_redirects=True)
                                     
                                     if resp.status_code == 200:
                                         r_text = str(resp.text).strip()
