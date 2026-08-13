@@ -1257,15 +1257,12 @@ if client:
                                 # --- จัดการรูปภาพใหม่ ---
                                 if uploaded_imgs:
                                     st.info("กำลังอัปโหลดรูปภาพใหม่ลง Google Drive...")
-                                    folder_id = st.secrets.get("drive_folder_id", "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC")
-                                    new_urls = []
-                                    import concurrent.futures
                                     import base64
-                                    def process_edit_upload(args):
-                                        i, img_file = args
+                                    for i, img_file in enumerate(uploaded_imgs):
                                         try:
                                             compressed_bytes = compress_image(img_file.getvalue())
                                             file_name = f"{pea}_{edit_date.replace('/','')}_{edit_time.replace(':','')}_edit_{i+1}.jpg"
+                                            
                                             # Call API directly
                                             web_app_url = st.secrets.get("gas_web_app_url", "")
                                             payload = {"action": "upload", "fileName": file_name, "mimeType": "image/jpeg", 
@@ -1274,23 +1271,17 @@ if client:
                                             query_params = {"folderId": folder_id, "folder_id": folder_id, "id": folder_id}
                                             import requests
                                             resp = requests.post(web_app_url, params=query_params, json=payload, timeout=90)
+                                            
                                             if resp.status_code == 200:
                                                 r_text = str(resp.text).strip()
                                                 if not r_text.startswith("Error"):
-                                                    return {"url": r_text, "error": None}
-                                                return {"url": None, "error": f"Apps Script: {r_text}"}
-                                            return {"url": None, "error": f"HTTP {resp.status_code}"}
+                                                    new_urls.append(r_text)
+                                                else:
+                                                    st.error(f"❌ รูปเกิด Error (Apps Script): {r_text}")
+                                            else:
+                                                st.error(f"❌ รูปเกิด Error (HTTP): {resp.status_code}")
                                         except Exception as e:
-                                            return {"url": None, "error": f"Exception: {e}"}
-                                            
-                                    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                                        results = list(executor.map(process_edit_upload, enumerate(uploaded_imgs)))
-                                        
-                                    for res in results:
-                                        if res["url"]:
-                                            new_urls.append(res["url"])
-                                        else:
-                                            st.error(f"❌ รูปเกิด Error: {res['error']}")
+                                            st.error(f"❌ รูปเกิด Error (Exception): {e}")
                                             
                                     if new_urls:
                                         all_urls.extend(new_urls)
