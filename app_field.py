@@ -204,34 +204,40 @@ if client:
                         display: none !important;
                     }
                     
-                    /* เปลี่ยน Group ให้ติดกันเป็นกรอบเดียว */
+                    /* Container ของ Group */
                     div[data-testid="stRadio"] div[role="radiogroup"] {
                         display: flex !important;
                         gap: 0 !important;
-                        border-radius: 6px;
-                        border: 1px solid #d1d5db;
-                        overflow: hidden;
                         width: fit-content;
-                        background: white;
+                        background: transparent;
                         padding: 0 !important;
                         margin-bottom: 8px;
                     }
                     
-                    /* ปรับแต่งรูปร่างปุ่ม */
+                    /* ปรับแต่งรูปร่างปุ่มแต่ละอัน */
                     div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"] {
                         margin: 0 !important;
                         padding: 6px 16px !important;
-                        background: transparent;
-                        border-right: 1px solid #d1d5db;
+                        background: white;
+                        border: 1px solid #d1d5db !important; /* ขอบสีเทาเริ่มต้น */
+                        margin-left: -1px !important; /* ให้ขอบซ้อนทับกัน */
                         cursor: pointer;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         transition: all 0.2s;
+                        z-index: 0;
                     }
                     
+                    /* ปุ่มแรก: โค้งซ้าย, ไม่ต้อง margin-left เพื่อไม่ให้เบี้ยว */
+                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:first-child {
+                        border-radius: 6px 0 0 6px !important;
+                        margin-left: 0 !important;
+                    }
+                    
+                    /* ปุ่มสุดท้าย: โค้งขวา */
                     div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:last-child {
-                        border-right: none;
+                        border-radius: 0 6px 6px 0 !important;
                     }
                     
                     /* ข้อความในปุ่ม */
@@ -242,13 +248,15 @@ if client:
                         margin: 0 !important;
                     }
                     
-                    /* สไตล์เมื่อปุ่มถูกเลือก (Active) - พื้นหลังแดงอ่อน ตัวหนังสือแดง */
+                    /* สไตล์เมื่อปุ่มถูกเลือก (Active) */
                     div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) {
-                        background-color: #fef2f2 !important;
+                        background-color: #fef2f2 !important; /* พื้นหลังแดงอ่อน */
+                        border: 1px solid #ef4444 !important; /* ขอบแดงทับทุกด้าน */
+                        z-index: 1 !important; /* ให้อยู่บนสุดเพื่อทับขอบปุ่มข้างเคียง */
                     }
                     
                     div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) p {
-                        color: #ef4444 !important;
+                        color: #ef4444 !important; /* ตัวหนังสือสีแดง */
                         font-weight: 600 !important;
                     }
                     </style>
