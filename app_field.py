@@ -161,25 +161,23 @@ if client:
                         if pea in task_pending:
                             del task_pending[pea]
             
-            # สร้าง df_map เพื่อแสดงผลบนแผนที่ (แสดงหม้อแปลงทั้งหมด แยกสีตามสถานะโหลด)
+            # สร้าง df_map เพื่อแสดงผลบนแผนที่ (ตัดพวกที่ตรวจแล้วและไม่มีงานออกไป)
             map_markers = []
             for _, row in df_master.iterrows():
                 pea = str(row.get('PEANO หม้อแปลง', '')).strip()
-                row_dict = row.to_dict()
-                
-                pct_load, pct_unb = calculate_transformer_status(df_master, df_record, pea)
-                
-                if pct_load is not None and pct_load >= 80:
-                    row_dict['MarkerColor'] = 'red'
-                    row_dict['LoadStatus'] = 'Overload'
-                elif pct_unb is not None and pct_unb >= 20:
+                if pea in task_pending:
+                    # ถ้ามีคำสั่งตรวจสอบซ้ำ -> สีส้ม
+                    row_dict = row.to_dict()
                     row_dict['MarkerColor'] = 'orange'
-                    row_dict['LoadStatus'] = 'Unbalance'
+                    map_markers.append(row_dict)
+                elif pea not in record_latest:
+                    # ถ้ายังไม่เคยตรวจเลย -> สีแดง
+                    row_dict = row.to_dict()
+                    row_dict['MarkerColor'] = 'red'
+                    map_markers.append(row_dict)
                 else:
-                    row_dict['MarkerColor'] = 'green'
-                    row_dict['LoadStatus'] = 'ปกติ'
-                
-                map_markers.append(row_dict)
+                    # ตรวจแล้ว และไม่มีคำสั่งซ้ำ -> ซ่อน (ไม่เพิ่มลงใน map_markers)
+                    pass
             
             df_map = pd.DataFrame(map_markers)
             
@@ -198,31 +196,80 @@ if client:
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    # --- ปุ่มตัวเลือกแบบ Tab (compact) ตามแบบอ้างอิง ---
-                    if 'map_filter_sel' not in st.session_state:
-                        st.session_state.map_filter_sel = "ทั้งหมด"
+                    # --- ปุ่มตัวเลือกการตรวจสอบแบบ Segmented Control Bar ---
+                    st.markdown("""
+                    <style>
+                    /* ซ่อนวงกลมของ Radio Button */
+                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"] div:first-child {
+                        display: none !important;
+                    }
+                    
+                    /* เปลี่ยน Group ให้ติดกันเป็นกรอบเดียว */
+                    div[data-testid="stRadio"] div[role="radiogroup"] {
+                        display: flex !important;
+                        gap: 0 !important;
+                        border-radius: 6px;
+                        border: 1px solid #d1d5db;
+                        overflow: hidden;
+                        width: fit-content;
+                        background: white;
+                        padding: 0 !important;
+                        margin-bottom: 8px;
+                    }
+                    
+                    /* ปรับแต่งรูปร่างปุ่ม */
+                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"] {
+                        margin: 0 !important;
+                        padding: 6px 16px !important;
+                        background: transparent;
+                        border-right: 1px solid #d1d5db;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: all 0.2s;
+                    }
+                    
+                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:last-child {
+                        border-right: none;
+                    }
+                    
+                    /* ข้อความในปุ่ม */
+                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"] p {
+                        font-size: 0.85rem !important;
+                        font-weight: 500 !important;
+                        color: #4b5563;
+                        margin: 0 !important;
+                    }
+                    
+                    /* สไตล์เมื่อปุ่มถูกเลือก (Active) - พื้นหลังแดงอ่อน ตัวหนังสือแดง */
+                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) {
+                        background-color: #fef2f2 !important;
+                    }
+                    
+                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) p {
+                        color: #ef4444 !important;
+                        font-weight: 600 !important;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
 
-                    filter_options = ["ทั้งหมด", "Overload", "Unbalance", "ปกติ"]
-                    btn_cols = st.columns([1]*len(filter_options) + [6])
-                    for i, opt in enumerate(filter_options):
-                        is_active = st.session_state.map_filter_sel == opt
-                        if btn_cols[i].button(
-                            opt,
-                            key=f"pill_{opt}",
-                            type="primary" if is_active else "secondary"
-                        ):
-                            st.session_state.map_filter_sel = opt
-                            st.rerun()
+                    map_filter = st.radio(
+                        "กรองดูเฉพาะสถานะ:",
+                        options=["ทั้งหมด", "ยังไม่ตรวจ", "สั่งตรวจซ้ำ"],
+                        index=0,
+                        horizontal=True,
+                        label_visibility="collapsed"
+                    )
 
-                    map_filter = st.session_state.map_filter_sel
+                    if map_filter is None:
+                        map_filter = "ทั้งหมด"
 
-                    # ตัดข้อมูลตามสถานะโหลด
-                    if map_filter == "Overload":
-                        map_data = map_data[map_data['LoadStatus'] == 'Overload']
-                    elif map_filter == "Unbalance":
-                        map_data = map_data[map_data['LoadStatus'] == 'Unbalance']
-                    elif map_filter == "ปกติ":
-                        map_data = map_data[map_data['LoadStatus'] == 'ปกติ']
+                    # ตัดข้อมูลตามที่ผู้ใช้เลือก
+                    if map_filter == "ยังไม่ตรวจ":
+                        map_data = map_data[map_data['MarkerColor'] == 'red']
+                    elif map_filter == "สั่งตรวจซ้ำ":
+                        map_data = map_data[map_data['MarkerColor'] == 'orange']
                     # -----------------------------------
                     
                     if not map_data.empty:
