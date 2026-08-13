@@ -196,21 +196,37 @@ if client:
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    # --- ปุ่มตัวเลือกการตรวจสอบแบบ Pill Style ---
+                    # --- ปุ่มตัวเลือกการตรวจสอบแบบ Pill Style (compact) ---
                     if 'map_filter_sel' not in st.session_state:
                         st.session_state.map_filter_sel = "ทั้งหมด"
 
+                    st.markdown("""
+                    <style>
+                    .pill-filter-wrap {
+                        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+                        margin-bottom: 8px;
+                    }
+                    .pill-filter-label {
+                        font-size: 0.8rem; color: #64748b; margin-right: 4px; white-space: nowrap;
+                    }
+                    .stButton > button {
+                        border-radius: 99px !important;
+                        padding: 2px 14px !important;
+                        font-size: 0.78rem !important;
+                        height: 30px !important;
+                        min-width: 0 !important;
+                        line-height: 1.2 !important;
+                        font-weight: 500 !important;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+
                     filter_options = ["ทั้งหมด", "ยังไม่ตรวจ", "สั่งตรวจซ้ำ"]
-                    pill_cols = st.columns(len(filter_options))
+                    label_col, *btn_cols = st.columns([2.5] + [1]*len(filter_options))
+                    label_col.markdown("<div style='padding-top:6px; font-size:0.82rem; color:#64748b;'>กรองประเภทงาน:</div>", unsafe_allow_html=True)
                     for i, opt in enumerate(filter_options):
                         is_active = st.session_state.map_filter_sel == opt
-                        btn_style = (
-                            "background-color:#7c1d5f; color:white; border:2px solid #7c1d5f;"
-                            if is_active else
-                            "background-color:#ffffff; color:#7c1d5f; border:2px solid #7c1d5f;"
-                        )
-                        # สร้างปุ่มด้วย HTML label + Streamlit button เพื่อ trigger state
-                        if pill_cols[i].button(
+                        if btn_cols[i].button(
                             opt,
                             key=f"pill_{opt}",
                             use_container_width=True,
