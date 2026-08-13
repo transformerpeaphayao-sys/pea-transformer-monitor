@@ -196,20 +196,38 @@ if client:
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    map_filter = st.selectbox(
-                        "กรองประเภทงาน:",
-                        options=["ทั้งหมด", "🔴 ยังไม่ตรวจ", "🟠 สั่งตรวจซ้ำ"],
-                        index=0,
-                        label_visibility="collapsed"
-                    )
-                    
-                    if map_filter is None: 
+                    # --- ปุ่มตัวเลือกการตรวจสอบแบบ Pill Style ---
+                    if 'map_filter_sel' not in st.session_state:
+                        st.session_state.map_filter_sel = "ทั้งหมด"
+
+                    filter_options = ["ทั้งหมด", "ยังไม่ตรวจ", "สั่งตรวจซ้ำ"]
+                    pill_cols = st.columns(len(filter_options))
+                    for i, opt in enumerate(filter_options):
+                        is_active = st.session_state.map_filter_sel == opt
+                        btn_style = (
+                            "background-color:#7c1d5f; color:white; border:2px solid #7c1d5f;"
+                            if is_active else
+                            "background-color:#ffffff; color:#7c1d5f; border:2px solid #7c1d5f;"
+                        )
+                        # สร้างปุ่มด้วย HTML label + Streamlit button เพื่อ trigger state
+                        if pill_cols[i].button(
+                            opt,
+                            key=f"pill_{opt}",
+                            use_container_width=True,
+                            type="primary" if is_active else "secondary"
+                        ):
+                            st.session_state.map_filter_sel = opt
+                            st.rerun()
+
+                    map_filter = st.session_state.map_filter_sel
+
+                    if map_filter is None:
                         map_filter = "ทั้งหมด"
-                    
+
                     # ตัดข้อมูลตามที่ผู้ใช้เลือก
-                    if map_filter == "🔴 ยังไม่ตรวจ":
+                    if map_filter == "ยังไม่ตรวจ":
                         map_data = map_data[map_data['MarkerColor'] == 'red']
-                    elif map_filter == "🟠 สั่งตรวจซ้ำ":
+                    elif map_filter == "สั่งตรวจซ้ำ":
                         map_data = map_data[map_data['MarkerColor'] == 'orange']
                     # -----------------------------------
                     
