@@ -669,8 +669,8 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
         st.error("ไม่พบ 'gas_web_app_url' ใน Streamlit Secrets")
         return None
     
-    # ตัดช่องว่าง/บรรทัดใหม่ที่อาจติดมาจาก Secrets
-    web_app_url = str(web_app_url).strip()
+    # ตัดช่องว่าง/บรรทัดใหม่ที่อาจติดมาจาก Secrets และลบการขึ้นบรรทัดใหม่ตรงกลางลิงก์
+    web_app_url = str(web_app_url).strip().replace('\n', '').replace('\r', '')
     
     try:
         encoded_image = base64.b64encode(file_bytes).decode('utf-8')
@@ -704,22 +704,7 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "id": folder_id_clean
         }
         
-        # === แก้ปัญหา 404: Google Apps Script ทำ 302 Redirect ===
-        # Python requests จะเปลี่ยน POST→GET เมื่อเจอ 302 ทำให้ข้อมูลหาย
-        # วิธีแก้: ปิด auto-redirect แล้วจัดการ redirect เองด้วย POST
-        headers = {"Content-Type": "application/json"}
-        import json
-        response = requests.post(web_app_url, data=json.dumps(payload), headers=headers, timeout=90, allow_redirects=False)
-        
-        # ถ้า Google ส่ง redirect กลับมา ให้ follow ด้วย POST (ไม่ใช่ GET)
-        max_redirects = 5
-        redirect_count = 0
-        while response.status_code in (301, 302, 303, 307, 308) and redirect_count < max_redirects:
-            redirect_url = response.headers.get('Location', '')
-            if not redirect_url:
-                break
-            response = requests.post(redirect_url, data=json.dumps(payload), headers=headers, timeout=90, allow_redirects=False)
-            redirect_count += 1
+        response = requests.post(web_app_url, json=payload, timeout=90)
         
         if response.status_code == 200:
             response_text = str(response.text).strip()
@@ -729,7 +714,7 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
                 st.error(f"Apps Script Error: {response_text}")
                 return None
         else:
-            st.error(f"HTTP Error: {response.status_code}")
+            st.error(f"HTTP Error: {response.status_code} ({response.text[:100]}...)")
             return None
     except Exception as e:
         st.error(f"Upload Image Exception: {e}")
