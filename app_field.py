@@ -678,19 +678,32 @@ if client:
                                     img_bytes = img_file.getvalue()
                                     compressed = compress_image(img_bytes)
                                     f_name = f"{selected_pea}_{record_date.strftime('%Y%m%d')}_{record_time.strftime('%H%M%S')}_{i+1}.jpg"
-                                    u = upload_image_to_drive(compressed, folder_id, f_name)
-                                    return u
+                                    # Call the API directly to avoid st.error in thread
+                                    web_app_url = st.secrets.get("gas_web_app_url", "")
+                                    payload = {"action": "upload", "fileName": f_name, "mimeType": "image/jpeg", 
+                                               "fileData": base64.b64encode(compressed).decode('utf-8'),
+                                               "folderId": folder_id, "folder_id": folder_id, "id": folder_id}
+                                    query_params = {"folderId": folder_id, "folder_id": folder_id, "id": folder_id}
+                                    import requests
+                                    resp = requests.post(web_app_url, params=query_params, json=payload, timeout=90)
+                                    if resp.status_code == 200:
+                                        r_text = str(resp.text).strip()
+                                        if not r_text.startswith("Error"):
+                                            return {"url": r_text, "error": None}
+                                        return {"url": None, "error": f"Apps Script: {r_text}"}
+                                    return {"url": None, "error": f"HTTP {resp.status_code}"}
                                 except Exception as e:
-                                    return None
+                                    return {"url": None, "error": f"Exception: {e}"}
                                     
                             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
                                 results = list(executor.map(process_and_upload, enumerate(uploaded_imgs)))
                                 
-                            for url in results:
-                                if url:
-                                    img_url_list.append(url)
+                            for res in results:
+                                if res["url"]:
+                                    img_url_list.append(res["url"])
                                 else:
                                     drive_upload_failed = True
+                                    st.error(f"❌ รูปเกิด Error: {res['error']}")
                                     
                         # --- [เพิ่มใหม่] หยุดระบบถ้าอัปโหลดรูปไม่เข้า เพื่อให้เห็น Error ชัดๆ ---
                         if drive_upload_failed:
