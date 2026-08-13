@@ -599,13 +599,6 @@ if client:
                 
                 uploaded_imgs = st.file_uploader("แตะเพื่อเปิดกล้องถ่ายรูป หรือเลือกรูปจากคลังภาพ", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
                 
-                final_img_bytes_list = []
-                if uploaded_imgs:
-                    for img in uploaded_imgs:
-                        # --- นำภาพไปบีบอัดก่อนเก็บลงลิสต์ ---
-                        compressed_bytes = compress_image(img.getvalue())
-                        final_img_bytes_list.append(compressed_bytes)
-                
                 st.markdown("<br>", unsafe_allow_html=True)
                 tot_note = st.text_input("หมายเหตุ (รวม)", key="tot_note_global", value=edit_data.get("รวม", {}).get("note", ""), placeholder="หมายเหตุรวมทั้งหมด...")
                 
@@ -676,10 +669,24 @@ if client:
                         folder_id = st.secrets.get("drive_folder_id", "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC")
                         drive_upload_failed = False
                         
-                        if final_img_bytes_list:
-                            for i, img_bytes in enumerate(final_img_bytes_list):
-                                file_name = f"{selected_pea}_{record_date.strftime('%Y%m%d')}_{record_time.strftime('%H%M%S')}_{i+1}.jpg"
-                                url = upload_image_to_drive(img_bytes, folder_id, file_name)
+                        if uploaded_imgs:
+                            import concurrent.futures
+                            
+                            def process_and_upload(args):
+                                i, img_file = args
+                                try:
+                                    img_bytes = img_file.getvalue()
+                                    compressed = compress_image(img_bytes)
+                                    f_name = f"{selected_pea}_{record_date.strftime('%Y%m%d')}_{record_time.strftime('%H%M%S')}_{i+1}.jpg"
+                                    u = upload_image_to_drive(compressed, folder_id, f_name)
+                                    return u
+                                except Exception as e:
+                                    return None
+                                    
+                            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                                results = list(executor.map(process_and_upload, enumerate(uploaded_imgs)))
+                                
+                            for url in results:
                                 if url:
                                     img_url_list.append(url)
                                 else:
@@ -693,7 +700,7 @@ if client:
                         img_url = ", ".join(img_url_list)
                         
                         # --- [เพิ่มใหม่] ป้องกันรูปเก่าหายเวลากด Edit แล้วไม่ได้อัปรูปใหม่ ---
-                        if is_edit_mode and not final_img_bytes_list:
+                        if is_edit_mode and not uploaded_imgs:
                             img_url = old_img_url
                         
                         # [สำคัญ] หากมีโค้ดลบข้อมูลเดิม (delete_record_session) อยู่นอกลูป ให้ลบทิ้งได้เลยครับ 

@@ -1259,15 +1259,23 @@ if client:
                                     st.info("กำลังอัปโหลดรูปภาพใหม่ลง Google Drive...")
                                     folder_id = st.secrets.get("drive_folder_id", "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC")
                                     new_urls = []
-                                    for i, img_file in enumerate(uploaded_imgs):
+                                    import concurrent.futures
+                                    def process_edit_upload(args):
+                                        i, img_file = args
                                         try:
                                             compressed_bytes = compress_image(img_file.getvalue())
                                             file_name = f"{pea}_{edit_date.replace('/','')}_{edit_time.replace(':','')}_edit_{i+1}.jpg"
-                                            url = upload_image_to_drive(compressed_bytes, folder_id, file_name)
-                                            if url:
-                                                new_urls.append(url)
+                                            u = upload_image_to_drive(compressed_bytes, folder_id, file_name)
+                                            return u
                                         except Exception as e:
-                                            st.warning(f"ไม่สามารถอัปโหลดรูปที่ {i+1} ได้: {e}")
+                                            return None
+                                            
+                                    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                                        results = list(executor.map(process_edit_upload, enumerate(uploaded_imgs)))
+                                        
+                                    for url in results:
+                                        if url:
+                                            new_urls.append(url)
                                             
                                     if new_urls:
                                         all_urls.extend(new_urls)
