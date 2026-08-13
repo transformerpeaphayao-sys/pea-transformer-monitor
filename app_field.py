@@ -203,7 +203,7 @@ if client:
                         st.session_state.map_filter_sel = "ทั้งหมด"
 
                     filter_options = ["ทั้งหมด", "Overload", "Unbalance", "ปกติ"]
-                    btn_cols = st.columns(len(filter_options) + [6])
+                    btn_cols = st.columns([1]*len(filter_options) + [6])
                     for i, opt in enumerate(filter_options):
                         is_active = st.session_state.map_filter_sel == opt
                         if btn_cols[i].button(
