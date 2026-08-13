@@ -53,9 +53,12 @@ def load_custom_css():
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     .block-container, 
     div[data-testid="block-container"], 
-    div[data-testid="stAppViewBlockContainer"] { 
+    div[data-testid="stAppViewBlockContainer"],
+    div[data-testid="stMainBlockContainer"],
+    section[data-testid="stMain"] > div { 
         padding-top: 2.5rem !important; 
         padding-bottom: 2rem !important; 
+        width: 100% !important;
         max-width: 98% !important; 
         padding-left: 1rem !important;
         padding-right: 1rem !important;
