@@ -1528,7 +1528,6 @@ if client:
                                 
                                 # ใช้ฟังก์ชัน check_bitcoin_miner เดียวกับเมนูกรองข้อมูล เพื่อให้ค่าตรงกัน
                                 _, harmonic, in_calc = check_bitcoin_miner(a_val_num, b_val_num, c_val_num, n_val_num)
-                                harmonic = max(0, harmonic)
 
                                 
                                 col_van = "Vใต้หม้อแปลง_an" if "Vใต้หม้อแปลง_an" in hist_df.columns else ""
@@ -1595,7 +1594,8 @@ if client:
                                 
                                 # ปรับ kVA, %UF, %Unb ให้ชิดขวาด้วย td_num_style
                                 in_calc_td = f"<td style='{td_num_style}'>{fmt_v(f'{in_calc:.2f}', '#475569', False)}</td>"
-                                harmonic_td = f"<td style='{td_num_style}'>{fmt_v(f'{harmonic:.2f}', '#ef4444', False)}</td>"
+                                harm_color = '#ef4444' if harmonic > 0 else '#94a3b8'
+                                harmonic_td = f"<td style='{td_num_style}'>{fmt_v(f'{harmonic:.2f}', harm_color, False)}</td>"
                                 kva_td = f"<td style='{td_num_style}'>{kva_str}</td>"
                                 uf_td = f"<td style='{td_num_style}'>{uf_str}</td>"
                                 unb_td = f"<td style='{td_num_style}'>{unb_str}</td>"
@@ -1641,7 +1641,7 @@ if client:
                                     td_total_num = td_num_style + "font-weight:700; background-color:#f3f0ff; border-top:2px solid #d8b4fe; border-bottom:2px solid #d8b4fe;"
                                     feeder_display = f"<span style='color:#4b0082; font-weight:700;'>✨ สรุปผลรวมหม้อแปลง รอบที่ {session_idx} ➡️</span>"
                                     
-                                    td_i_total = f"<td style='{td_total_num}'>{fmt_v(a_val, '#dc2626')}</td><td style='{td_total_num}'>{fmt_v(b_val, '#16a34a')}</td><td style='{td_total_num}'>{fmt_v(c_val, '#2563eb')}</td><td style='{td_total_num}'>{fmt_v(n_val, '#475569')}</td><td style='{td_total_num}'>{fmt_v(f'{in_calc:.2f}', '#475569', False)}</td><td style='{td_total_num}'>{fmt_v(f'{harmonic:.2f}', '#ef4444', False)}</td>"
+                                    td_i_total = f"<td style='{td_total_num}'>{fmt_v(a_val, '#dc2626')}</td><td style='{td_total_num}'>{fmt_v(b_val, '#16a34a')}</td><td style='{td_total_num}'>{fmt_v(c_val, '#2563eb')}</td><td style='{td_total_num}'>{fmt_v(n_val, '#475569')}</td><td style='{td_total_num}'>{fmt_v(f'{in_calc:.2f}', '#475569', False)}</td><td style='{td_total_num}'>{fmt_v(f'{harmonic:.2f}', '#ef4444' if harmonic > 0 else '#94a3b8', False)}</td>"
                                     
                                     colspan_val = 16 if is_hist_new_format else 15
                                     rows_html += f"<tr style='background:#f3f0ff;' onmouseover=\"this.style.background='#ede9fe'\" onmouseout=\"this.style.background='#f3f0ff'\"><td colspan='{colspan_val}' style='{td_total}text-align:right;'>{feeder_display}</td>{td_i_total}<td style='{td_total_num}'>{kva_str}</td><td style='{td_total_num}'>{uf_str}</td><td style='{td_total_num}'>{unb_str}</td><td style='{td_total}text-align:left;color:#64748b;'>{note_val}</td>{td_img}{td_manage}</tr>"
