@@ -701,14 +701,7 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "id": folder_id_clean
         }
         
-        # ใช้ params ของ requests เพื่อจัดการ URL ให้ถูกต้องเสมอ (ป้องกัน 404 จาก URL ผิดรูปแบบ)
-        query_params = {
-            "folderId": folder_id_clean,
-            "folder_id": folder_id_clean,
-            "id": folder_id_clean
-        }
-        
-        response = requests.post(web_app_url, params=query_params, json=payload, timeout=90)
+        response = requests.post(web_app_url, json=payload, timeout=90)
         
         if response.status_code == 200:
             response_text = str(response.text).strip()

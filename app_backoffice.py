@@ -1257,34 +1257,14 @@ if client:
                                 # --- จัดการรูปภาพใหม่ ---
                                 if uploaded_imgs:
                                     st.info("กำลังอัปโหลดรูปภาพใหม่ลง Google Drive...")
-                                    import base64
                                     for i, img_file in enumerate(uploaded_imgs):
-                                        try:
-                                            compressed_bytes = compress_image(img_file.getvalue())
-                                            file_name = f"{pea}_{edit_date.replace('/','')}_{edit_time.replace(':','')}_edit_{i+1}.jpg"
-                                            
-                                            # Call API directly
-                                            web_app_url = str(st.secrets.get("gas_web_app_url", "")).strip()
-                                            payload = {"action": "upload", "fileName": file_name, "mimeType": "image/jpeg", 
-                                                       "fileData": base64.b64encode(compressed_bytes).decode('utf-8'),
-                                                       "folderId": folder_id, "folder_id": folder_id, "id": folder_id}
-                                                       
-                                            # ใส่ query_params กลับมาเผื่อ Apps Script ตัวเก่ายังต้องการ
-                                            query_params = {"folderId": folder_id, "folder_id": folder_id, "id": folder_id}
-                                            
-                                            import requests
-                                            resp = requests.post(web_app_url, params=query_params, json=payload, timeout=90, allow_redirects=True)
-                                            
-                                            if resp.status_code == 200:
-                                                r_text = str(resp.text).strip()
-                                                if not r_text.startswith("Error"):
-                                                    new_urls.append(r_text)
-                                                else:
-                                                    st.error(f"❌ รูปเกิด Error (Apps Script): {r_text}")
-                                            else:
-                                                st.error(f"❌ รูปเกิด Error (HTTP): {resp.status_code} ({resp.text})")
-                                        except Exception as e:
-                                            st.error(f"❌ รูปเกิด Error (Exception): {e}")
+                                        compressed_bytes = compress_image(img_file.getvalue())
+                                        file_name = f"{pea}_{edit_date.replace('/','')}_{edit_time.replace(':','')}_edit_{i+1}.jpg"
+                                        url = upload_image_to_drive(compressed_bytes, folder_id, file_name)
+                                        if url:
+                                            new_urls.append(url)
+                                        else:
+                                            st.warning(f"ไม่สามารถอัปโหลดรูปที่ {i+1} ได้")
                                             
                                     if new_urls:
                                         all_urls.extend(new_urls)
