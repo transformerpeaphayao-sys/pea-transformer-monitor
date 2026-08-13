@@ -199,63 +199,72 @@ if client:
                     # --- ปุ่มตัวเลือกการตรวจสอบแบบ Segmented Control Bar ---
                     st.markdown("""
                     <style>
-                    /* ซ่อนวงกลมของ Radio Button */
-                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"] div:first-child {
-                        display: none !important;
-                    }
-                    
-                    /* Container ของ Group */
-                    div[data-testid="stRadio"] div[role="radiogroup"] {
+                    /* Container ของ Group (div ตัวสุดท้ายที่ใช้จัดกลุ่มตัวเลือก) */
+                    div[data-testid="stRadio"] > div:last-child {
                         display: flex !important;
+                        flex-direction: row !important;
                         gap: 0 !important;
-                        width: fit-content;
-                        background: transparent;
+                        width: fit-content !important;
+                        background: transparent !important;
                         padding: 0 !important;
-                        margin-bottom: 8px;
+                        margin-bottom: 8px !important;
                     }
                     
-                    /* ปรับแต่งรูปร่างปุ่มแต่ละอัน */
-                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"] {
+                    /* ปรับแต่งรูปร่างปุ่มแต่ละอัน (label ที่ครอบตัวเลือก) */
+                    div[data-testid="stRadio"] > div:last-child > label {
                         margin: 0 !important;
                         padding: 6px 16px !important;
-                        background: white;
+                        background: white !important;
                         border: 1px solid #d1d5db !important; /* ขอบสีเทาเริ่มต้น */
                         margin-left: -1px !important; /* ให้ขอบซ้อนทับกัน */
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transition: all 0.2s;
+                        cursor: pointer !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        transition: all 0.2s !important;
                         z-index: 0;
                     }
                     
-                    /* ปุ่มแรก: โค้งซ้าย, ไม่ต้อง margin-left เพื่อไม่ให้เบี้ยว */
-                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:first-child {
+                    /* ปุ่มแรก: โค้งซ้าย */
+                    div[data-testid="stRadio"] > div:last-child > label:first-child {
                         border-radius: 6px 0 0 6px !important;
                         margin-left: 0 !important;
                     }
                     
                     /* ปุ่มสุดท้าย: โค้งขวา */
-                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:last-child {
+                    div[data-testid="stRadio"] > div:last-child > label:last-child {
                         border-radius: 0 6px 6px 0 !important;
                     }
                     
+                    /* ซ่อนวงกลมของ Radio Button */
+                    div[data-testid="stRadio"] > div:last-child > label > div:first-child,
+                    div[data-testid="stRadio"] > div:last-child > label > span:first-child {
+                        display: none !important;
+                    }
+                    div[data-testid="stRadio"] > div:last-child > label input[type="radio"] {
+                        display: none !important;
+                    }
+                    
                     /* ข้อความในปุ่ม */
-                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"] p {
+                    div[data-testid="stRadio"] > div:last-child > label > div:last-child,
+                    div[data-testid="stRadio"] > div:last-child > label > span:last-child,
+                    div[data-testid="stRadio"] > div:last-child > label p {
                         font-size: 0.85rem !important;
                         font-weight: 500 !important;
-                        color: #4b5563;
+                        color: #4b5563 !important;
                         margin: 0 !important;
                     }
                     
                     /* สไตล์เมื่อปุ่มถูกเลือก (Active) */
-                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) {
+                    div[data-testid="stRadio"] > div:last-child > label:has(input:checked) {
                         background-color: #fef2f2 !important; /* พื้นหลังแดงอ่อน */
                         border: 1px solid #ef4444 !important; /* ขอบแดงทับทุกด้าน */
                         z-index: 1 !important; /* ให้อยู่บนสุดเพื่อทับขอบปุ่มข้างเคียง */
                     }
                     
-                    div[data-testid="stRadio"] div[role="radiogroup"] label[data-baseweb="radio"]:has(input:checked) p {
+                    div[data-testid="stRadio"] > div:last-child > label:has(input:checked) > div:last-child,
+                    div[data-testid="stRadio"] > div:last-child > label:has(input:checked) > span:last-child,
+                    div[data-testid="stRadio"] > div:last-child > label:has(input:checked) p {
                         color: #ef4444 !important; /* ตัวหนังสือสีแดง */
                         font-weight: 600 !important;
                     }
