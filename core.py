@@ -661,18 +661,19 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
     try:
         encoded_image = base64.b64encode(file_bytes).decode('utf-8')
         
+        # ป้องกันกรณี folder_id เป็นค่าว่าง หรือไม่ได้ตั้งค่าใน Secrets
         folder_id_clean = folder_id.strip() if folder_id else ""
-        
-        # --- รอบที่ 1: ลองอัปโหลดพร้อม folderId ปกติ ---
+        if not folder_id_clean:
+            folder_id_clean = "16V2W7GAIXSCXlQRIBtKhIoc3K1vVirQC" # Fallback ID หลัก
+            
         payload = {
             "action": "upload",
             "fileName": file_name,
             "mimeType": "image/jpeg",
             "fileData": encoded_image,
-            "folderId": folder_id_clean,
+            "folderId": folder_id_clean,     # คีย์หลักที่ Apps Script มักใช้
             "folder_id": folder_id_clean,
             "folderID": folder_id_clean,
-            "folder": folder_id_clean,
             "id": folder_id_clean
         }
         
@@ -683,25 +684,8 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             if not response_text.startswith("Error"):
                 return response_text
             else:
-                # --- รอบที่ 2 (Fallback): ถ้า folderId มีปัญหา ลองส่งโดยไม่ระบุ folderId ---
-                st.warning(f"⚠️ โฟลเดอร์ปลายทางมีปัญหา ({response_text}) กำลังลองบันทึกไปที่ Drive หลัก...")
-                payload_fallback = {
-                    "action": "upload",
-                    "fileName": file_name,
-                    "mimeType": "image/jpeg",
-                    "fileData": encoded_image
-                }
-                response2 = requests.post(web_app_url, json=payload_fallback, timeout=90)
-                if response2.status_code == 200:
-                    response_text2 = str(response2.text).strip()
-                    if not response_text2.startswith("Error"):
-                        return response_text2
-                    else:
-                        st.error(f"Apps Script Error: {response_text2}")
-                        return None
-                else:
-                    st.error(f"HTTP Error (Fallback): {response2.status_code}")
-                    return None
+                st.error(f"Apps Script Error: {response_text}")
+                return None
         else:
             st.error(f"HTTP Error: {response.status_code}")
             return None
