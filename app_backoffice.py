@@ -1526,9 +1526,9 @@ if client:
                                 c_val_num = safe_float(c_val)
                                 n_val_num = safe_float(n_val)
                                 
-                                import math
-                                in_calc = math.sqrt(max(0, a_val_num**2 + b_val_num**2 + c_val_num**2 - a_val_num*b_val_num - b_val_num*c_val_num - c_val_num*a_val_num))
-                                harmonic = max(0, n_val_num - in_calc)
+                                # ใช้ฟังก์ชัน check_bitcoin_miner เดียวกับเมนูกรองข้อมูล เพื่อให้ค่าตรงกัน
+                                _, harmonic, in_calc = check_bitcoin_miner(a_val_num, b_val_num, c_val_num, n_val_num)
+                                harmonic = max(0, harmonic)
 
                                 
                                 col_van = "Vใต้หม้อแปลง_an" if "Vใต้หม้อแปลง_an" in hist_df.columns else ""
