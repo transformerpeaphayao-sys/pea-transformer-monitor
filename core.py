@@ -1181,7 +1181,21 @@ def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
     try:
         import google.generativeai as genai
         
-        api_key = st.secrets.get("gemini_api_key", st.secrets.get("GEMINI_API_KEY", ""))
+        api_key = ""
+        # ลองดึงจาก Key ตรงๆ ก่อน
+        candidates = ["gemini_api_key", "GEMINI_API_KEY", "google_api_key", "GOOGLE_API_KEY"]
+        for c in candidates:
+            if c in st.secrets:
+                api_key = st.secrets[c]
+                break
+                
+        # ถ้ายังไม่ได้ ลองค้นหาแบบ Case-Insensitive เผื่อพิมพ์ผิดรูปแบบ
+        if not api_key:
+            for k in st.secrets.keys():
+                if k.lower() in ["gemini_api_key", "google_api_key"]:
+                    api_key = st.secrets[k]
+                    break
+                    
         if not api_key:
             return "ไม่พบ API Key ของ Gemini ในระบบ กรุณาตั้งค่าใน secrets.toml ก่อนใช้งาน"
             
