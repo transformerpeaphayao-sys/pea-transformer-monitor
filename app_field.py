@@ -161,23 +161,25 @@ if client:
                         if pea in task_pending:
                             del task_pending[pea]
             
-            # สร้าง df_map เพื่อแสดงผลบนแผนที่ (ตัดพวกที่ตรวจแล้วและไม่มีงานออกไป)
+            # สร้าง df_map เพื่อแสดงผลบนแผนที่ (แสดงหม้อแปลงทั้งหมด แยกสีตามสถานะโหลด)
             map_markers = []
             for _, row in df_master.iterrows():
                 pea = str(row.get('PEANO หม้อแปลง', '')).strip()
-                if pea in task_pending:
-                    # ถ้ามีคำสั่งตรวจสอบซ้ำ -> สีส้ม
-                    row_dict = row.to_dict()
-                    row_dict['MarkerColor'] = 'orange'
-                    map_markers.append(row_dict)
-                elif pea not in record_latest:
-                    # ถ้ายังไม่เคยตรวจเลย -> สีแดง
-                    row_dict = row.to_dict()
+                row_dict = row.to_dict()
+                
+                pct_load, pct_unb = calculate_transformer_status(df_master, df_record, pea)
+                
+                if pct_load is not None and pct_load >= 80:
                     row_dict['MarkerColor'] = 'red'
-                    map_markers.append(row_dict)
+                    row_dict['LoadStatus'] = 'Overload'
+                elif pct_unb is not None and pct_unb >= 20:
+                    row_dict['MarkerColor'] = 'orange'
+                    row_dict['LoadStatus'] = 'Unbalance'
                 else:
-                    # ตรวจแล้ว และไม่มีคำสั่งซ้ำ -> ซ่อน (ไม่เพิ่มลงใน map_markers)
-                    pass
+                    row_dict['MarkerColor'] = 'green'
+                    row_dict['LoadStatus'] = 'ปกติ'
+                
+                map_markers.append(row_dict)
             
             df_map = pd.DataFrame(map_markers)
             
@@ -196,40 +198,17 @@ if client:
                 if 'LATITUDE' in df_pending.columns and 'LONGITUDE' in df_pending.columns:
                     map_data = df_pending.dropna(subset=['LATITUDE', 'LONGITUDE'])
                     
-                    # --- ปุ่มตัวเลือกการตรวจสอบแบบ Pill Style (compact) ---
+                    # --- ปุ่มตัวเลือกแบบ Tab (compact) ตามแบบอ้างอิง ---
                     if 'map_filter_sel' not in st.session_state:
                         st.session_state.map_filter_sel = "ทั้งหมด"
 
-                    st.markdown("""
-                    <style>
-                    .pill-filter-wrap {
-                        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-                        margin-bottom: 8px;
-                    }
-                    .pill-filter-label {
-                        font-size: 0.8rem; color: #64748b; margin-right: 4px; white-space: nowrap;
-                    }
-                    .stButton > button {
-                        border-radius: 99px !important;
-                        padding: 2px 14px !important;
-                        font-size: 0.78rem !important;
-                        height: 30px !important;
-                        min-width: 0 !important;
-                        line-height: 1.2 !important;
-                        font-weight: 500 !important;
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
-
-                    filter_options = ["ทั้งหมด", "ยังไม่ตรวจ", "สั่งตรวจซ้ำ"]
-                    label_col, *btn_cols = st.columns([2.5] + [1]*len(filter_options))
-                    label_col.markdown("<div style='padding-top:6px; font-size:0.82rem; color:#64748b;'>กรองประเภทงาน:</div>", unsafe_allow_html=True)
+                    filter_options = ["ทั้งหมด", "Overload", "Unbalance", "ปกติ"]
+                    btn_cols = st.columns(len(filter_options) + [6])
                     for i, opt in enumerate(filter_options):
                         is_active = st.session_state.map_filter_sel == opt
                         if btn_cols[i].button(
                             opt,
                             key=f"pill_{opt}",
-                            use_container_width=True,
                             type="primary" if is_active else "secondary"
                         ):
                             st.session_state.map_filter_sel = opt
@@ -237,14 +216,13 @@ if client:
 
                     map_filter = st.session_state.map_filter_sel
 
-                    if map_filter is None:
-                        map_filter = "ทั้งหมด"
-
-                    # ตัดข้อมูลตามที่ผู้ใช้เลือก
-                    if map_filter == "ยังไม่ตรวจ":
-                        map_data = map_data[map_data['MarkerColor'] == 'red']
-                    elif map_filter == "สั่งตรวจซ้ำ":
-                        map_data = map_data[map_data['MarkerColor'] == 'orange']
+                    # ตัดข้อมูลตามสถานะโหลด
+                    if map_filter == "Overload":
+                        map_data = map_data[map_data['LoadStatus'] == 'Overload']
+                    elif map_filter == "Unbalance":
+                        map_data = map_data[map_data['LoadStatus'] == 'Unbalance']
+                    elif map_filter == "ปกติ":
+                        map_data = map_data[map_data['LoadStatus'] == 'ปกติ']
                     # -----------------------------------
                     
                     if not map_data.empty:
