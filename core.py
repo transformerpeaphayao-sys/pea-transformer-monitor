@@ -598,6 +598,35 @@ def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8-sig')
 
 
+def compress_image(img_bytes, max_width=1200, quality=75):
+    """บีบอัดรูปภาพ ให้เหมาะกับการอัปโหลด Google Apps Script ทุกจำนวนรูป"""
+    try:
+        img = Image.open(io.BytesIO(img_bytes))
+        img = ImageOps.exif_transpose(img)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        if img.width > max_width:
+            ratio = max_width / img.width
+            new_height = int(img.height * ratio)
+            img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+
+        output_io = io.BytesIO()
+        img.save(output_io, format="JPEG", quality=quality)
+        result = output_io.getvalue()
+
+        # ถ้ายังใหญ่เกิน 500KB ให้ลด quality ลงเรื่อยๆ จนพอดี
+        current_quality = quality - 10
+        while len(result) > 500 * 1024 and current_quality >= 30:
+            output_io = io.BytesIO()
+            img.save(output_io, format="JPEG", quality=current_quality)
+            result = output_io.getvalue()
+            current_quality -= 10
+
+        return result
+    except Exception as e:
+        return img_bytes
+
+
 # --- Google API Connection ---
 @st.cache_resource
 def get_google_credentials():
@@ -634,33 +663,6 @@ def init_connection():
             return None
     return None
 
-def compress_image(img_bytes, max_width=800, quality=65):
-    """บีบอัดรูปให้ไม่เกิน 300KB เพื่อหลีกเลี่ยง newBlob Error บน Google Apps Script"""
-    try:
-        img = Image.open(io.BytesIO(img_bytes))
-        img = ImageOps.exif_transpose(img)
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-        if img.width > max_width:
-            ratio = max_width / img.width
-            new_height = int(img.height * ratio)
-            img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
-        
-        output_io = io.BytesIO()
-        img.save(output_io, format="JPEG", quality=quality)
-        result = output_io.getvalue()
-        
-        # ถ้ายังใหญ่เกิน 300KB ให้ลด quality ลงเรื่อยๆ จนผ่าน
-        current_quality = quality - 10
-        while len(result) > 300 * 1024 and current_quality >= 30:
-            output_io = io.BytesIO()
-            img.save(output_io, format="JPEG", quality=current_quality)
-            result = output_io.getvalue()
-            current_quality -= 10
-        
-        return result
-    except Exception as e:
-        return img_bytes
 
 def upload_image_to_drive(file_bytes, folder_id, file_name):
     web_app_url = st.secrets.get("gas_web_app_url", "")
@@ -704,11 +706,38 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "id": folder_id_clean
         }
         
-        response = requests.post(web_app_url, json=payload, timeout=90)
-        
+        import json as _json, time as _time
+
+        # Google Apps Script ส่ง 302 redirect กลับมา แต่ Python requests จะเปลี่ยน POST → GET
+        # ซึ่งทำให้ doGet() ถูกเรียกแทน doPost() → ต้องจัดการ redirect เองด้วย POST
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(
+            web_app_url,
+            data=_json.dumps(payload),
+            headers=headers,
+            timeout=90,
+            allow_redirects=False
+        )
+
+        # ถ้า Google ส่ง redirect ให้ follow ด้วย POST (ไม่ใช่ GET)
+        redirect_count = 0
+        while response.status_code in (301, 302, 303, 307, 308) and redirect_count < 5:
+            location = response.headers.get("Location", "")
+            if not location:
+                break
+            response = requests.post(
+                location,
+                data=_json.dumps(payload),
+                headers=headers,
+                timeout=90,
+                allow_redirects=False
+            )
+            redirect_count += 1
+
         if response.status_code == 200:
             response_text = str(response.text).strip()
             if not response_text.startswith("Error"):
+                _time.sleep(2)  # หน่วงเวลาป้องกัน Google Apps Script Rate Limit
                 return response_text
             else:
                 st.error(f"Apps Script Error: {response_text}")
