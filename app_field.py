@@ -236,9 +236,10 @@ if client:
                         border-radius: 0 6px 6px 0 !important;
                     }
                     
-                    /* ซ่อนวงกลมของ Radio Button */
-                    div[data-testid="stRadio"] > div:last-child > label > div:first-child,
-                    div[data-testid="stRadio"] > div:last-child > label > span:first-child {
+                    /* ซ่อนวงกลมของ Radio Button อย่างเด็ดขาด */
+                    div[data-testid="stRadio"] > div:last-child > label > div:first-of-type,
+                    div[data-testid="stRadio"] > div:last-child > label > span:first-of-type,
+                    div[data-testid="stRadio"] > div:last-child > label > *:not(:last-child) {
                         display: none !important;
                     }
                     div[data-testid="stRadio"] > div:last-child > label input[type="radio"] {
