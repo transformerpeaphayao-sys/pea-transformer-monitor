@@ -51,7 +51,15 @@ def load_custom_css():
     }
     
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
-    .block-container { padding-top: 2.5rem !important; padding-bottom: 2rem !important; max-width: 96% !important; }
+    .block-container, 
+    div[data-testid="block-container"], 
+    div[data-testid="stAppViewBlockContainer"] { 
+        padding-top: 2.5rem !important; 
+        padding-bottom: 2rem !important; 
+        max-width: 98% !important; 
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
     
     /* ===== App Header (Top Banner) ===== */
     .app-header {
