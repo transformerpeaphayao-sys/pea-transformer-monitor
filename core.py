@@ -634,7 +634,8 @@ def init_connection():
             return None
     return None
 
-def compress_image(img_bytes, max_width=1024, quality=75):
+def compress_image(img_bytes, max_width=800, quality=65):
+    """บีบอัดรูปให้ไม่เกิน 300KB เพื่อหลีกเลี่ยง newBlob Error บน Google Apps Script"""
     try:
         img = Image.open(io.BytesIO(img_bytes))
         img = ImageOps.exif_transpose(img)
@@ -647,7 +648,17 @@ def compress_image(img_bytes, max_width=1024, quality=75):
         
         output_io = io.BytesIO()
         img.save(output_io, format="JPEG", quality=quality)
-        return output_io.getvalue()
+        result = output_io.getvalue()
+        
+        # ถ้ายังใหญ่เกิน 300KB ให้ลด quality ลงเรื่อยๆ จนผ่าน
+        current_quality = quality - 10
+        while len(result) > 300 * 1024 and current_quality >= 30:
+            output_io = io.BytesIO()
+            img.save(output_io, format="JPEG", quality=current_quality)
+            result = output_io.getvalue()
+            current_quality -= 10
+        
+        return result
     except Exception as e:
         return img_bytes
 
@@ -690,10 +701,14 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "id": folder_id_clean
         }
         
-        # เพิ่ม Query parameters ใน URL ด้วย เผื่อ Apps Script อ่านจาก e.parameter แทน JSON
-        request_url = f"{web_app_url}?folderId={folder_id_clean}&folder_id={folder_id_clean}&id={folder_id_clean}"
+        # ใช้ params ของ requests เพื่อจัดการ URL ให้ถูกต้องเสมอ (ป้องกัน 404 จาก URL ผิดรูปแบบ)
+        query_params = {
+            "folderId": folder_id_clean,
+            "folder_id": folder_id_clean,
+            "id": folder_id_clean
+        }
         
-        response = requests.post(request_url, json=payload, timeout=90)
+        response = requests.post(web_app_url, params=query_params, json=payload, timeout=90)
         
         if response.status_code == 200:
             response_text = str(response.text).strip()

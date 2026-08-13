@@ -59,9 +59,14 @@ function doPost(e) {
     // ขั้นตอนที่ 1: แปลง Base64 เป็น Byte Array
     var byteCharacters;
     try {
-      byteCharacters = Utilities.base64Decode(fileData);
+      // ลอง standard base64 ก่อน ถ้าไม่ได้ให้ลอง WebSafe
+      try {
+        byteCharacters = Utilities.base64Decode(fileData);
+      } catch (e1) {
+        byteCharacters = Utilities.base64DecodeWebSafe(fileData);
+      }
     } catch (decodeErr) {
-      return ContentService.createTextOutput("Error: [Step1-base64Decode] " + decodeErr.toString());
+      return ContentService.createTextOutput("Error: [Step1-base64Decode] " + decodeErr.toString() + " | dataLength=" + (fileData ? fileData.length : 0));
     }
     
     // ขั้นตอนที่ 2: สร้าง Blob
@@ -69,7 +74,7 @@ function doPost(e) {
     try {
       blob = Utilities.newBlob(byteCharacters, mimeType, fileName);
     } catch (blobErr) {
-      return ContentService.createTextOutput("Error: [Step2-newBlob] " + blobErr.toString());
+      return ContentService.createTextOutput("Error: [Step2-newBlob] " + blobErr.toString() + " | bytesLength=" + (byteCharacters ? byteCharacters.length : 0));
     }
 
     // ขั้นตอนที่ 3: หาโฟลเดอร์ปลายทาง
