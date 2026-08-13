@@ -690,7 +690,10 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "id": folder_id_clean
         }
         
-        response = requests.post(web_app_url, json=payload, timeout=90)
+        # เพิ่ม Query parameters ใน URL ด้วย เผื่อ Apps Script อ่านจาก e.parameter แทน JSON
+        request_url = f"{web_app_url}?folderId={folder_id_clean}&folder_id={folder_id_clean}&id={folder_id_clean}"
+        
+        response = requests.post(request_url, json=payload, timeout=90)
         
         if response.status_code == 200:
             response_text = str(response.text).strip()
