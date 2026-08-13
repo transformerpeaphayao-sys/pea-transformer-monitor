@@ -682,9 +682,9 @@ if client:
                                     payload = {"action": "upload", "fileName": f_name, "mimeType": "image/jpeg", 
                                                "fileData": base64.b64encode(compressed).decode('utf-8'),
                                                "folderId": folder_id, "folder_id": folder_id, "id": folder_id}
-                                    query_params = {"folderId": folder_id, "folder_id": folder_id, "id": folder_id}
                                     import requests
-                                    resp = requests.post(web_app_url, params=query_params, json=payload, timeout=90)
+                                    # เอา params=query_params ออก เพราะทำให้ Google Apps Script บางทีเกิด 404
+                                    resp = requests.post(web_app_url, json=payload, timeout=90)
                                     
                                     if resp.status_code == 200:
                                         r_text = str(resp.text).strip()
@@ -695,7 +695,7 @@ if client:
                                             st.error(f"❌ รูปเกิด Error (Apps Script): {r_text}")
                                     else:
                                         drive_upload_failed = True
-                                        st.error(f"❌ รูปเกิด Error (HTTP): {resp.status_code}")
+                                        st.error(f"❌ รูปเกิด Error (HTTP): {resp.status_code} ({resp.text})")
                                         
                                 except Exception as e:
                                     drive_upload_failed = True
