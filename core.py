@@ -1222,24 +1222,29 @@ def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
             
         genai.configure(api_key=api_key)
         
-        # ลองโมเดลตามลำดับ ถ้าไม่เจอก็ข้ามไป
-        model_candidates = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"]
-        model = None
-        for m_name in model_candidates:
-            try:
-                model = genai.GenerativeModel(
-                    m_name,
-                    generation_config=genai.types.GenerationConfig(
-                        max_output_tokens=1024,
-                        temperature=0.3,
-                    )
-                )
-                break
-            except Exception:
-                continue
-
-        if model is None:
-            return "ไม่สามารถโหลดโมเดล Gemini ได้ กรุณาตรวจสอบ API Key"
+        # ค้นหาโมเดล Flash ที่ใช้งานได้จริงจาก API (auto-detect เสมอ)
+        gen_config = genai.types.GenerationConfig(max_output_tokens=1200, temperature=0.3)
+        preferred_keywords = ["flash", "pro"]
+        
+        # ดึงรายการโมเดลที่รองรับ generateContent และกรองเอาเฉพาะพวก flash/pro
+        available_models = []
+        try:
+            for m in genai.list_models():
+                if "generateContent" in m.supported_generation_methods:
+                    name = m.name.replace("models/", "")
+                    if any(kw in name for kw in preferred_keywords) and "vision" not in name:
+                        available_models.append(name)
+            # เรียงลำดับ: flash ก่อน, เวอร์ชันใหม่สุดก่อน
+            available_models.sort(key=lambda x: ("flash" not in x, x), reverse=False)
+        except Exception:
+            pass
+        
+        # ถ้า list_models ล้มเหลว ใช้ชื่อที่รู้จักเป็น fallback
+        if not available_models:
+            available_models = [
+                "gemini-2.5-flash", "gemini-2.5-pro",
+                "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-1.5-pro"
+            ]
         
         kva_text = f"{kva_capacity} kVA" if kva_capacity else "ไม่ทราบขนาด (โปรดประเมินจากข้อมูลที่มี)"
         
@@ -1261,8 +1266,21 @@ def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
 
 จัดรูปแบบให้อ่านง่าย มี Bullet point และใช้ Emoji ประกอบได้ โดยต้องมีหัวข้อ 1-5 ครบถ้วน
 """
-        response = model.generate_content(prompt, request_options={"timeout": 60})
-        return response.text
+        # ลองเรียกโมเดลทีละตัว ถ้า 404/deprecated ให้ข้ามไปตัวถัดไป
+        last_error = "ไม่มีโมเดลที่ใช้งานได้"
+        for m_name in available_models:
+            try:
+                model = genai.GenerativeModel(m_name, generation_config=gen_config)
+                response = model.generate_content(prompt, request_options={"timeout": 60})
+                return response.text
+            except Exception as e:
+                last_error = str(e)
+                if "404" in str(e) or "not found" in str(e).lower() or "no longer available" in str(e).lower():
+                    continue   # ข้ามโมเดลนี้ ลองตัวถัดไป
+                raise          # error อื่น (เช่น quota, auth) ให้ re-raise เลย
+
+        return f"ไม่สามารถเรียก AI ได้ในขณะนี้: {last_error}"
+
     except ImportError:
         return "เกิดข้อผิดพลาด: ไม่พบไลบรารี google-generativeai กรุณาติดตั้งเพิ่มเติม"
     except Exception as e:
