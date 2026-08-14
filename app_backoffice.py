@@ -1257,6 +1257,8 @@ if client:
                                 # --- จัดการรูปภาพใหม่ ---
                                 if uploaded_imgs:
                                     st.info("กำลังอัปโหลดรูปภาพใหม่ลง Google Drive...")
+                                    new_urls = []
+                                    folder_id = st.secrets.get("gas_folder_id", "")
                                     for i, img_file in enumerate(uploaded_imgs):
                                         compressed_bytes = compress_image(img_file.getvalue())
                                         file_name = f"{pea}_{edit_date.replace('/','')}_{edit_time.replace(':','')}_edit_{i+1}.jpg"
