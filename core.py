@@ -706,33 +706,17 @@ def upload_image_to_drive(file_bytes, folder_id, file_name):
             "id": folder_id_clean
         }
         
-        import json as _json, time as _time
+        import time as _time
 
-        # Google Apps Script ส่ง 302 redirect กลับมา แต่ Python requests จะเปลี่ยน POST → GET
-        # ซึ่งทำให้ doGet() ถูกเรียกแทน doPost() → ต้องจัดการ redirect เองด้วย POST
-        headers = {"Content-Type": "application/json"}
+        # Google Apps Script รับ POST แล้วส่ง 302 redirect ไปที่ script.googleusercontent.com
+        # ซึ่ง URL นั้นรับแค่ GET เพื่อดึง response — ไม่รับ POST (จะได้ 405)
+        # ดังนั้นให้ใช้ requests.post ปกติ (allow_redirects=True ค่า default)
+        # requests จะเปลี่ยน POST→GET อัตโนมัติตาม redirect ซึ่งถูกต้องแล้ว
         response = requests.post(
             web_app_url,
-            data=_json.dumps(payload),
-            headers=headers,
-            timeout=90,
-            allow_redirects=False
+            json=payload,
+            timeout=90
         )
-
-        # ถ้า Google ส่ง redirect ให้ follow ด้วย POST (ไม่ใช่ GET)
-        redirect_count = 0
-        while response.status_code in (301, 302, 303, 307, 308) and redirect_count < 5:
-            location = response.headers.get("Location", "")
-            if not location:
-                break
-            response = requests.post(
-                location,
-                data=_json.dumps(payload),
-                headers=headers,
-                timeout=90,
-                allow_redirects=False
-            )
-            redirect_count += 1
 
         if response.status_code == 200:
             response_text = str(response.text).strip()
