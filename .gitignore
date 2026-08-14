@@ -21,3 +21,32 @@ venv/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# ไฟล์ความลับ / ไฟล์ชั่วคราว (ห้าม push ขึ้น GitHub)
+copy_this_to_secrets.txt
+convert_secrets.py
+debug.py
+debug_direct.py
+debug_output.txt
+st_debug.txt
+st_debug2.txt
+output.log
+streamlit_output.log
+emojis_found.txt
+scratch_test_gas.py
+apply_css.py
+apply_ui.py
+cleanup.py
+cols.json
+fix_app.py
+fix_css.py
+fix_file.py
+fix_pea_no.py
+new_css.py
+new_ui.py
+patch_header.py
+refactor_backoffice.py
+test_backoffice.py
+test_master.py
+test_compress.py
+update_css.py
