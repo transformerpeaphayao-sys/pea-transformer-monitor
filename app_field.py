@@ -83,6 +83,11 @@ with st.sidebar:
         time.sleep(0.5)
         st.rerun()
 
+    st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
+    with st.expander("⚙️ ตั้งค่าแบบฟอร์ม", expanded=False):
+        st.radio("ลำดับช่องแรงดัน (V)", ["V_ab ก่อน (L-L)", "V_an ก่อน (L-N)"], key="layout_volt")
+        st.radio("ลำดับช่องกระแส (A)", ["Neutral (N) อยู่บน", "Phase A อยู่บน"], key="layout_curr")
+
     st.markdown("---")
     st.markdown(f"""
     <div style="text-align:center; padding: 0.5rem 0; opacity: 0.5; font-size: 0.7rem; color: white;">
@@ -463,37 +468,69 @@ if client:
                     
                         if "วิเคราะห์ไฟตก" in task_mode:
                             st.markdown("**แรงดันใต้หม้อแปลง (V)**")
-                            c1, c2, c3 = st.columns(3)
-                            vt_ab = c1.number_input("V_ab", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_ab")
-                            vt_bc = c2.number_input("V_bc", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_bc")
-                            vt_ca = c3.number_input("V_ca", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_ca")
-                        
-                            c4, c5, c6 = st.columns(3)
-                            vt_an = c4.number_input("V_an", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_an")
-                            vt_bn = c5.number_input("V_bn", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_bn")
-                            vt_cn = c6.number_input("V_cn", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_cn")
+                            if st.session_state.get('layout_volt', 'V_ab ก่อน (L-L)') == 'V_ab ก่อน (L-L)':
+                                c1, c2, c3 = st.columns(3)
+                                vt_ab = c1.number_input("V_ab", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_ab")
+                                vt_bc = c2.number_input("V_bc", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_bc")
+                                vt_ca = c3.number_input("V_ca", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_ca")
+                            
+                                c4, c5, c6 = st.columns(3)
+                                vt_an = c4.number_input("V_an", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_an")
+                                vt_bn = c5.number_input("V_bn", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_bn")
+                                vt_cn = c6.number_input("V_cn", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_cn")
+                            else:
+                                c4, c5, c6 = st.columns(3)
+                                vt_an = c4.number_input("V_an", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_an")
+                                vt_bn = c5.number_input("V_bn", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_bn")
+                                vt_cn = c6.number_input("V_cn", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_cn")
+                                
+                                c1, c2, c3 = st.columns(3)
+                                vt_ab = c1.number_input("V_ab", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_ab")
+                                vt_bc = c2.number_input("V_bc", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_bc")
+                                vt_ca = c3.number_input("V_ca", min_value=0.0, step=1.0, value=None, key=f"{f_name}_vt_ca")
                         
                             with st.expander("🔽 แรงดันปลายสาย (V) - คลิกเพื่อกรอกข้อมูล", expanded=False):
-                                c7, c8, c9 = st.columns(3)
-                                ve_ab = c7.number_input("V_ab (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_ab")
-                                ve_bc = c8.number_input("V_bc (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_bc")
-                                ve_ca = c9.number_input("V_ca (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_ca")
-                            
-                                c10, c11, c12 = st.columns(3)
-                                ve_an = c10.number_input("V_an (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_an")
-                                ve_bn = c11.number_input("V_bn (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_bn")
-                                ve_cn = c12.number_input("V_cn (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_cn")
+                                if st.session_state.get('layout_volt', 'V_ab ก่อน (L-L)') == 'V_ab ก่อน (L-L)':
+                                    c7, c8, c9 = st.columns(3)
+                                    ve_ab = c7.number_input("V_ab (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_ab")
+                                    ve_bc = c8.number_input("V_bc (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_bc")
+                                    ve_ca = c9.number_input("V_ca (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_ca")
+                                
+                                    c10, c11, c12 = st.columns(3)
+                                    ve_an = c10.number_input("V_an (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_an")
+                                    ve_bn = c11.number_input("V_bn (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_bn")
+                                    ve_cn = c12.number_input("V_cn (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_cn")
+                                else:
+                                    c10, c11, c12 = st.columns(3)
+                                    ve_an = c10.number_input("V_an (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_an")
+                                    ve_bn = c11.number_input("V_bn (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_bn")
+                                    ve_cn = c12.number_input("V_cn (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_cn")
+                                    
+                                    c7, c8, c9 = st.columns(3)
+                                    ve_ab = c7.number_input("V_ab (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_ab")
+                                    ve_bc = c8.number_input("V_bc (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_bc")
+                                    ve_ca = c9.number_input("V_ca (ปลายสาย)", min_value=0.0, step=1.0, value=None, key=f"{f_name}_ve_ca")
                     
                         st.markdown("**กระแสไฟฟ้า (A)**")
                     
-                        # ปรับลำดับเป็น N, A, B, C เพื่อให้ N อยู่บนสุดเมื่อแสดงผลบนมือถือ
-                        col_i1, col_i2 = st.columns(2)
-                        val_n = col_i1.number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N", value=edit_data.get(f_name, {}).get("N", None), help="กระแสนิวทรอล")
-                        val_a = col_i2.number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A", value=edit_data.get(f_name, {}).get("A", None), help="กระแสเฟส A")
-                    
-                        col_i3, col_i4 = st.columns(2)
-                        val_b = col_i3.number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B", value=edit_data.get(f_name, {}).get("B", None), help="กระแสเฟส B")
-                        val_c = col_i4.number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C", value=edit_data.get(f_name, {}).get("C", None), help="กระแสเฟส C")
+                        # ปรับลำดับตามการตั้งค่า (N อยู่บน หรือ A อยู่บน)
+                        if st.session_state.get('layout_curr', 'Neutral (N) อยู่บน') == 'Neutral (N) อยู่บน':
+                            col_i1, col_i2 = st.columns(2)
+                            val_n = col_i1.number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N", value=edit_data.get(f_name, {}).get("N", None), help="กระแสนิวทรอล")
+                            val_a = col_i2.number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A", value=edit_data.get(f_name, {}).get("A", None), help="กระแสเฟส A")
+                        
+                            col_i3, col_i4 = st.columns(2)
+                            val_b = col_i3.number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B", value=edit_data.get(f_name, {}).get("B", None), help="กระแสเฟส B")
+                            val_c = col_i4.number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C", value=edit_data.get(f_name, {}).get("C", None), help="กระแสเฟส C")
+                        else:
+                            col_i1, col_i2 = st.columns(2)
+                            val_a = col_i1.number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A", value=edit_data.get(f_name, {}).get("A", None), help="กระแสเฟส A")
+                            val_b = col_i2.number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B", value=edit_data.get(f_name, {}).get("B", None), help="กระแสเฟส B")
+                        
+                            col_i3, col_i4 = st.columns(2)
+                            val_c = col_i3.number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C", value=edit_data.get(f_name, {}).get("C", None), help="กระแสเฟส C")
+                            val_n = col_i4.number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N", value=edit_data.get(f_name, {}).get("N", None), help="กระแสนิวทรอล")
+
                     
                         cable_sz = st.text_input(f"ขนาดสายแรงต่ำ {f_name} (ตร.มม.)", key=f"{f_name}_cable", placeholder="เช่น 25, 35, 50...")
                         note = st.text_input(f"หมายเหตุ {f_name}", key=f"{f_name}_note", value=edit_data.get(f_name, {}).get("note", ""), placeholder=f"หมายเหตุเฉพาะฟีดเดอร์นี้...")
