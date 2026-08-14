@@ -74,7 +74,14 @@ with st.sidebar:
         st.session_state.page = "Form"
         st.rerun()
     
-    
+    st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
+    if st.button("🔄  รีเฟรชข้อมูล", use_container_width=True):
+        load_master_data.clear()
+        load_completed_data.clear()
+        load_task_data.clear()
+        st.success("รีเฟรชข้อมูลสำเร็จ!")
+        time.sleep(0.5)
+        st.rerun()
 
     st.markdown("---")
     st.markdown(f"""
