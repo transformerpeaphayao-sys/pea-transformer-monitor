@@ -877,8 +877,10 @@ def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
                     ids_to_delete.extend(extract_drive_ids_from_row(row))
             batch_delete_rows(sheet_record, rows_to_delete)
             # ลบรูปถ่ายทั้งหมดของหม้อแปลงนี้จาก Google Drive
-            for file_id in ids_to_delete:
-                delete_image_from_drive(file_id)
+            if ids_to_delete:
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    executor.map(delete_image_from_drive, ids_to_delete)
         except Exception as e:
             st.warning(f"ลบ Record Data: {e}")
 
@@ -893,8 +895,10 @@ def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
                     ids_to_delete.extend(extract_drive_ids_from_row(row))
             batch_delete_rows(sheet_task, rows_to_delete)
             # ลบรูปถ่ายจาก Task Data (ถ้ามี) จาก Google Drive
-            for file_id in ids_to_delete:
-                delete_image_from_drive(file_id)
+            if ids_to_delete:
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    executor.map(delete_image_from_drive, ids_to_delete)
         except Exception as e:
             st.warning(f"ลบ Task Data: {e}")
 
@@ -940,12 +944,18 @@ def delete_record_session(client, spreadsheet_name, pea_no, date_str, time_str, 
         # ลบรูปถ่ายจาก Google Drive
         if delete_images:
             import re
+            import concurrent.futures
+            all_ids_to_delete = []
             for urls_str in img_urls_to_delete:
                 urls = [u.strip() for u in urls_str.split(",") if u.strip().startswith("http")]
                 for u in urls:
                     match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
                     if match:
-                        delete_image_from_drive(match.group(1))
+                        all_ids_to_delete.append(match.group(1))
+                        
+            if all_ids_to_delete:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    executor.map(delete_image_from_drive, all_ids_to_delete)
                     
         load_completed_data.clear()
         return True
