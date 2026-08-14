@@ -852,37 +852,49 @@ def delete_transformer_from_all_sheets(client, spreadsheet_name, pea_no):
             if requests:
                 sh.batch_update({"requests": requests})
 
+        # ฟังก์ชันช่วยดึง file ID ทั้งหมดจากทุก cell ในแถว
+        def extract_drive_ids_from_row(row):
+            import re
+            ids = []
+            for val in row.values():
+                if not val:
+                    continue
+                urls = [u.strip() for u in str(val).split(",") if u.strip().startswith("http")]
+                for u in urls:
+                    match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
+                    if match:
+                        ids.append(match.group(1))
+            return ids
+
         try:
             sheet_record = sh.worksheet("Record Data")
             records = sheet_record.get_all_records()
             rows_to_delete = []
-            img_urls_to_delete = []
+            ids_to_delete = []
             for idx, row in enumerate(records):
                 if str(row.get('PEA NO', '')).strip() == pea_str:
                     rows_to_delete.append(idx + 2)
-                    if "รูปถ่าย" in row and row["รูปถ่าย"]:
-                        img_urls_to_delete.append(str(row["รูปถ่าย"]))
+                    ids_to_delete.extend(extract_drive_ids_from_row(row))
             batch_delete_rows(sheet_record, rows_to_delete)
-            
-            # ลบรูปถ่ายจาก Google Drive
-            import re
-            for urls_str in img_urls_to_delete:
-                urls = [u.strip() for u in urls_str.split(",") if u.strip().startswith("http")]
-                for u in urls:
-                    match = re.search(r'(?:/d/|id=)([-\w]{25,})', u)
-                    if match:
-                        delete_image_from_drive(match.group(1))
+            # ลบรูปถ่ายทั้งหมดของหม้อแปลงนี้จาก Google Drive
+            for file_id in ids_to_delete:
+                delete_image_from_drive(file_id)
         except Exception as e:
             st.warning(f"ลบ Record Data: {e}")
-            
+
         try:
             sheet_task = sh.worksheet("Task Data")
             records = sheet_task.get_all_records()
             rows_to_delete = []
+            ids_to_delete = []
             for idx, row in enumerate(records):
                 if str(row.get('PEA NO', '')).strip() == pea_str:
                     rows_to_delete.append(idx + 2)
+                    ids_to_delete.extend(extract_drive_ids_from_row(row))
             batch_delete_rows(sheet_task, rows_to_delete)
+            # ลบรูปถ่ายจาก Task Data (ถ้ามี) จาก Google Drive
+            for file_id in ids_to_delete:
+                delete_image_from_drive(file_id)
         except Exception as e:
             st.warning(f"ลบ Task Data: {e}")
 
