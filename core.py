@@ -1222,8 +1222,24 @@ def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
             
         genai.configure(api_key=api_key)
         
-        # 2. เรียกใช้งานโมเดล (กลับไปใช้ flash-latest ตาม API ล่าสุดของ Google)
-        model = genai.GenerativeModel('gemini-flash-latest')
+        # ลองโมเดลตามลำดับ ถ้าไม่เจอก็ข้ามไป
+        model_candidates = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"]
+        model = None
+        for m_name in model_candidates:
+            try:
+                model = genai.GenerativeModel(
+                    m_name,
+                    generation_config=genai.types.GenerationConfig(
+                        max_output_tokens=1024,
+                        temperature=0.3,
+                    )
+                )
+                break
+            except Exception:
+                continue
+
+        if model is None:
+            return "ไม่สามารถโหลดโมเดล Gemini ได้ กรุณาตรวจสอบ API Key"
         
         kva_text = f"{kva_capacity} kVA" if kva_capacity else "ไม่ทราบขนาด (โปรดประเมินจากข้อมูลที่มี)"
         
@@ -1245,7 +1261,7 @@ def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
 
 จัดรูปแบบให้อ่านง่าย มี Bullet point และใช้ Emoji ประกอบได้ โดยต้องมีหัวข้อ 1-5 ครบถ้วน
 """
-        response = model.generate_content(prompt)
+        response = model.generate_content(prompt, request_options={"timeout": 60})
         return response.text
     except ImportError:
         return "เกิดข้อผิดพลาด: ไม่พบไลบรารี google-generativeai กรุณาติดตั้งเพิ่มเติม"
