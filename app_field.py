@@ -486,14 +486,14 @@ if client:
                     
                         st.markdown("**กระแสไฟฟ้า (A)**")
                     
-                        # ปรับเป็น 2x2 Grid ประหยัดพื้นที่แนวตั้งบนมือถือ และช่องใหญ่พอกดได้
+                        # ปรับลำดับเป็น N, A, B, C เพื่อให้ N อยู่บนสุดเมื่อแสดงผลบนมือถือ
                         col_i1, col_i2 = st.columns(2)
-                        val_a = col_i1.number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A", value=edit_data.get(f_name, {}).get("A", None), help="กระแสเฟส A")
-                        val_b = col_i2.number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B", value=edit_data.get(f_name, {}).get("B", None), help="กระแสเฟส B")
+                        val_n = col_i1.number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N", value=edit_data.get(f_name, {}).get("N", None), help="กระแสนิวทรอล")
+                        val_a = col_i2.number_input(f"Phase A", min_value=0.0, step=0.1, key=f"{f_name}_A", value=edit_data.get(f_name, {}).get("A", None), help="กระแสเฟส A")
                     
                         col_i3, col_i4 = st.columns(2)
-                        val_c = col_i3.number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C", value=edit_data.get(f_name, {}).get("C", None), help="กระแสเฟส C")
-                        val_n = col_i4.number_input(f"Neutral (N)", min_value=0.0, step=0.1, key=f"{f_name}_N", value=edit_data.get(f_name, {}).get("N", None), help="กระแสนิวทรอล")
+                        val_b = col_i3.number_input(f"Phase B", min_value=0.0, step=0.1, key=f"{f_name}_B", value=edit_data.get(f_name, {}).get("B", None), help="กระแสเฟส B")
+                        val_c = col_i4.number_input(f"Phase C", min_value=0.0, step=0.1, key=f"{f_name}_C", value=edit_data.get(f_name, {}).get("C", None), help="กระแสเฟส C")
                     
                         cable_sz = st.text_input(f"ขนาดสายแรงต่ำ {f_name} (ตร.มม.)", key=f"{f_name}_cable", placeholder="เช่น 25, 35, 50...")
                         note = st.text_input(f"หมายเหตุ {f_name}", key=f"{f_name}_note", value=edit_data.get(f_name, {}).get("note", ""), placeholder=f"หมายเหตุเฉพาะฟีดเดอร์นี้...")

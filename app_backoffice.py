@@ -1143,10 +1143,10 @@ if client:
                             note_val = str(row.get("หมายเหตุ", row.get("Note", "")))
                             if note_val == 'nan' or note_val == 'None': note_val = ""
                             
-                            with col1: e_a = st.number_input(f"กระแส A", value=a_val, min_value=0.0, format="%.2f", key=f"a_{f_name}")
-                            with col2: e_b = st.number_input(f"กระแส B", value=b_val, min_value=0.0, format="%.2f", key=f"b_{f_name}")
-                            with col3: e_c = st.number_input(f"กระแส C", value=c_val, min_value=0.0, format="%.2f", key=f"c_{f_name}")
-                            with col4: e_n = st.number_input(f"กระแส N", value=n_val, min_value=0.0, format="%.2f", key=f"n_{f_name}")
+                            with col1: e_n = st.number_input(f"กระแส N", value=n_val, min_value=0.0, format="%.2f", key=f"n_{f_name}")
+                            with col2: e_a = st.number_input(f"กระแส A", value=a_val, min_value=0.0, format="%.2f", key=f"a_{f_name}")
+                            with col3: e_b = st.number_input(f"กระแส B", value=b_val, min_value=0.0, format="%.2f", key=f"b_{f_name}")
+                            with col4: e_c = st.number_input(f"กระแส C", value=c_val, min_value=0.0, format="%.2f", key=f"c_{f_name}")
                             
                             st.markdown("<span style='font-size:0.8rem; color:#64748b;'>แรงดันใต้หม้อแปลง</span>", unsafe_allow_html=True)
                             cv1, cv2, cv3, cv4, cv5, cv6 = st.columns(6)
