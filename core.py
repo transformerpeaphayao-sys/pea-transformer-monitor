@@ -1233,7 +1233,8 @@ def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
                 if "generateContent" in m.supported_generation_methods:
                     name = m.name.replace("models/", "")
                     if any(kw in name for kw in preferred_keywords) and "vision" not in name:
-                        available_models.append(name)
+                        if "preview" not in name.lower() and "experimental" not in name.lower():
+                            available_models.append(name)
             # เรียงลำดับ: flash ก่อน, เวอร์ชันใหม่สุดก่อน
             available_models.sort(key=lambda x: ("flash" not in x, x), reverse=False)
         except Exception:
@@ -1266,7 +1267,7 @@ def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
 
 จัดรูปแบบให้อ่านง่าย มี Bullet point และใช้ Emoji ประกอบได้ โดยต้องมีหัวข้อ 1-5 ครบถ้วน
 """
-        # ลองเรียกโมเดลทีละตัว ถ้า 404/deprecated ให้ข้ามไปตัวถัดไป
+        # ลองเรียกโมเดลทีละตัว ถ้า 404/deprecated หรือ 429 Quota เต็ม ให้ข้ามไปลองตัวถัดไป
         last_error = "ไม่มีโมเดลที่ใช้งานได้"
         for m_name in available_models:
             try:
@@ -1274,10 +1275,11 @@ def analyze_transformer_data_with_ai(df_str, kva_capacity=None):
                 response = model.generate_content(prompt, request_options={"timeout": 60})
                 return response.text
             except Exception as e:
+                err_str = str(e).lower()
                 last_error = str(e)
-                if "404" in str(e) or "not found" in str(e).lower() or "no longer available" in str(e).lower():
+                if "404" in err_str or "not found" in err_str or "no longer available" in err_str or "429" in err_str or "quota" in err_str or "503" in err_str:
                     continue   # ข้ามโมเดลนี้ ลองตัวถัดไป
-                raise          # error อื่น (เช่น quota, auth) ให้ re-raise เลย
+                raise          # error อื่น (เช่น 401 Unauthorized) ให้ re-raise เลย
 
         return f"ไม่สามารถเรียก AI ได้ในขณะนี้: {last_error}"
 
