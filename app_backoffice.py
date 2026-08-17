@@ -855,7 +855,7 @@ if client:
                             
                             if alerts: return ", ".join(alerts)
                             return "ปกติ"
-                        except:
+                        except Exception:
                             return "คำนวณไม่ได้"
 
                     with st.spinner("กำลังประมวลผลข้อมูล..."):
@@ -954,7 +954,7 @@ if client:
                                     try:
                                         if pd.isna(v) or str(v).strip() in ['', '-']: return '-'
                                         return f"{float(v):.2f}"
-                                    except:
+                                    except (ValueError, TypeError):
                                         return str(v)
                                 
                                 a_str = fmt_amp(row.get(col_a_f, '-'))
@@ -1202,7 +1202,7 @@ if client:
                                         fid = future_to_id[future]
                                         try:
                                             prefetched_edit_images[fid] = future.result()
-                                        except:
+                                        except Exception:
                                             prefetched_edit_images[fid] = None
 
                             for idx, url in enumerate(existing_urls):
@@ -1216,7 +1216,7 @@ if client:
                                             display_url = b64_img
                                     try:
                                         st.image(display_url, use_container_width=True)
-                                    except:
+                                    except Exception:
                                         st.error("รูปภาพมีปัญหา")
                                     if st.checkbox(f"ลบรูปที่ {idx+1}", key=f"del_img_{idx}_{pea}_{edit_time}"):
                                         images_to_delete.append(url)
@@ -1468,7 +1468,7 @@ if client:
                                 try:
                                     t_kva = float(t_info.iloc[-1]['ค่าพิกัด kVA หม้อแปลง'])
                                     if t_kva <= 0: t_kva = 100.0
-                                except:
+                                except Exception:
                                     pass
                             
                             # คำนวณจำนวนรูปภาพสูงสุดและเตรียมโหลดรูปภาพแบบขนาน (Concurrent Prefetch)

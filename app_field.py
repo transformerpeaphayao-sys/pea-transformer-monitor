@@ -226,7 +226,7 @@ if client:
                         map_data = map_data[map_data['MarkerColor'] == 'orange']
                     # -----------------------------------
                     
-                    if not map_data.empty:
+                    if not map_data.empty and not map_data['LATITUDE'].isna().all() and not map_data['LONGITUDE'].isna().all():
                         center_lat = map_data['LATITUDE'].mean()
                         center_lon = map_data['LONGITUDE'].mean()
                         
@@ -372,7 +372,7 @@ if client:
                         try:
                             def_date = datetime.datetime.strptime(st.session_state.edit_date, "%d/%m/%Y").date()
                             def_time = datetime.datetime.strptime(st.session_state.edit_time, "%H:%M:%S").time()
-                        except: pass
+                        except Exception: pass
                         
                     record_date = st.date_input("วันที่", def_date)
                     record_time = st.time_input("เวลา", value=def_time, step=60)
@@ -589,7 +589,7 @@ if client:
                                 try:
                                     if float(val) > 0:
                                         return float(val)
-                                except:
+                                except (ValueError, TypeError):
                                     pass
                         return 230.0
 
@@ -605,7 +605,7 @@ if client:
                         try:
                             t_kva = float(t_info.iloc[0]['ค่าพิกัด kVA หม้อแปลง'])
                             if t_kva <= 0: t_kva = 100.0
-                        except:
+                        except Exception:
                             pass
                     
                     tot_uf = (tot_kva / t_kva) * 100.0 if t_kva > 0 else 0.0

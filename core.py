@@ -747,7 +747,7 @@ def delete_image_from_drive(file_id):
         # ส่ง POST Request พร้อม action: delete
         requests.post(web_app_url, json=payload, timeout=15)
         return True
-    except:
+    except requests.exceptions.RequestException:
         return False
 
 
