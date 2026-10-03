@@ -743,7 +743,8 @@ if client:
                         
                         for attempt in range(max_retries):
                             try:
-                                sheet_record = client.open(SHEET_NAME).worksheet("Record Data")
+                                sh = client.open(SHEET_NAME)
+                                sheet_record = sh.worksheet("Record Data")
                                 
                                 rows_to_insert = []
                                 for f_name, data in feeder_inputs.items():

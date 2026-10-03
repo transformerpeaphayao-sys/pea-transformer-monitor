@@ -769,7 +769,7 @@ if client:
                     if selected_date != "ทั้งหมด":
                         filtered_df = filtered_df[filtered_df[col_date].astype(str) == selected_date]
                         
-                    col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
+                    col_feeder = "ฟีดเดอร์" if "ฟีดเดอร์" in filtered_df.columns else "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
                     col_a = "กระแส A" if "กระแส A" in filtered_df.columns else "Ph A" if "Ph A" in filtered_df.columns else filtered_df.columns[4]
                     col_b = "กระแส B" if "กระแส B" in filtered_df.columns else "Ph B" if "Ph B" in filtered_df.columns else filtered_df.columns[5]
                     col_c = "กระแส C" if "กระแส C" in filtered_df.columns else "Ph C" if "Ph C" in filtered_df.columns else filtered_df.columns[6]
@@ -1043,7 +1043,7 @@ if client:
                             col_a = "กระแส A" if "กระแส A" in filtered_df.columns else "Ph A" if "Ph A" in filtered_df.columns else filtered_df.columns[4]
                             col_b = "กระแส B" if "กระแส B" in filtered_df.columns else "Ph B" if "Ph B" in filtered_df.columns else filtered_df.columns[5]
                             col_c = "กระแส C" if "กระแส C" in filtered_df.columns else "Ph C" if "Ph C" in filtered_df.columns else filtered_df.columns[6]
-                            col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
+                            col_feeder = "ฟีดเดอร์" if "ฟีดเดอร์" in filtered_df.columns else "ฟิดเดอร์" if "ฟิดเดอร์" in filtered_df.columns else "Feeder" if "Feeder" in filtered_df.columns else filtered_df.columns[3]
                             col_time = "เวลา" if "เวลา" in filtered_df.columns else filtered_df.columns[1]
                             
                             chart_data = filtered_df.copy()
@@ -1247,12 +1247,17 @@ if client:
                                 if images_to_delete:
                                     st.info("กำลังลบรูปภาพเดิมออกจาก Google Drive...")
                                     import re
+                                    import concurrent.futures
+                                    del_ids = []
                                     for d_url in images_to_delete:
                                         if d_url in all_urls:
                                             all_urls.remove(d_url)
-                                            match = re.search(r'id=([a-zA-Z0-9_-]+)', d_url)
+                                            match = re.search(r'(?:/d/|id=)([-\w]{25,})', d_url)
                                             if match:
-                                                delete_image_from_drive(match.group(1))
+                                                del_ids.append(match.group(1))
+                                    if del_ids:
+                                        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                                            executor.map(delete_image_from_drive, del_ids)
                                 
                                 # --- จัดการรูปภาพใหม่ ---
                                 if uploaded_imgs:

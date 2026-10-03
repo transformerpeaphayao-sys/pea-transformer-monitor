@@ -1,52 +1,74 @@
-# Streamlit secrets
-.streamlit/secrets.toml
+# Streamlit secrets & configs
+**/.streamlit/
+secrets.toml
+**/*secrets*.toml
+**/secrets*.toml
 
-# Google Credentials
-credentials.json
-token.json
-service_account.json
+# Google Credentials & Service Accounts (CRITICAL: Do NOT commit)
+**/*credential*.json
+**/credentials.json
+**/token.json
+**/service_account*.json
+**/gcp_key*.json
+**/*key*.json
+**/*.pem
+**/copy_this_to_secrets.txt
+**/*secrets*.txt
+**/*secret*
+
+# Next.js & Node
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+**/dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environments
+**/.env
+**/.env*.local
+**/.env.production
+**/.env.development
+**/.venv
+env/
+venv/
 
 # Python cache
-__pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Environments
-.env
-.venv
-env/
-venv/
+# Logs & temp files
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+screenshot*.png
+st_debug*.txt
+debug*.py
+test_*.py
+**/st_debug*.txt
+**/debug*.py
+**/test_*.py
+**/output.log
+**/streamlit_output.log
+**/emojis_found.txt
+**/scratch_*.py
+**/apply_*.py
+**/cleanup.py
+**/cols.json
+**/fix_*.py
+**/new_*.py
+**/patch_*.py
+**/refactor_*.py
+**/update_*.py
+**/convert_secrets.py
+**/debug_output.txt
 
 # OS generated files
 .DS_Store
 Thumbs.db
-
-# ไฟล์ความลับ / ไฟล์ชั่วคราว (ห้าม push ขึ้น GitHub)
-copy_this_to_secrets.txt
-convert_secrets.py
-debug.py
-debug_direct.py
-debug_output.txt
-st_debug.txt
-st_debug2.txt
-output.log
-streamlit_output.log
-emojis_found.txt
-scratch_test_gas.py
-apply_css.py
-apply_ui.py
-cleanup.py
-cols.json
-fix_app.py
-fix_css.py
-fix_file.py
-fix_pea_no.py
-new_css.py
-new_ui.py
-patch_header.py
-refactor_backoffice.py
-test_backoffice.py
-test_master.py
-test_compress.py
-update_css.py
+Desktop.ini

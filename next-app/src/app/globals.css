@@ -1,0 +1,176 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* PEA Official Brand Colors */
+    --pea-purple: #741b77;
+    --pea-purple-dark: #58145a;
+    --pea-purple-light: #f6eaf7;
+    --pea-purple-subtle: #fbf5fc;
+    --pea-gold: #f39c12;
+    --pea-gold-dark: #d68910;
+    --pea-gold-light: #fef9ee;
+
+    /* Light Mode Minimalist Canvas */
+    --bg-canvas: #f8fafc;
+    --bg-surface: #ffffff;
+    --border-subtle: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+  }
+
+  body {
+    @apply bg-[#f8fafc] text-slate-800 antialiased selection:bg-[#741b77] selection:text-white;
+    font-family: 'Prompt', 'Noto Sans Thai', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text-primary);
+    background-color: var(--bg-canvas);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  code, kbd, samp, pre, .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-feature-settings: 'tnum', 'zero';
+  }
+}
+
+/* Minimalist Clean PEA Card */
+.pea-card {
+  @apply bg-white border border-slate-200/80 rounded-2xl shadow-sm transition-all duration-200;
+}
+
+.pea-card:hover {
+  @apply border-slate-300 shadow-md;
+}
+
+.pea-card-header {
+  @apply bg-white px-5 py-3.5 rounded-t-2xl border-b border-slate-100 flex items-center justify-between;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Leaflet Map overrides for minimal light theme */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 1rem;
+  z-index: 10;
+  font-family: inherit;
+}
+
+/* Critical Tailwind Preflight Fix: Prevent Leaflet map tiles from collapsing to 0 width */
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-tile {
+  width: 256px !important;
+  height: 256px !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-tile-pane img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid #e2e8f0 !important;
+  padding: 4px !important;
+}
+
+.leaflet-popup-content {
+  margin: 10px 14px !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  color: #1e293b !important;
+}
+
+/* Google Maps Style Real-Time User GPS Marker */
+@keyframes pea-gps-pulse {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.pea-user-gps-container {
+  background: transparent !important;
+  border: none !important;
+}
+
+.pea-gps-marker {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.pea-gps-radar {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(37, 99, 235, 0.32);
+  animation: pea-gps-pulse 2s ease-out infinite;
+  pointer-events: none;
+}
+
+.pea-gps-core {
+  position: relative;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background-color: #2563eb;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.7), 0 2px 6px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+.pea-gps-arrow {
+  position: absolute;
+  top: -8px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid #1d4ed8;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+  transform-origin: 5px 26px;
+  z-index: 3;
+}
+

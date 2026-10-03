@@ -636,6 +636,8 @@ def get_google_credentials():
     ]
     try:
         creds_dict = dict(st.secrets["gcp_service_account"])
+        if "private_key" in creds_dict and isinstance(creds_dict["private_key"], str):
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         return credentials
     except Exception:
@@ -979,7 +981,7 @@ def calculate_transformer_status(df_master, df_record, pea):
         
         col_date = "วันที่" if "วันที่" in record_rows.columns else record_rows.columns[0]
         col_time = "เวลา" if "เวลา" in record_rows.columns else record_rows.columns[1]
-        col_feeder = "ฟิดเดอร์" if "ฟิดเดอร์" in record_rows.columns else "Feeder" if "Feeder" in record_rows.columns else record_rows.columns[3]
+        col_feeder = "ฟีดเดอร์" if "ฟีดเดอร์" in record_rows.columns else "ฟิดเดอร์" if "ฟิดเดอร์" in record_rows.columns else "Feeder" if "Feeder" in record_rows.columns else record_rows.columns[3]
         col_a = "กระแส A" if "กระแส A" in record_rows.columns else "Ph A" if "Ph A" in record_rows.columns else record_rows.columns[4]
         col_b = "กระแส B" if "กระแส B" in record_rows.columns else "Ph B" if "Ph B" in record_rows.columns else record_rows.columns[5]
         col_c = "กระแส C" if "กระแส C" in record_rows.columns else "Ph C" if "Ph C" in record_rows.columns else record_rows.columns[6]
@@ -1169,7 +1171,7 @@ def check_bitcoin_harmonic_risk(a, b, c, n, threshold_diff=15.0):
         inside_sqrt = 0
         
     n_theory = math.sqrt(inside_sqrt)
-    diff = abs(n_val - n_theory)
+    diff = max(0.0, n_val - n_theory)
     
     # พบความเสี่ยงต่อเมื่อความต่างสูงกว่า threshold ที่กำหนด
     is_risk = diff > threshold_diff
