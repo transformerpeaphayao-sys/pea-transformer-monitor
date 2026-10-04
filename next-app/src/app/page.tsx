@@ -1258,16 +1258,6 @@ export default function BackofficeDashboard() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsRegisterModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#741b77] border border-purple-200/80 text-xs font-semibold transition-all shadow-2xs active:scale-95"
-              title="เปิดหน้าต่างลงทะเบียนหม้อแปลงใหม่"
-            >
-              <PlusCircle className="w-3.5 h-3.5 text-[#741b77]" />
-              <span>ลงทะเบียนหม้อแปลง</span>
-            </button>
-
             <Link
               href="/field"
               className="text-xs text-[#741b77] hover:text-[#58145a] font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-purple-50/80 border border-transparent hover:border-purple-200/70 transition-all active:scale-95"
