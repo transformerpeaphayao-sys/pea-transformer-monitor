@@ -2645,38 +2645,6 @@ export default function BackofficeDashboard() {
                 <span>แหล่งข้อมูล: Google Sheets (Record Data)</span>
               </span>
               <div className="flex items-center gap-2.5">
-                {viewingTransformer.statusColor === 'orange' || viewingTransformer.pendingTask ? (
-                  <button
-                    type="button"
-                    onClick={() => handleCancelTask(viewingTransformer.peaNo)}
-                    disabled={submittingTaskPea === viewingTransformer.peaNo}
-                    className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-95 shadow-2xs disabled:opacity-50"
-                    title={`สั่งตรวจซ้ำแล้วเมื่อ ${viewingTransformer.pendingTask?.orderDate || ''} (กดเพื่อยกเลิกคำสั่ง)`}
-                  >
-                    {submittingTaskPea === viewingTransformer.peaNo ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                    ) : (
-                      <Flag className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-                    )}
-                    <span>สั่งตรวจซ้ำแล้ว (ยกเลิก)</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleOrderTask(viewingTransformer.peaNo)}
-                    disabled={submittingTaskPea === viewingTransformer.peaNo}
-                    className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white border border-amber-600 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-95 shadow-2xs disabled:opacity-50"
-                    title="สั่งงานตรวจวัดโหลดซ้ำ (หมุดบนแผนที่หน้างานจะกลายเป็นสีส้ม)"
-                  >
-                    {submittingTaskPea === viewingTransformer.peaNo ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
-                    ) : (
-                      <Flag className="w-3.5 h-3.5 text-white" />
-                    )}
-                    <span>สั่งตรวจซ้ำ</span>
-                  </button>
-                )}
-
                 <button
                   type="button"
                   onClick={() => setDeletingPea(viewingTransformer.peaNo)}
