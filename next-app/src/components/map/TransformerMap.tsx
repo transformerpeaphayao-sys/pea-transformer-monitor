@@ -343,11 +343,23 @@ export default function TransformerMap({
     const t2 = setTimeout(invalidate, 250);
     const t3 = setTimeout(invalidate, 600);
     window.addEventListener('resize', invalidate);
+
+    // Watch for dynamic height changes on mobile screens
+    let ro: ResizeObserver | null = null;
+    const container = document.getElementById('leaflet-map-container');
+    if (container && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        invalidate();
+      });
+      ro.observe(container);
+    }
+
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       window.removeEventListener('resize', invalidate);
+      if (ro) ro.disconnect();
     };
   }, [map, isFullscreen]);
 
@@ -355,7 +367,7 @@ export default function TransformerMap({
     <div className="relative w-full h-full min-h-0">
       <div
         id="leaflet-map-container"
-        className={`w-full h-full min-h-0 ${isFullscreen ? 'rounded-none' : 'rounded-xl'}`}
+        className={`w-full h-full min-h-0 ${isFullscreen ? 'rounded-none' : 'rounded-xl sm:rounded-2xl'}`}
       />
       
       {/* Real-time GPS Location & Tracking Button */}

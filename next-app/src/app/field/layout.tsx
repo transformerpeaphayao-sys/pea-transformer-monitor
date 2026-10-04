@@ -11,9 +11,5 @@ export default function FieldLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex-1 h-full max-h-full w-full overflow-hidden flex flex-col min-h-0 overscroll-none select-none">
-      {children}
-    </div>
-  );
+  return children;
 }
