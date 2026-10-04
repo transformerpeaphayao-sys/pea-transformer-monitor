@@ -370,6 +370,27 @@ export default function BackofficeDashboard() {
   };
 
   useEffect(() => {
+    // Auto-redirect to /field if opened as an installed PWA on a mobile device
+    if (typeof window !== 'undefined') {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+      const isMobile = window.innerWidth < 768;
+      const urlParams = new URLSearchParams(window.location.search);
+      const forceDashboard =
+        urlParams.get('dashboard') === '1' ||
+        sessionStorage.getItem('pea_force_dashboard') === '1';
+
+      if (urlParams.get('dashboard') === '1') {
+        sessionStorage.setItem('pea_force_dashboard', '1');
+      }
+
+      if (isStandalone && isMobile && !forceDashboard) {
+        window.location.replace('/field');
+        return;
+      }
+    }
+
     setMounted(true);
     fetchTransformers();
   }, []);

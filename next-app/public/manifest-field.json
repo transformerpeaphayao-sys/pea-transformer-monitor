@@ -1,0 +1,25 @@
+{
+  "name": "PEA บันทึกผลภาคสนาม",
+  "short_name": "PEA Field",
+  "description": "ระบบบันทึกและตรวจสอบโหลดหม้อแปลงไฟฟ้าภาคสนาม การไฟฟ้าส่วนภูมิภาค (กฟภ.)",
+  "start_url": "/field",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f0a17",
+  "theme_color": "#741b77",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pea-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pea-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -43,7 +43,7 @@ export default function TopNavbar() {
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] px-3.5 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between transition-all">
       {/* Brand & Logo */}
       <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-        <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">
+        <Link href="/?dashboard=1" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">
           <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 transition-transform group-hover:scale-105 duration-200">
             <Image
               src="/pea-logo.png"
@@ -97,7 +97,7 @@ export default function TopNavbar() {
 
         {/* Desktop Quick Nav to Dashboard */}
         <Link
-          href="/"
+          href="/?dashboard=1"
           title="หน้าสำนักงาน (Dashboard)"
           className="hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full text-slate-600 hover:text-[#741b77] hover:bg-purple-50 transition-colors border border-transparent hover:border-purple-200"
         >

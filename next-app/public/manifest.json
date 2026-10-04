@@ -2,10 +2,11 @@
   "name": "PEA Transformer Load Monitor",
   "short_name": "PEA Load",
   "description": "ระบบบันทึกและตรวจสอบโหลดหม้อแปลงไฟฟ้า การไฟฟ้าส่วนภูมิภาค (กฟภ.)",
-  "start_url": "/",
+  "start_url": "/field",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f0a17",
-  "theme_color": "#702f8a",
+  "theme_color": "#741b77",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -19,6 +20,20 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "บันทึกผลภาคสนาม (Field)",
+      "short_name": "หน้างาน",
+      "url": "/field",
+      "icons": [{ "src": "/pea-logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "แดชบอร์ดบริหารจัดการ",
+      "short_name": "แดชบอร์ด",
+      "url": "/?dashboard=1",
+      "icons": [{ "src": "/pea-logo.png", "sizes": "192x192" }]
     }
   ]
 }
