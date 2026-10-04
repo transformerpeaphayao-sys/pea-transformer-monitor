@@ -41,15 +41,15 @@ export default function RootLayout({
           crossOrigin=""
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-[#f8fafc] text-slate-800 antialiased font-sans" suppressHydrationWarning>
+      <body className="min-h-screen h-[100dvh] max-h-[100dvh] flex flex-col bg-[#f8fafc] text-slate-800 antialiased font-sans overflow-hidden" suppressHydrationWarning>
         {/* PEA Brand Accent Stripe */}
-        <div className="h-1 bg-gradient-to-r from-[#741b77] via-[#8e24aa] to-[#f39c12]" />
+        <div className="h-1 bg-gradient-to-r from-[#741b77] via-[#8e24aa] to-[#f39c12] shrink-0" />
 
         {/* Top Header Navigation */}
         <TopNavbar />
 
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col">{children}</main>
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden">{children}</main>
 
         {/* Client Service Worker Registration Script */}
         <script

@@ -352,10 +352,10 @@ export default function TransformerMap({
   }, [map, isFullscreen]);
 
   return (
-    <div className="relative w-full h-full min-h-[460px]">
+    <div className="relative w-full h-full min-h-0">
       <div
         id="leaflet-map-container"
-        className={`w-full h-full min-h-[460px] ${isFullscreen ? 'rounded-none' : 'rounded-2xl'}`}
+        className={`w-full h-full min-h-0 ${isFullscreen ? 'rounded-none' : 'rounded-xl'}`}
       />
       
       {/* Real-time GPS Location & Tracking Button */}

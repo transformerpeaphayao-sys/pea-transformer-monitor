@@ -41,7 +41,7 @@ const TransformerMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full min-h-[460px] bg-slate-50/50 rounded-2xl border border-slate-200/80 flex flex-col items-center justify-center text-slate-400 gap-3">
+      <div className="w-full h-full min-h-0 bg-slate-50/50 rounded-xl border border-slate-200/80 flex flex-col items-center justify-center text-slate-400 gap-3">
         <RefreshCw className="w-8 h-8 animate-spin text-[#741b77]" />
         <span className="font-medium text-sm text-slate-600">กำลังโหลดแผนที่ดาวเทียม Google Hybrid...</span>
       </div>
@@ -480,11 +480,11 @@ export default function FieldInspectionPage() {
   }
 
   return (
-    <div className="flex-1 p-2 sm:p-4 md:px-7 md:py-5 w-full flex flex-col gap-2.5 sm:gap-4 max-w-[1600px] mx-auto min-h-0">
+    <div className="flex-1 p-1 sm:p-2.5 md:px-7 md:py-4 w-full flex flex-col gap-1.5 sm:gap-2.5 max-w-[1600px] mx-auto min-h-0 h-full overflow-hidden">
       {/* Global Status Notification Banner */}
       {saveMessage && (
         <div
-          className={`p-3 rounded-2xl border text-xs sm:text-sm text-center font-semibold shadow-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center justify-center gap-2 ${
+          className={`shrink-0 p-2 sm:p-3 rounded-xl border text-xs sm:text-sm text-center font-semibold shadow-xs animate-in fade-in slide-in-from-top-2 duration-200 flex items-center justify-center gap-2 ${
             saveMessage.startsWith('✅')
               ? 'bg-emerald-50 border-emerald-200/90 text-emerald-800'
               : saveMessage.startsWith('⚠️')
@@ -497,7 +497,7 @@ export default function FieldInspectionPage() {
       )}
 
       {/* Mobile Top Segmented View Switcher (< lg screens) - Compact Mobile-First Design */}
-      <div className="lg:hidden flex items-center p-0.5 bg-slate-100/90 rounded-xl border border-slate-200/90 shadow-2xs">
+      <div className="lg:hidden shrink-0 flex items-center p-0.5 bg-slate-100/90 rounded-xl border border-slate-200/90 shadow-2xs">
         <button
           type="button"
           onClick={() => setMobileTab('map')}
@@ -535,15 +535,15 @@ export default function FieldInspectionPage() {
       </div>
 
       {/* Main Responsive Grid Layout */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 items-start min-h-0 w-full">
+      <div className="flex-1 flex flex-col lg:flex-row gap-2 sm:gap-3.5 items-stretch min-h-0 w-full h-full overflow-hidden">
         {/* Left Column: Interactive Map & Unified Filter Console */}
         <div
-          className={`w-full lg:flex-1 flex-col space-y-1.5 sm:space-y-2.5 min-h-0 ${
+          className={`w-full lg:flex-1 flex-col space-y-1.5 sm:space-y-2 min-h-0 h-full ${
             mobileTab === 'map' ? 'flex flex-1' : 'hidden lg:flex'
           }`}
         >
           {/* Unified Map Console Header (Compact Mobile-First Minimalist Modern Design) */}
-          <div className="bg-white/95 backdrop-blur-md p-2 sm:p-3 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col gap-1.5 sm:gap-2">
+          <div className="shrink-0 bg-white/95 backdrop-blur-md p-2 sm:p-2.5 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col gap-1.5 sm:gap-2">
             {/* Top Row: Title, Live Status, Subtitle, and Fullscreen Action */}
             <div className="flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-2 min-w-0">
@@ -653,7 +653,7 @@ export default function FieldInspectionPage() {
             className={
               isMapFullscreen
                 ? 'fixed inset-0 z-[9999] w-screen h-screen bg-slate-100 rounded-none border-none p-0 m-0 overflow-hidden'
-                : 'relative w-full h-[calc(100dvh-185px)] min-h-[500px] lg:h-[calc(100dvh-170px)] bg-white rounded-2xl border border-slate-200/90 shadow-sm p-1.5 overflow-hidden transition-all duration-200'
+                : 'relative w-full flex-1 h-full min-h-0 bg-white rounded-xl border border-slate-200/90 shadow-2xs p-1 overflow-hidden transition-all duration-200'
             }
           >
             {/* Fullscreen Floating Controls Bar (Positioned at top-14 to guarantee zero overlap with top controls) */}
@@ -838,8 +838,8 @@ export default function FieldInspectionPage() {
 
         {/* Right Column: Measurement Recording Drawer */}
         <div
-          className={`w-full lg:w-[480px] xl:w-[500px] flex-col space-y-3.5 ${
-            mobileTab === 'form' ? 'flex' : 'hidden lg:flex'
+          className={`w-full lg:w-[480px] xl:w-[500px] flex-col space-y-3 min-h-0 h-full overflow-y-auto overscroll-contain pr-0.5 pb-6 ${
+            mobileTab === 'form' ? 'flex flex-1' : 'hidden lg:flex'
           }`}
         >
           {/* Active Transformer Info Card */}

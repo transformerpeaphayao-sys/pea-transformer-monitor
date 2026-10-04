@@ -640,7 +640,7 @@ export default function BackofficeDashboard() {
   }
 
   return (
-    <div className="flex-1 p-4 md:px-7 md:py-6 w-full space-y-6">
+    <div className="flex-1 p-4 md:px-7 md:py-6 w-full space-y-6 overflow-y-auto min-h-0">
       {/* Minimal Header Greeting & Status Overview */}
       <div className="relative bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-5 md:p-6">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#741b77] via-[#8e24aa] to-[#f39c12]" />
