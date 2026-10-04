@@ -441,6 +441,10 @@ export default function FieldInspectionPage() {
       setUploadedPhotos([]);
       setGlobalNote('');
 
+      // Dismiss transformer action card from map
+      setShowMapActionCard(false);
+      setSelectedTransformer(null);
+
       // Always return to Map Coordinates tab upon saving
       setMobileTab('map');
 
@@ -457,6 +461,8 @@ export default function FieldInspectionPage() {
         setSaveMessage(`⚠️ บันทึกข้อมูลลงในเครื่องเรียบร้อย (โหมดออฟไลน์: ${getErrorMessage(err)})`);
         setUploadedPhotos([]);
         setGlobalNote('');
+        setShowMapActionCard(false);
+        setSelectedTransformer(null);
         setMobileTab('map');
         setTimeout(() => setSaveMessage(null), 5000);
       } catch (storageErr: unknown) {
@@ -719,7 +725,7 @@ export default function FieldInspectionPage() {
 
             <TransformerMap
               transformers={transformers}
-              selectedPea={selectedTransformer?.peaNo}
+              selectedPea={showMapActionCard ? selectedTransformer?.peaNo : undefined}
               filterMode={filterMode}
               isFullscreen={isMapFullscreen}
               onToggleFullscreen={toggleMapFullscreen}
