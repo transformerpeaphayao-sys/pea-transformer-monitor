@@ -48,6 +48,7 @@ export default function BackofficeDashboard() {
   const [mounted, setMounted] = useState(false);
   const [transformers, setTransformers] = useState<TransformerWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -324,6 +325,7 @@ export default function BackofficeDashboard() {
 
   const fetchTransformers = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch('/api/transformers');
       const json = await res.json();
@@ -356,9 +358,12 @@ export default function BackofficeDashboard() {
             setIsRegisterModalOpen(true);
           }
         }
+      } else {
+        setLoadError(json.error || 'ไม่สามารถโหลดข้อมูลหม้อแปลงจากฐานข้อมูลได้');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to load transformers:', err);
+      setLoadError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -719,6 +724,38 @@ export default function BackofficeDashboard() {
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {/* Load Error Alert Banner */}
+      {loadError && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 shrink-0 mt-0.5 sm:mt-0">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-950">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล Google Sheets</p>
+              <p className="text-[11px] text-amber-800 mt-0.5">{loadError}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <button
+              onClick={fetchTransformers}
+              disabled={loading}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>ลองใหม่อีกครั้ง</span>
+            </button>
+            <button
+              onClick={() => setLoadError(null)}
+              className="p-1.5 rounded-xl text-amber-700 hover:bg-amber-100 transition-colors"
+              title="ปิดการแจ้งเตือน"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 

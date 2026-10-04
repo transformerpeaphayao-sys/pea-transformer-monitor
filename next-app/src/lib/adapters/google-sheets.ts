@@ -23,22 +23,51 @@ const SCOPES = [
 ];
 
 export function getGoogleAuth(scopes: string[] = SCOPES) {
-  // 1. Check for GCP_SERVICE_ACCOUNT or gcp_service_account environment variable (JSON string) for Vercel/Cloud
-  const envCreds =
+  // 1. Check for GCP_SERVICE_ACCOUNT or aliases (JSON string or base64)
+  const rawCreds =
     process.env.GCP_SERVICE_ACCOUNT ||
     process.env.gcp_service_account ||
     process.env.GOOGLE_CREDENTIALS ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.SERVICE_ACCOUNT ||
+    process.env.service_account ||
+    process.env.CREDENTIALS_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-  if (envCreds) {
-    try {
-      const parsed = typeof envCreds === 'string' ? JSON.parse(envCreds) : envCreds;
-      return new google.auth.GoogleAuth({
-        credentials: parsed,
-        scopes,
-      });
-    } catch (e) {
-      console.error('Failed to parse GCP_SERVICE_ACCOUNT JSON:', e);
+  if (rawCreds) {
+    let credString = rawCreds.trim();
+    // Strip wrapping quotes if user pasted with extra quotes
+    if (
+      (credString.startsWith('"') && credString.endsWith('"')) ||
+      (credString.startsWith("'") && credString.endsWith("'"))
+    ) {
+      credString = credString.slice(1, -1).trim();
+    }
+
+    // Decode base64 if applicable
+    if (!credString.startsWith('{') && !credString.includes('-----BEGIN')) {
+      try {
+        const decoded = Buffer.from(credString, 'base64').toString('utf8');
+        if (decoded.trim().startsWith('{')) {
+          credString = decoded.trim();
+        }
+      } catch {}
+    }
+
+    if (credString.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(credString);
+        if (parsed.private_key) {
+          parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+        }
+        return new google.auth.GoogleAuth({
+          credentials: parsed,
+          scopes,
+        });
+      } catch (e) {
+        console.error('Failed to parse Google Service Account JSON:', e);
+        throw new Error(`รูปแบบตัวแปร GCP_SERVICE_ACCOUNT ใน Vercel ไม่ถูกต้อง (${getErrorMessage(e)})`);
+      }
     }
   }
 
@@ -51,10 +80,15 @@ export function getGoogleAuth(scopes: string[] = SCOPES) {
     });
   }
 
-  // 3. Fallback to default application credentials
-  return new google.auth.GoogleAuth({
-    scopes,
-  });
+  // 3. Fallback: file path in GOOGLE_APPLICATION_CREDENTIALS
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+    return new google.auth.GoogleAuth({
+      keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      scopes,
+    });
+  }
+
+  throw new Error('ไม่พบการตั้งค่าตัวแปร GCP_SERVICE_ACCOUNT ในระบบ (กรุณาไปที่ Vercel: Settings > Environment Variables เพื่อเพิ่มตัวแปร GCP_SERVICE_ACCOUNT แล้วกด Redeploy)');
 }
 
 function getAuth() {
