@@ -780,74 +780,210 @@ export default function BackofficeDashboard() {
         </div>
       )}
 
-      {/* KPI Cards Grid - Minimalist Modern Light */}
+      {/* KPI Cards Grid - Executive Modern Industrial Style */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+        {/* 1. หม้อแปลงทั้งหมด */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setStatusFilter('ALL')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStatusFilter('ALL'); } }}
+          className={`relative overflow-hidden bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none group active:scale-[0.98] ${
+            statusFilter === 'ALL'
+              ? 'border-purple-300 ring-2 ring-purple-600/25 shadow-sm bg-gradient-to-b from-purple-50/20 via-white to-white'
+              : 'border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5'
+          }`}
+          title="คลิกเพื่อแสดงหม้อแปลงทั้งหมด"
+        >
+          <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-[#741b77] to-purple-500" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">หม้อแปลงทั้งหมด</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-[#741b77]">
+            <span className="text-xs font-bold text-slate-500 group-hover:text-slate-800 transition-colors">
+              หม้อแปลงทั้งหมด
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100/80 flex items-center justify-center text-[#741b77] shadow-2xs group-hover:scale-110 transition-transform">
               <Layers className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold mt-2 text-slate-900">{metrics.total}</div>
-          <div className="text-[11px] text-slate-400 mt-1">ฐานข้อมูล Master</div>
+          <div className="text-2xl lg:text-3xl font-black mt-2 text-slate-900 tracking-tight tabular-nums">
+            {metrics.total}
+          </div>
+          <div className="text-[11px] text-slate-400 font-medium mt-1">
+            ฐานข้อมูล Master
+          </div>
+          <Layers className="w-16 h-16 absolute -right-3 -bottom-3 text-[#741b77] opacity-[0.035] pointer-events-none group-hover:opacity-[0.06] transition-opacity" />
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+        {/* 2. ตรวจแล้ว */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setStatusFilter(statusFilter === 'DONE' ? 'ALL' : 'DONE')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStatusFilter(statusFilter === 'DONE' ? 'ALL' : 'DONE'); } }}
+          className={`relative overflow-hidden bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none group active:scale-[0.98] ${
+            statusFilter === 'DONE'
+              ? 'border-emerald-400 ring-2 ring-emerald-500/25 shadow-sm bg-gradient-to-b from-emerald-50/25 via-white to-white'
+              : 'border-slate-200/90 shadow-2xs hover:shadow-md hover:border-emerald-300/80 hover:-translate-y-0.5'
+          }`}
+          title="คลิกเพื่อกรองเฉพาะที่ตรวจแล้ว"
+        >
+          <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-emerald-500 to-teal-500" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">ตรวจแล้ว</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <span className="text-xs font-bold text-slate-500 group-hover:text-emerald-700 transition-colors">
+              ตรวจแล้ว
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100/80 flex items-center justify-center text-emerald-600 shadow-2xs group-hover:scale-110 transition-transform">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold mt-2 text-emerald-600">{metrics.completed}</div>
-          <div className="text-[11px] text-slate-400 mt-1">
-            {((metrics.completed / (metrics.total || 1)) * 100).toFixed(1)}% ของทั้งหมด
+          <div className="text-2xl lg:text-3xl font-black mt-2 text-emerald-600 tracking-tight tabular-nums">
+            {metrics.completed}
           </div>
+          <div className="mt-1">
+            <div className="text-[11px] text-emerald-700/80 font-medium">
+              {((metrics.completed / (metrics.total || 1)) * 100).toFixed(1)}% ของทั้งหมด
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
+              <div
+                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(100, Math.max(0, (metrics.completed / (metrics.total || 1)) * 100))}%`,
+                }}
+              />
+            </div>
+          </div>
+          <CheckCircle2 className="w-16 h-16 absolute -right-3 -bottom-3 text-emerald-600 opacity-[0.035] pointer-events-none group-hover:opacity-[0.06] transition-opacity" />
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+        {/* 3. ยังไม่ตรวจ */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setStatusFilter(statusFilter === 'RED' ? 'ALL' : 'RED')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStatusFilter(statusFilter === 'RED' ? 'ALL' : 'RED'); } }}
+          className={`relative overflow-hidden bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none group active:scale-[0.98] ${
+            statusFilter === 'RED'
+              ? 'border-rose-300 ring-2 ring-rose-500/25 shadow-sm bg-gradient-to-b from-rose-50/25 via-white to-white'
+              : 'border-slate-200/90 shadow-2xs hover:shadow-md hover:border-rose-300/80 hover:-translate-y-0.5'
+          }`}
+          title="คลิกเพื่อกรองเฉพาะที่ยังไม่ตรวจ"
+        >
+          <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-rose-500 to-red-500" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">ยังไม่ตรวจ</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
+            <span className="text-xs font-bold text-slate-500 group-hover:text-rose-700 transition-colors">
+              ยังไม่ตรวจ
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-100/80 flex items-center justify-center text-rose-600 shadow-2xs group-hover:scale-110 transition-transform">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold mt-2 text-rose-600">{metrics.uninspected}</div>
-          <div className="text-[11px] text-slate-400 mt-1">รอการเข้าตรวจวัด</div>
+          <div className="text-2xl lg:text-3xl font-black mt-2 text-rose-600 tracking-tight tabular-nums">
+            {metrics.uninspected}
+          </div>
+          <div className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-medium mt-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+            <span>รอการเข้าตรวจวัด</span>
+          </div>
+          <AlertTriangle className="w-16 h-16 absolute -right-3 -bottom-3 text-rose-600 opacity-[0.035] pointer-events-none group-hover:opacity-[0.06] transition-opacity" />
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+        {/* 4. สั่งตรวจซ้ำ */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setStatusFilter(statusFilter === 'ORANGE' ? 'ALL' : 'ORANGE')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStatusFilter(statusFilter === 'ORANGE' ? 'ALL' : 'ORANGE'); } }}
+          className={`relative overflow-hidden bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none group active:scale-[0.98] ${
+            statusFilter === 'ORANGE'
+              ? 'border-amber-300 ring-2 ring-amber-500/25 shadow-sm bg-gradient-to-b from-amber-50/25 via-white to-white'
+              : 'border-slate-200/90 shadow-2xs hover:shadow-md hover:border-amber-300/80 hover:-translate-y-0.5'
+          }`}
+          title="คลิกเพื่อกรองเฉพาะที่สั่งตรวจซ้ำ"
+        >
+          <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-amber-500 to-orange-500" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">สั่งตรวจซ้ำ</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+            <span className="text-xs font-bold text-slate-500 group-hover:text-amber-700 transition-colors">
+              สั่งตรวจซ้ำ
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100/80 flex items-center justify-center text-amber-600 shadow-2xs group-hover:scale-110 transition-transform">
               <Activity className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold mt-2 text-amber-600">{metrics.pending}</div>
-          <div className="text-[11px] text-slate-400 mt-1">ใบงาน Task Pending</div>
+          <div className="text-2xl lg:text-3xl font-black mt-2 text-amber-600 tracking-tight tabular-nums">
+            {metrics.pending}
+          </div>
+          <div className="inline-flex items-center gap-1.5 text-[11px] text-amber-700/90 font-medium mt-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span>ใบงาน Task Pending</span>
+          </div>
+          <Activity className="w-16 h-16 absolute -right-3 -bottom-3 text-amber-600 opacity-[0.035] pointer-events-none group-hover:opacity-[0.06] transition-opacity" />
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+        {/* 5. โหลดเกินพิกัด */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setStatusFilter(statusFilter === 'OVERLOAD' ? 'ALL' : 'OVERLOAD')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStatusFilter(statusFilter === 'OVERLOAD' ? 'ALL' : 'OVERLOAD'); } }}
+          className={`relative overflow-hidden bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none group active:scale-[0.98] ${
+            statusFilter === 'OVERLOAD'
+              ? 'border-red-400 ring-2 ring-red-500/25 shadow-sm bg-gradient-to-b from-red-50/25 via-white to-white'
+              : 'border-slate-200/90 shadow-2xs hover:shadow-md hover:border-red-300/80 hover:-translate-y-0.5'
+          }`}
+          title="คลิกเพื่อกรองเฉพาะหม้อแปลงโหลดเกินพิกัด"
+        >
+          <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-red-600 to-rose-600" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">โหลดเกินพิกัด</span>
-            <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center text-red-600">
+            <span className="text-xs font-bold text-slate-500 group-hover:text-red-700 transition-colors">
+              โหลดเกินพิกัด
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-100/80 flex items-center justify-center text-red-600 shadow-2xs group-hover:scale-110 transition-transform">
               <Flame className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold mt-2 text-red-600">{metrics.overload}</div>
-          <div className="text-[11px] text-rose-600 font-medium mt-1">%UF &gt; 80% (เกณฑ์ กฟภ.)</div>
+          <div className="text-2xl lg:text-3xl font-black mt-2 text-red-600 tracking-tight tabular-nums">
+            {metrics.overload}
+          </div>
+          <div className="mt-1">
+            <span className="inline-flex items-center gap-1 text-[10.5px] text-red-700 bg-red-50/90 border border-red-200/70 px-1.5 py-0.5 rounded-md font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+              <span>%UF &gt; 80% (เกณฑ์ กฟภ.)</span>
+            </span>
+          </div>
+          <Flame className="w-16 h-16 absolute -right-3 -bottom-3 text-red-600 opacity-[0.035] pointer-events-none group-hover:opacity-[0.06] transition-opacity" />
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+        {/* 6. เสี่ยงบิตคอยน์ */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setStatusFilter(statusFilter === 'CRYPTO' ? 'ALL' : 'CRYPTO')}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStatusFilter(statusFilter === 'CRYPTO' ? 'ALL' : 'CRYPTO'); } }}
+          className={`relative overflow-hidden bg-white p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none group active:scale-[0.98] ${
+            statusFilter === 'CRYPTO'
+              ? 'border-amber-400 ring-2 ring-amber-500/25 shadow-sm bg-gradient-to-b from-amber-50/25 via-white to-white'
+              : 'border-slate-200/90 shadow-2xs hover:shadow-md hover:border-amber-300/80 hover:-translate-y-0.5'
+          }`}
+          title="คลิกเพื่อกรองเฉพาะกลุ่มเสี่ยงบิตคอยน์ (Harmonic สูง)"
+        >
+          <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-amber-500 to-yellow-500" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">เสี่ยงบิตคอยน์</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50/80 flex items-center justify-center text-[#f39c12]">
-              <Zap className="w-4 h-4" />
+            <span className="text-xs font-bold text-slate-500 group-hover:text-amber-800 transition-colors">
+              เสี่ยงบิตคอยน์
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50/90 border border-amber-200/70 flex items-center justify-center text-[#f39c12] shadow-2xs group-hover:scale-110 transition-transform">
+              <Zap className="w-4 h-4 fill-amber-400/20" />
             </div>
           </div>
-          <div className="text-2xl font-bold mt-2 text-[#d68910]">{metrics.harmonicRisk}</div>
-          <div className="text-[11px] text-amber-700 font-medium mt-1">Harmonic แฝงสูง</div>
+          <div className="text-2xl lg:text-3xl font-black mt-2 text-[#d68910] tracking-tight tabular-nums">
+            {metrics.harmonicRisk}
+          </div>
+          <div className="mt-1">
+            <span className="inline-flex items-center gap-1 text-[10.5px] text-amber-800 bg-amber-50/90 border border-amber-200/70 px-1.5 py-0.5 rounded-md font-semibold">
+              <Zap className="w-2.5 h-2.5 text-[#f39c12] fill-[#f39c12]" />
+              <span>Harmonic แฝงสูง</span>
+            </span>
+          </div>
+          <Zap className="w-16 h-16 absolute -right-3 -bottom-3 text-amber-500 opacity-[0.035] pointer-events-none group-hover:opacity-[0.06] transition-opacity" />
         </div>
       </div>
 
