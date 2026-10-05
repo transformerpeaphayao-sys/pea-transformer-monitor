@@ -1073,30 +1073,30 @@ export default function BackofficeDashboard() {
           </button>
         </div>
 
-        {/* Collapsible Advanced Filters Drawer */}
+        {/* Collapsible Advanced Filters Drawer - Executive Industrial Design */}
         {showAdvancedFilters && (
           <div className="pt-3.5 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-150">
             {/* 1. Feeder Current Filter */}
-            <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-3.5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#741b77] to-purple-400" />
+            <div className="relative overflow-hidden p-4.5 bg-gradient-to-b from-white via-white to-slate-50/40 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all space-y-3.5">
+              <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-[#741b77] to-purple-500" />
               
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-[#741b77] border border-purple-100">
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100/80 flex items-center justify-center text-[#741b77] shadow-2xs">
                     <Gauge className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 tracking-tight">
+                    <h4 className="text-xs font-bold text-slate-800 tracking-tight">
                       กรองตามกระแสฟีดเดอร์ (Feeder Current)
                     </h4>
-                    <p className="text-[10px] text-slate-400 font-normal">
+                    <p className="text-[11px] text-slate-400 font-medium">
                       กำหนดช่วงกระแสโหลดเพื่อค้นหา
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">เกณฑ์:</span>
+                  <span className="text-[11px] text-slate-500 font-semibold hidden sm:inline">เกณฑ์:</span>
                   <select
                     value={feederPhaseFilter}
                     onChange={e => {
@@ -1105,7 +1105,7 @@ export default function BackofficeDashboard() {
                         setFeederPhaseFilter(val);
                       }
                     }}
-                    className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-700 text-xs rounded-lg px-2.5 py-1 font-semibold focus:outline-none focus:border-[#741b77] focus:ring-1 focus:ring-purple-600/20 cursor-pointer transition-colors shadow-2xs"
+                    className="bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-800 text-xs rounded-xl px-2.5 py-1.5 font-bold focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 cursor-pointer transition-all shadow-2xs"
                   >
                     <option value="MAX">กระแสสูงสุด (Max Current)</option>
                     <option value="A">เฟส A</option>
@@ -1118,15 +1118,16 @@ export default function BackofficeDashboard() {
               </div>
 
               {/* Connected Dual Range Input Group */}
-              <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/70">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
                 <div className="grid grid-cols-2 gap-3 items-center">
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-semibold text-slate-600">กระแสต่ำสุด (Min)</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-slate-600">กระแสต่ำสุด (Min)</span>
                       {minFeederCurrent && (
                         <button
+                          type="button"
                           onClick={() => setMinFeederCurrent('')}
-                          className="text-[10px] text-slate-400 hover:text-rose-600"
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
                         >
                           ล้าง
                         </button>
@@ -1139,19 +1140,20 @@ export default function BackofficeDashboard() {
                         placeholder="เช่น 50"
                         value={minFeederCurrent}
                         onChange={e => setMinFeederCurrent(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-mono font-medium tabular-nums text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
+                        className="w-full bg-white border border-slate-200/90 rounded-xl pl-3 pr-9 py-2 text-xs font-mono font-bold tabular-nums text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
                       />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-semibold text-slate-400 pointer-events-none">A</span>
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-slate-500 bg-slate-100/90 px-1.5 py-0.5 rounded-md pointer-events-none">A</span>
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-semibold text-slate-600">กระแสสูงสุด (Max)</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-slate-600">กระแสสูงสุด (Max)</span>
                       {maxFeederCurrent && (
                         <button
+                          type="button"
                           onClick={() => setMaxFeederCurrent('')}
-                          className="text-[10px] text-slate-400 hover:text-rose-600"
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
                         >
                           ล้าง
                         </button>
@@ -1164,9 +1166,9 @@ export default function BackofficeDashboard() {
                         placeholder="ไม่จำกัด (เช่น 200)"
                         value={maxFeederCurrent}
                         onChange={e => setMaxFeederCurrent(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-mono font-medium tabular-nums text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
+                        className="w-full bg-white border border-slate-200/90 rounded-xl pl-3 pr-9 py-2 text-xs font-mono font-bold tabular-nums text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
                       />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-semibold text-slate-400 pointer-events-none">A</span>
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-slate-500 bg-slate-100/90 px-1.5 py-0.5 rounded-md pointer-events-none">A</span>
                     </div>
                   </div>
                 </div>
@@ -1175,7 +1177,7 @@ export default function BackofficeDashboard() {
               {/* Current Presets */}
               <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] pt-0.5">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-slate-400 font-semibold text-[10px] uppercase tracking-wider">ทางลัด:</span>
+                  <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">ทางลัด:</span>
                   {[
                     { label: '≥ 50 A', min: '50' },
                     { label: '≥ 100 A', min: '100' },
@@ -1184,14 +1186,15 @@ export default function BackofficeDashboard() {
                   ].map(p => (
                     <button
                       key={p.label}
+                      type="button"
                       onClick={() => {
                         setMinFeederCurrent(p.min);
                         setMaxFeederCurrent('');
                       }}
-                      className={`px-2.5 py-1 rounded-lg border text-xs font-mono tabular-nums transition-all ${
+                      className={`px-2.5 py-1.5 rounded-xl border text-xs font-mono font-semibold tabular-nums transition-all active:scale-95 shadow-2xs ${
                         minFeederCurrent === p.min && maxFeederCurrent === ''
-                          ? 'bg-[#741b77] text-white border-[#741b77] font-semibold shadow-2xs'
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300 font-medium'
+                          ? 'bg-[#741b77] text-white border-[#741b77] shadow-xs'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90 hover:border-slate-300'
                       }`}
                     >
                       {p.label}
@@ -1201,53 +1204,56 @@ export default function BackofficeDashboard() {
 
                 {(minFeederCurrent || maxFeederCurrent) && (
                   <button
+                    type="button"
                     onClick={() => {
                       setMinFeederCurrent('');
                       setMaxFeederCurrent('');
                     }}
-                    className="text-[11px] text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors"
+                    className="text-[11px] text-slate-500 hover:text-rose-600 font-semibold flex items-center gap-1 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>รีเซ็ต</span>
                   </button>
                 )}
               </div>
+              <Gauge className="w-20 h-20 absolute -right-3 -bottom-3 text-[#741b77] opacity-[0.03] pointer-events-none" />
             </div>
 
             {/* 2. Harmonic Current Filter */}
-            <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-3.5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#f39c12] to-amber-300" />
+            <div className="relative overflow-hidden p-4.5 bg-gradient-to-b from-white via-white to-slate-50/40 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all space-y-3.5">
+              <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-amber-500 to-yellow-400" />
 
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-[#d68910] border border-amber-200/60">
-                    <Zap className="w-4 h-4 fill-[#f39c12]" />
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-[#f39c12] shadow-2xs">
+                    <Zap className="w-4 h-4 fill-amber-400/30" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 tracking-tight">
+                    <h4 className="text-xs font-bold text-slate-800 tracking-tight">
                       กรองช่วงกระแส Harmonic แฝง
                     </h4>
-                    <p className="text-[10px] text-slate-400 font-normal">
+                    <p className="text-[11px] text-slate-400 font-medium">
                       คัดกรองกระแสผิดปกติที่อาจเสี่ยงบิตคอยน์
                     </p>
                   </div>
                 </div>
 
-                <span className="inline-flex items-center gap-1 font-mono text-[10px] text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md font-semibold tracking-tight">
+                <span className="inline-flex items-center gap-1 font-mono text-[10.5px] text-amber-900 bg-amber-100/70 border border-amber-200 px-2.5 py-0.5 rounded-lg font-bold shadow-2xs">
                   In - In_calc
                 </span>
               </div>
 
               {/* Connected Dual Range Input Group */}
-              <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/70">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
                 <div className="grid grid-cols-2 gap-3 items-center">
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-semibold text-slate-600">Harmonic ต่ำสุด (Min)</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-slate-600">Harmonic ต่ำสุด (Min)</span>
                       {minHarmonicCurrent && (
                         <button
+                          type="button"
                           onClick={() => setMinHarmonicCurrent('')}
-                          className="text-[10px] text-slate-400 hover:text-rose-600"
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
                         >
                           ล้าง
                         </button>
@@ -1260,19 +1266,20 @@ export default function BackofficeDashboard() {
                         placeholder="เช่น 15 (เฝ้าระวัง)"
                         value={minHarmonicCurrent}
                         onChange={e => setMinHarmonicCurrent(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-mono font-medium tabular-nums text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
+                        className="w-full bg-white border border-slate-200/90 rounded-xl pl-3 pr-9 py-2 text-xs font-mono font-bold tabular-nums text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
                       />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-semibold text-slate-400 pointer-events-none">A</span>
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-slate-500 bg-slate-100/90 px-1.5 py-0.5 rounded-md pointer-events-none">A</span>
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-semibold text-slate-600">Harmonic สูงสุด (Max)</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] font-bold text-slate-600">Harmonic สูงสุด (Max)</span>
                       {maxHarmonicCurrent && (
                         <button
+                          type="button"
                           onClick={() => setMaxHarmonicCurrent('')}
-                          className="text-[10px] text-slate-400 hover:text-rose-600"
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
                         >
                           ล้าง
                         </button>
@@ -1285,9 +1292,9 @@ export default function BackofficeDashboard() {
                         placeholder="ไม่จำกัด"
                         value={maxHarmonicCurrent}
                         onChange={e => setMaxHarmonicCurrent(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-mono font-medium tabular-nums text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
+                        className="w-full bg-white border border-slate-200/90 rounded-xl pl-3 pr-9 py-2 text-xs font-mono font-bold tabular-nums text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
                       />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-semibold text-slate-400 pointer-events-none">A</span>
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-slate-500 bg-slate-100/90 px-1.5 py-0.5 rounded-md pointer-events-none">A</span>
                     </div>
                   </div>
                 </div>
@@ -1296,7 +1303,7 @@ export default function BackofficeDashboard() {
               {/* Harmonic Presets & Clear Filters */}
               <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] pt-0.5">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-slate-400 font-semibold text-[10px] uppercase tracking-wider">เกณฑ์ความเสี่ยง:</span>
+                  <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">เกณฑ์ความเสี่ยง:</span>
                   {[
                     { label: '≥ 15 A (เฝ้าระวัง)', min: '15' },
                     { label: '≥ 25 A (สูง)', min: '25' },
@@ -1304,31 +1311,37 @@ export default function BackofficeDashboard() {
                   ].map(p => (
                     <button
                       key={p.label}
+                      type="button"
                       onClick={() => {
                         setMinHarmonicCurrent(p.min);
                         setMaxHarmonicCurrent('');
                       }}
-                      className={`px-2.5 py-1 rounded-lg border text-xs font-mono tabular-nums transition-all ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-mono font-semibold tabular-nums transition-all active:scale-95 shadow-2xs ${
                         minHarmonicCurrent === p.min && maxHarmonicCurrent === ''
-                          ? 'bg-[#f39c12] text-slate-900 border-[#f39c12] font-bold shadow-2xs'
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300 font-medium'
+                          ? 'bg-amber-500 text-slate-950 border-amber-600 font-bold shadow-xs'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90 hover:border-slate-300'
                       }`}
                     >
-                      {p.label}
+                      {p.min === '15' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                      {p.min === '25' && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
+                      {p.min === '50' && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
+                      <span>{p.label}</span>
                     </button>
                   ))}
                 </div>
 
                 {activeAdvancedFilterCount > 0 && (
                   <button
+                    type="button"
                     onClick={handleResetFilters}
-                    className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg border border-transparent hover:border-rose-200/60 flex items-center gap-1.5 font-semibold transition-all ml-auto"
+                    className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl border border-transparent hover:border-rose-200/60 flex items-center gap-1.5 font-bold transition-all ml-auto active:scale-95 shadow-2xs"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>ล้างตัวกรองทั้งหมด</span>
                   </button>
                 )}
               </div>
+              <Zap className="w-20 h-20 absolute -right-3 -bottom-3 text-amber-500 opacity-[0.03] pointer-events-none" />
             </div>
           </div>
         )}
