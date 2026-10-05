@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     icon: '/pea-logo.png',
     apple: '/pea-logo.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'PEA Load',
+  },
 };
 
 export const viewport: Viewport = {
