@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { TransformerWithStatus, MeasurementSession, FeederRecord, getErrorMessage } from '@/lib/domain/types';
 import {
   calculateEngineeringStatus,
@@ -33,6 +33,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   Image as ImageIcon,
   RotateCcw,
   Calendar,
@@ -51,6 +52,7 @@ import {
   ArrowUpDown,
   ArrowDown,
   ArrowUp,
+  Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AiReportViewer } from '@/components/AiReportViewer';
@@ -78,6 +80,17 @@ export default function BackofficeDashboard() {
   // Date Filter State
   const [dateFilterMode, setDateFilterMode] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_7_DAYS' | 'THIS_MONTH' | 'CUSTOM'>('ALL');
   const [customDateFilter, setCustomDateFilter] = useState<string>('');
+
+  // Minimal Custom Date Picker Popover State
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  // Minimal History Dates Dropdown State
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const historyRef = useRef<HTMLDivElement>(null);
 
   // Table Sort State (Default: latest inspection date descending)
   const [sortColumn, setSortColumn] = useState<'latestDate' | 'peaNo' | 'kva' | 'pctLoad' | 'pctUnbalance' | 'harmonic'>('latestDate');
@@ -495,6 +508,113 @@ export default function BackofficeDashboard() {
     };
   }, [transformers, localTodayYMD, localYesterdayYMD]);
 
+  // Thai Date Constants
+  const THAI_MONTHS = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน',
+    'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม',
+    'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ];
+  const THAI_DAY_HEADERS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+
+  // Calendar Grid Days Calculation
+  const calendarGridDays = useMemo(() => {
+    const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+    const firstDayOfWeek = new Date(calendarYear, calendarMonth, 1).getDay(); // 0 is Sunday
+    const days: Array<{
+      day: number;
+      ymd: string;
+      isCurrentMonth: boolean;
+    }> = [];
+
+    // Previous month padding
+    const prevMonthDays = new Date(calendarYear, calendarMonth, 0).getDate();
+    const prevMonth = calendarMonth === 0 ? 11 : calendarMonth - 1;
+    const prevYear = calendarMonth === 0 ? calendarYear - 1 : calendarYear;
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+      const d = prevMonthDays - i;
+      const ymd = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      days.push({ day: d, ymd, isCurrentMonth: false });
+    }
+
+    // Current month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ymd = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      days.push({ day: d, ymd, isCurrentMonth: true });
+    }
+
+    // Next month padding to complete 7-day rows
+    const nextMonth = calendarMonth === 11 ? 0 : calendarMonth + 1;
+    const nextYear = calendarMonth === 11 ? calendarYear + 1 : calendarYear;
+    const remaining = (7 - (days.length % 7)) % 7;
+    for (let d = 1; d <= remaining; d++) {
+      const ymd = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      days.push({ day: d, ymd, isCurrentMonth: false });
+    }
+
+    return days;
+  }, [calendarYear, calendarMonth]);
+
+  const handlePrevMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11);
+      setCalendarYear(prev => prev - 1);
+    } else {
+      setCalendarMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0);
+      setCalendarYear(prev => prev + 1);
+    } else {
+      setCalendarMonth(prev => prev + 1);
+    }
+  };
+
+  const handleSelectCalendarDate = (ymd: string) => {
+    setCustomDateFilter(ymd);
+    setDateFilterMode('CUSTOM');
+    setStatusFilter('ALL');
+    setIsCalendarOpen(false);
+  };
+
+  // Filtered History Dates list with optional search
+  const filteredHistoryDates = useMemo(() => {
+    if (!historySearch.trim()) return dateStats.availableDates;
+    const q = historySearch.trim().toLowerCase();
+    return dateStats.availableDates.filter(ymd => {
+      const thaiDate = formatYMDToThai(ymd);
+      return ymd.includes(q) || thaiDate.includes(q);
+    });
+  }, [dateStats.availableDates, historySearch]);
+
+  // Click outside listener for custom calendar and history popovers
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setIsCalendarOpen(false);
+      }
+      if (historyRef.current && !historyRef.current.contains(event.target as Node)) {
+        setIsHistoryOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsCalendarOpen(false);
+        setIsHistoryOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // Check active advanced filter count
   const activeAdvancedFilterCount = useMemo(() => {
     let count = 0;
@@ -508,6 +628,9 @@ export default function BackofficeDashboard() {
     setStatusFilter('ALL');
     setDateFilterMode('ALL');
     setCustomDateFilter('');
+    setIsCalendarOpen(false);
+    setIsHistoryOpen(false);
+    setHistorySearch('');
     setSortColumn('latestDate');
     setSortDirection('desc');
     setMinFeederCurrent('');
@@ -1733,50 +1856,307 @@ export default function BackofficeDashboard() {
               เดือนนี้
             </button>
 
-            {/* Date Input */}
-            <div className="inline-flex items-center gap-1 bg-white border border-slate-200/90 rounded-lg px-2 py-0.5 shadow-2xs">
-              <span className="text-[11px] text-slate-400 font-medium">ระบุวันที่:</span>
-              <input
-                type="date"
-                value={customDateFilter}
-                onChange={e => {
-                  const val = e.target.value;
-                  setCustomDateFilter(val);
-                  if (val) {
-                    setDateFilterMode('CUSTOM');
-                    setStatusFilter('ALL');
-                  } else {
-                    setDateFilterMode('ALL');
-                  }
+            {/* 1. Custom Minimal Date Picker Popover */}
+            <div ref={calendarRef} className="relative inline-block">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCalendarOpen(!isCalendarOpen);
+                  setIsHistoryOpen(false);
                 }}
-                className="text-xs text-slate-700 bg-transparent border-0 focus:outline-none cursor-pointer font-mono"
-              />
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-2xs ${
+                  dateFilterMode === 'CUSTOM' && customDateFilter
+                    ? 'bg-purple-50 text-[#741b77] border border-purple-200/90 font-bold ring-1 ring-purple-100 shadow-xs'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90'
+                }`}
+                title="คลิกเพื่อเปิดปฏิทินเลือกวันที่"
+              >
+                <Calendar className="w-3.5 h-3.5 text-[#741b77]" />
+                <span>
+                  {dateFilterMode === 'CUSTOM' && customDateFilter
+                    ? formatYMDToThai(customDateFilter)
+                    : 'เลือกวันที่...'}
+                </span>
+                {dateFilterMode === 'CUSTOM' && customDateFilter ? (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCustomDateFilter('');
+                      setDateFilterMode('ALL');
+                    }}
+                    className="p-0.5 hover:bg-purple-200/70 rounded-full text-slate-400 hover:text-rose-600 transition-colors ml-0.5"
+                    title="ล้างวันที่เลือก"
+                  >
+                    <X className="w-3 h-3" />
+                  </span>
+                ) : (
+                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${isCalendarOpen ? 'rotate-180' : ''}`} />
+                )}
+              </button>
+
+              {/* Minimalist Floating Calendar Popover */}
+              {isCalendarOpen && (
+                <div className="absolute left-0 top-full mt-2 z-50 w-72 bg-white/98 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl p-3.5 animate-in fade-in zoom-in-95 duration-150 select-none">
+                  {/* Month/Year Header */}
+                  <div className="flex items-center justify-between mb-2.5 px-1">
+                    <button
+                      type="button"
+                      onClick={handlePrevMonth}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                      title="เดือนก่อนหน้า"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-slate-800 tracking-tight">
+                        {THAI_MONTHS[calendarMonth]} {calendarYear + 543}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono ml-1 font-normal">
+                        ({calendarYear})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleNextMonth}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                      title="เดือนถัดไป"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Day Headers */}
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {THAI_DAY_HEADERS.map(d => (
+                      <div key={d} className="text-center text-[10px] font-bold text-slate-400 py-0.5">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Days Grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {calendarGridDays.map((cell, idx) => {
+                      const isSelected = customDateFilter === cell.ymd && dateFilterMode === 'CUSTOM';
+                      const isToday = cell.ymd === localTodayYMD;
+                      const inspectCount = dateStats.countsByYMD[cell.ymd] || 0;
+
+                      return (
+                        <button
+                          key={`${cell.ymd}_${idx}`}
+                          type="button"
+                          onClick={() => handleSelectCalendarDate(cell.ymd)}
+                          className={`relative flex flex-col items-center justify-center h-8 rounded-xl text-xs font-mono transition-all duration-150 ${
+                            isSelected
+                              ? 'bg-[#741b77] text-white font-bold shadow-xs scale-105 z-10'
+                              : cell.isCurrentMonth
+                              ? isToday
+                                ? 'bg-purple-50 text-[#741b77] font-bold ring-1 ring-[#741b77]/40 hover:bg-purple-100'
+                                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              : 'text-slate-300 hover:bg-slate-50'
+                          }`}
+                          title={
+                            inspectCount > 0
+                              ? `วันที่ ${formatYMDToThai(cell.ymd)}: ตรวจแล้ว ${inspectCount} เครื่อง`
+                              : formatYMDToThai(cell.ymd)
+                          }
+                        >
+                          <span>{cell.day}</span>
+                          {/* Dot indicator for dates that have inspections */}
+                          {inspectCount > 0 && (
+                            <span
+                              className={`w-1 h-1 rounded-full -mt-0.5 ${
+                                isSelected ? 'bg-amber-300' : 'bg-[#741b77]'
+                              }`}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-xs px-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCalendarDate(localTodayYMD)}
+                      className="text-[#741b77] hover:text-[#58145a] font-bold text-[11px] hover:underline flex items-center gap-1"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>เลือกวันนี้</span>
+                    </button>
+
+                    {customDateFilter && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomDateFilter('');
+                          setDateFilterMode('ALL');
+                          setIsCalendarOpen(false);
+                        }}
+                        className="text-rose-500 hover:text-rose-700 font-semibold text-[11px] hover:underline"
+                      >
+                        ล้างวันที่
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setIsCalendarOpen(false)}
+                      className="text-slate-400 hover:text-slate-600 font-medium text-[11px]"
+                    >
+                      ปิด
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Dropdown of past inspection dates */}
+            {/* 2. Custom Minimal History Dates Dropdown */}
             {dateStats.availableDates.length > 0 && (
-              <select
-                value={dateFilterMode === 'CUSTOM' ? customDateFilter : ''}
-                onChange={e => {
-                  const val = e.target.value;
-                  if (val) {
-                    setCustomDateFilter(val);
-                    setDateFilterMode('CUSTOM');
-                    setStatusFilter('ALL');
-                  } else {
-                    setCustomDateFilter('');
-                    setDateFilterMode('ALL');
-                  }
-                }}
-                className="text-xs text-slate-700 bg-white border border-slate-200/90 rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs"
-              >
-                <option value="">เลือกจากประวัติวันที่ตรวจ ({dateStats.availableDates.length} วัน)...</option>
-                {dateStats.availableDates.map(ymd => (
-                  <option key={ymd} value={ymd}>
-                    {formatYMDToThai(ymd)} ({dateStats.countsByYMD[ymd]} เครื่อง)
-                  </option>
-                ))}
-              </select>
+              <div ref={historyRef} className="relative inline-block">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsHistoryOpen(!isHistoryOpen);
+                    setIsCalendarOpen(false);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-2xs ${
+                    dateFilterMode === 'CUSTOM' && customDateFilter && dateStats.countsByYMD[customDateFilter]
+                      ? 'bg-purple-50 text-[#741b77] border border-purple-200/90 font-bold ring-1 ring-purple-100 shadow-xs'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90'
+                  }`}
+                  title="คลิกเพื่อเลือกจากประวัติวันที่มีการตรวจวัด"
+                >
+                  <History className="w-3.5 h-3.5 text-slate-500" />
+                  <span>
+                    {dateFilterMode === 'CUSTOM' && customDateFilter && dateStats.countsByYMD[customDateFilter]
+                      ? `${formatYMDToThai(customDateFilter)} (${dateStats.countsByYMD[customDateFilter]} เครื่อง)`
+                      : `ประวัติวันตรวจ (${dateStats.availableDates.length} วัน)`}
+                  </span>
+                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${isHistoryOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Custom Minimal Floating History Menu */}
+                {isHistoryOpen && (
+                  <div className="absolute left-0 top-full mt-2 z-50 w-72 sm:w-80 bg-white/98 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 select-none">
+                    {/* Header */}
+                    <div className="px-3.5 py-2.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-600 tracking-tight">
+                        ประวัติวันที่มีการตรวจวัด ({dateStats.availableDates.length} วัน)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsHistoryOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 p-0.5 rounded-lg"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Search inside dropdown if > 6 dates */}
+                    {dateStats.availableDates.length > 6 && (
+                      <div className="p-2 border-b border-slate-100 bg-white">
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          <input
+                            type="text"
+                            placeholder="ค้นหาวันที่ (เช่น 07 หรือ 10)..."
+                            value={historySearch}
+                            onChange={e => setHistorySearch(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1 text-xs bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-none focus:bg-white focus:border-[#741b77] focus:ring-1 focus:ring-purple-600/10 transition-all font-mono"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Scrollable Date List */}
+                    <div className="max-h-64 overflow-y-auto p-1.5 divide-y divide-slate-50">
+                      {filteredHistoryDates.length === 0 ? (
+                        <div className="py-6 text-center text-slate-400 text-xs">
+                          ไม่พบประวัติวันที่ค้นหา
+                        </div>
+                      ) : (
+                        filteredHistoryDates.map(ymd => {
+                          const isSelected = customDateFilter === ymd && dateFilterMode === 'CUSTOM';
+                          const count = dateStats.countsByYMD[ymd] || 0;
+                          const isToday = ymd === localTodayYMD;
+
+                          return (
+                            <div
+                              key={ymd}
+                              onClick={() => {
+                                setCustomDateFilter(ymd);
+                                setDateFilterMode('CUSTOM');
+                                setStatusFilter('ALL');
+                                setIsHistoryOpen(false);
+                              }}
+                              className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all duration-150 ${
+                                isSelected
+                                  ? 'bg-purple-50 text-[#741b77] font-bold shadow-2xs'
+                                  : 'text-slate-700 hover:bg-slate-50 hover:translate-x-0.5'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Calendar className={`w-3.5 h-3.5 ${isSelected ? 'text-[#741b77]' : 'text-slate-400'}`} />
+                                <span className="font-mono">{formatYMDToThai(ymd)}</span>
+                                {isToday && (
+                                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9.5px] font-bold">
+                                    วันนี้
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10.5px] font-mono tabular-nums font-semibold ${
+                                    isSelected
+                                      ? 'bg-[#741b77] text-white'
+                                      : isToday
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                                      : 'bg-purple-50 text-[#741b77]'
+                                  }`}
+                                >
+                                  {count} เครื่อง
+                                </span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-[#741b77]" />}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    {(dateFilterMode === 'CUSTOM' || historySearch) && (
+                      <div className="px-3 py-2 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs">
+                        {historySearch && (
+                          <button
+                            type="button"
+                            onClick={() => setHistorySearch('')}
+                            className="text-xs text-slate-500 hover:text-slate-800 font-medium"
+                          >
+                            ล้างคำค้น
+                          </button>
+                        )}
+                        {dateFilterMode === 'CUSTOM' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomDateFilter('');
+                              setDateFilterMode('ALL');
+                              setIsHistoryOpen(false);
+                            }}
+                            className="text-xs text-rose-500 hover:text-rose-700 font-semibold ml-auto"
+                          >
+                            ล้างตัวกรอง
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Clear Button */}
