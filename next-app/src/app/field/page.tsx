@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { TransformerWithStatus, FeederRecord, OfflineRecordItem, getErrorMessage } from '@/lib/domain/types';
 import { calculateEngineeringStatus, safeFloat } from '@/lib/domain/calculations';
@@ -10,6 +10,7 @@ import {
   Trash2,
   Save,
   RefreshCw,
+  RotateCcw,
   AlertTriangle,
   Zap,
   CheckCircle2,
@@ -48,6 +49,35 @@ const TransformerMap = dynamic(
     ),
   }
 );
+
+const createDefaultFeederRecord = (name: string): FeederRecord => ({
+  name,
+  currentA: 0,
+  currentB: 0,
+  currentC: 0,
+  currentN: 0,
+  note: '',
+  cableSize: '',
+  vt_ab: 0,
+  vt_bc: 0,
+  vt_ca: 0,
+  vt_an: 0,
+  vt_bn: 0,
+  vt_cn: 0,
+  ve_ab: 0,
+  ve_bc: 0,
+  ve_ca: 0,
+  ve_an: 0,
+  ve_bn: 0,
+  ve_cn: 0,
+});
+
+const createInitialFeedersMap = (): Record<string, FeederRecord> => ({
+  F1: createDefaultFeederRecord('F1'),
+  F2: createDefaultFeederRecord('F2'),
+  F3: createDefaultFeederRecord('F3'),
+  F4: createDefaultFeederRecord('F4'),
+});
 
 export default function FieldInspectionPage() {
   const [mounted, setMounted] = useState(false);
@@ -136,17 +166,40 @@ export default function FieldInspectionPage() {
   const [tap, setTap] = useState('3');
   const [recordMode, setRecordMode] = useState<'full' | 'quick'>('full');
   const [selectedFeederNames, setSelectedFeederNames] = useState<string[]>(['F1']);
-  const [feedersMap, setFeedersMap] = useState<Record<string, FeederRecord>>({
-    F1: { name: 'F1', currentA: 0, currentB: 0, currentC: 0, currentN: 0, note: '', cableSize: '', vt_ab: 0, vt_bc: 0, vt_ca: 0, vt_an: 0, vt_bn: 0, vt_cn: 0, ve_ab: 0, ve_bc: 0, ve_ca: 0, ve_an: 0, ve_bn: 0, ve_cn: 0 },
-    F2: { name: 'F2', currentA: 0, currentB: 0, currentC: 0, currentN: 0, note: '', cableSize: '', vt_ab: 0, vt_bc: 0, vt_ca: 0, vt_an: 0, vt_bn: 0, vt_cn: 0, ve_ab: 0, ve_bc: 0, ve_ca: 0, ve_an: 0, ve_bn: 0, ve_cn: 0 },
-    F3: { name: 'F3', currentA: 0, currentB: 0, currentC: 0, currentN: 0, note: '', cableSize: '', vt_ab: 0, vt_bc: 0, vt_ca: 0, vt_an: 0, vt_bn: 0, vt_cn: 0, ve_ab: 0, ve_bc: 0, ve_ca: 0, ve_an: 0, ve_bn: 0, ve_cn: 0 },
-    F4: { name: 'F4', currentA: 0, currentB: 0, currentC: 0, currentN: 0, note: '', cableSize: '', vt_ab: 0, vt_bc: 0, vt_ca: 0, vt_an: 0, vt_bn: 0, vt_cn: 0, ve_ab: 0, ve_bc: 0, ve_ca: 0, ve_an: 0, ve_bn: 0, ve_cn: 0 },
-  });
+  const [feedersMap, setFeedersMap] = useState<Record<string, FeederRecord>>(() => createInitialFeedersMap());
   const [expandedEndOfLine, setExpandedEndOfLine] = useState<Record<string, boolean>>({});
   const [globalNote, setGlobalNote] = useState('');
   const [uploadedPhotos, setUploadedPhotos] = useState<{ name: string; url: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // Reset form to clean default state for a new inspection
+  const resetFormState = useCallback(() => {
+    setDate(new Date().toISOString().slice(0, 10));
+    const now = new Date();
+    setTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }));
+    setTap('3');
+    setSelectedFeederNames(['F1']);
+    setFeedersMap(createInitialFeedersMap());
+    setExpandedEndOfLine({});
+    setGlobalNote('');
+    setUploadedPhotos([]);
+  }, []);
+
+  const currentPeaRef = useRef<string | null>(null);
+
+  // Automatically reset form data when switching to a different transformer
+  useEffect(() => {
+    if (selectedTransformer?.peaNo) {
+      if (currentPeaRef.current && currentPeaRef.current !== selectedTransformer.peaNo) {
+        // Switched to a new transformer -> reset old measurements cleanly
+        resetFormState();
+      }
+      currentPeaRef.current = selectedTransformer.peaNo;
+    } else {
+      currentPeaRef.current = null;
+    }
+  }, [selectedTransformer?.peaNo, resetFormState]);
 
   // Active Feeders computed list
   const activeFeeders = useMemo(() => {
@@ -437,9 +490,8 @@ export default function FieldInspectionPage() {
         syncOfflineQueue();
       }
 
-      // Clear uploaded photos & global note
-      setUploadedPhotos([]);
-      setGlobalNote('');
+      // Reset form state completely for the next transformer
+      resetFormState();
 
       // Dismiss transformer action card from map
       setShowMapActionCard(false);
@@ -459,8 +511,7 @@ export default function FieldInspectionPage() {
         localStorage.setItem('pea_offline_records', JSON.stringify(offlineQueue));
         setOfflineCount(offlineQueue.length);
         setSaveMessage(`⚠️ บันทึกข้อมูลลงในเครื่องเรียบร้อย (โหมดออฟไลน์: ${getErrorMessage(err)})`);
-        setUploadedPhotos([]);
-        setGlobalNote('');
+        resetFormState();
         setShowMapActionCard(false);
         setSelectedTransformer(null);
         setMobileTab('map');
@@ -901,6 +952,15 @@ export default function FieldInspectionPage() {
                     <span className="w-1 h-3.5 bg-[#741b77] rounded-full" />
                     <span className="font-bold text-xs text-slate-800 tracking-tight">ข้อมูลทั่วไป</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={resetFormState}
+                    className="text-[11px] text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-lg hover:bg-rose-50 font-semibold"
+                    title="ล้างข้อมูลการวัดที่กรอกค้างไว้ทั้งหมด"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>ล้างข้อมูลฟอร์ม</span>
+                  </button>
                 </div>
 
                 {/* Date & Time */}
