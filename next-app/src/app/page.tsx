@@ -2,7 +2,16 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { TransformerWithStatus, MeasurementSession, FeederRecord, getErrorMessage } from '@/lib/domain/types';
-import { calculateEngineeringStatus, safeFloat, calculateVectorNeutral, getDriveThumbnailUrl, computeFeederStatus } from '@/lib/domain/calculations';
+import {
+  calculateEngineeringStatus,
+  safeFloat,
+  calculateVectorNeutral,
+  getDriveThumbnailUrl,
+  computeFeederStatus,
+  parseDateToTimestamp,
+  normalizeDateToYMD,
+  formatYMDToThai,
+} from '@/lib/domain/calculations';
 import {
   Zap,
   CheckCircle2,
@@ -39,6 +48,9 @@ import {
   PlusCircle,
   Trash2,
   Flag,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AiReportViewer } from '@/components/AiReportViewer';
@@ -62,6 +74,14 @@ export default function BackofficeDashboard() {
   const [maxFeederCurrent, setMaxFeederCurrent] = useState<string>('');
   const [minHarmonicCurrent, setMinHarmonicCurrent] = useState<string>('');
   const [maxHarmonicCurrent, setMaxHarmonicCurrent] = useState<string>('');
+
+  // Date Filter State
+  const [dateFilterMode, setDateFilterMode] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_7_DAYS' | 'THIS_MONTH' | 'CUSTOM'>('ALL');
+  const [customDateFilter, setCustomDateFilter] = useState<string>('');
+
+  // Table Sort State (Default: latest inspection date descending)
+  const [sortColumn, setSortColumn] = useState<'latestDate' | 'peaNo' | 'kva' | 'pctLoad' | 'pctUnbalance' | 'harmonic'>('latestDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Modals
   const [viewingTransformer, setViewingTransformer] = useState<TransformerWithStatus | null>(null);
@@ -417,6 +437,64 @@ export default function BackofficeDashboard() {
     return { total, completed, uninspected, pending, overload, criticalUnbalance, harmonicRisk };
   }, [transformers]);
 
+  // Local Today & Yesterday in YYYY-MM-DD
+  const localTodayYMD = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const localYesterdayYMD = useMemo(() => {
+    const now = new Date();
+    now.setDate(now.getDate() - 1);
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  // Inspection date statistics across all transformers
+  const dateStats = useMemo(() => {
+    let todayCount = 0;
+    let yesterdayCount = 0;
+    let last7DaysCount = 0;
+    let thisMonthCount = 0;
+
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const sevenDaysAgoTs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
+    const countsByYMD: Record<string, number> = {};
+
+    for (const t of transformers) {
+      if (!t.latestSession?.date) continue;
+      const ymd = normalizeDateToYMD(t.latestSession.date);
+      if (!ymd) continue;
+
+      countsByYMD[ymd] = (countsByYMD[ymd] || 0) + 1;
+
+      if (ymd === localTodayYMD) todayCount++;
+      if (ymd === localYesterdayYMD) yesterdayCount++;
+      if (ymd.startsWith(currentYearMonth)) thisMonthCount++;
+
+      const ts = parseDateToTimestamp(t.latestSession.date, t.latestSession.time);
+      if (ts >= sevenDaysAgoTs) last7DaysCount++;
+    }
+
+    const availableDates = Object.keys(countsByYMD).sort().reverse();
+
+    return {
+      todayCount,
+      yesterdayCount,
+      last7DaysCount,
+      thisMonthCount,
+      countsByYMD,
+      availableDates,
+    };
+  }, [transformers, localTodayYMD, localYesterdayYMD]);
+
   // Check active advanced filter count
   const activeAdvancedFilterCount = useMemo(() => {
     let count = 0;
@@ -428,6 +506,10 @@ export default function BackofficeDashboard() {
   const handleResetFilters = () => {
     setSearch('');
     setStatusFilter('ALL');
+    setDateFilterMode('ALL');
+    setCustomDateFilter('');
+    setSortColumn('latestDate');
+    setSortDirection('desc');
     setMinFeederCurrent('');
     setMaxFeederCurrent('');
     setMinHarmonicCurrent('');
@@ -435,9 +517,13 @@ export default function BackofficeDashboard() {
     setFeederPhaseFilter('MAX');
   };
 
-  // Filtered List
+  // Filtered List with Date Filtering & Sorting (Latest date first by default)
   const filteredList = useMemo(() => {
-    return transformers.filter(t => {
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const sevenDaysAgoTs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
+    const filtered = transformers.filter(t => {
       // 1. Text Search
       const q = search.trim().toLowerCase();
       const matchSearch =
@@ -456,7 +542,31 @@ export default function BackofficeDashboard() {
       if (statusFilter === 'UNBALANCE' && t.engineeringStatus?.unbalanceStatus !== 'CRITICAL') return false;
       if (statusFilter === 'CRYPTO' && !t.engineeringStatus?.isHarmonicRisk) return false;
 
-      // 3. Feeder Current Filter
+      // 3. Date Filter (e.g. today completed count, custom date, presets)
+      if (dateFilterMode !== 'ALL' || statusFilter === 'TODAY') {
+        if (!t.latestSession?.date) return false;
+        const ymd = normalizeDateToYMD(t.latestSession.date);
+        if (!ymd) return false;
+
+        if ((dateFilterMode === 'TODAY' || statusFilter === 'TODAY') && ymd !== localTodayYMD) {
+          return false;
+        }
+        if (dateFilterMode === 'YESTERDAY' && ymd !== localYesterdayYMD) {
+          return false;
+        }
+        if (dateFilterMode === 'LAST_7_DAYS') {
+          const ts = parseDateToTimestamp(t.latestSession.date, t.latestSession.time);
+          if (ts < sevenDaysAgoTs) return false;
+        }
+        if (dateFilterMode === 'THIS_MONTH' && !ymd.startsWith(currentYearMonth)) {
+          return false;
+        }
+        if (dateFilterMode === 'CUSTOM' && customDateFilter && ymd !== customDateFilter) {
+          return false;
+        }
+      }
+
+      // 4. Feeder Current Filter
       const minCurrentNum = minFeederCurrent !== '' ? parseFloat(minFeederCurrent) : null;
       const maxCurrentNum = maxFeederCurrent !== '' ? parseFloat(maxFeederCurrent) : null;
 
@@ -468,7 +578,6 @@ export default function BackofficeDashboard() {
         const feeders = t.latestSession.feeders;
 
         if (feederPhaseFilter === 'MAX') {
-          // Max of any phase in any feeder or total
           const allA = feeders.map(f => f.currentA).concat(total.currentA);
           const allB = feeders.map(f => f.currentB).concat(total.currentB);
           const allC = feeders.map(f => f.currentC).concat(total.currentC);
@@ -489,7 +598,7 @@ export default function BackofficeDashboard() {
         if (maxCurrentNum !== null && testedValue > maxCurrentNum) return false;
       }
 
-      // 4. Harmonic Current Filter (I_harmonic = In - In_calc)
+      // 5. Harmonic Current Filter (I_harmonic = In - In_calc)
       const minHarmonicNum = minHarmonicCurrent !== '' ? parseFloat(minHarmonicCurrent) : null;
       const maxHarmonicNum = maxHarmonicCurrent !== '' ? parseFloat(maxHarmonicCurrent) : null;
 
@@ -502,7 +611,57 @@ export default function BackofficeDashboard() {
 
       return true;
     });
-  }, [transformers, search, statusFilter, feederPhaseFilter, minFeederCurrent, maxFeederCurrent, minHarmonicCurrent, maxHarmonicCurrent]);
+
+    // Sort order: Latest inspection date/time descending ALWAYS by default!
+    return filtered.sort((a, b) => {
+      let diff = 0;
+      if (sortColumn === 'latestDate') {
+        const tsA = parseDateToTimestamp(a.latestSession?.date, a.latestSession?.time);
+        const tsB = parseDateToTimestamp(b.latestSession?.date, b.latestSession?.time);
+        diff = tsB - tsA; // Default: newest first
+        if (sortDirection === 'asc') diff = -diff;
+      } else if (sortColumn === 'peaNo') {
+        diff = a.peaNo.localeCompare(b.peaNo);
+        if (sortDirection === 'desc') diff = -diff;
+      } else if (sortColumn === 'kva') {
+        diff = a.kva - b.kva;
+        if (sortDirection === 'desc') diff = -diff;
+      } else if (sortColumn === 'pctLoad') {
+        const la = a.engineeringStatus?.pctLoad ?? -1;
+        const lb = b.engineeringStatus?.pctLoad ?? -1;
+        diff = lb - la;
+        if (sortDirection === 'asc') diff = -diff;
+      } else if (sortColumn === 'pctUnbalance') {
+        const ua = a.engineeringStatus?.pctUnbalance ?? -1;
+        const ub = b.engineeringStatus?.pctUnbalance ?? -1;
+        diff = ub - ua;
+        if (sortDirection === 'asc') diff = -diff;
+      } else if (sortColumn === 'harmonic') {
+        const ha = a.engineeringStatus?.harmonicCurrent ?? -1;
+        const hb = b.engineeringStatus?.harmonicCurrent ?? -1;
+        diff = hb - ha;
+        if (sortDirection === 'asc') diff = -diff;
+      }
+
+      if (diff !== 0) return diff;
+      return a.peaNo.localeCompare(b.peaNo);
+    });
+  }, [
+    transformers,
+    search,
+    statusFilter,
+    dateFilterMode,
+    customDateFilter,
+    sortColumn,
+    sortDirection,
+    feederPhaseFilter,
+    minFeederCurrent,
+    maxFeederCurrent,
+    minHarmonicCurrent,
+    maxHarmonicCurrent,
+    localTodayYMD,
+    localYesterdayYMD,
+  ]);
 
   // Detailed Feeder Records List (Flattened and sorted newest first)
   const detailedSessions = useMemo(() => {
@@ -512,12 +671,28 @@ export default function BackofficeDashboard() {
       feeders: FeederRecord[];
     }> = [];
 
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const sevenDaysAgoTs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
     for (const t of filteredList) {
       const sList = t.historySessions && t.historySessions.length > 0
         ? t.historySessions
         : t.latestSession ? [t.latestSession] : [];
 
       for (const s of sList) {
+        if (dateFilterMode !== 'ALL' || statusFilter === 'TODAY') {
+          const sYmd = normalizeDateToYMD(s.date);
+          if ((dateFilterMode === 'TODAY' || statusFilter === 'TODAY') && sYmd !== localTodayYMD) continue;
+          if (dateFilterMode === 'YESTERDAY' && sYmd !== localYesterdayYMD) continue;
+          if (dateFilterMode === 'CUSTOM' && customDateFilter && sYmd !== customDateFilter) continue;
+          if (dateFilterMode === 'THIS_MONTH' && !sYmd.startsWith(currentYearMonth)) continue;
+          if (dateFilterMode === 'LAST_7_DAYS') {
+            const ts = parseDateToTimestamp(s.date, s.time);
+            if (ts < sevenDaysAgoTs) continue;
+          }
+        }
+
         const validFeeders = s.feeders && s.feeders.length > 0
           ? s.feeders.filter(f => f.name.replace(/\s+/g, '') !== 'รวม')
           : (s.total ? [s.total] : []);
@@ -534,20 +709,13 @@ export default function BackofficeDashboard() {
 
     // Sort newest date & time first
     sessions.sort((a, b) => {
-      const parseDt = (d: string, tm: string) => {
-        if (!d) return 0;
-        const parts = d.split('/');
-        if (parts.length === 3) {
-          const timeStr = tm ? tm.trim() : '00:00:00';
-          return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T${timeStr}`).getTime() || 0;
-        }
-        return 0;
-      };
-      return parseDt(b.session.date, b.session.time) - parseDt(a.session.date, a.session.time);
+      const tsA = parseDateToTimestamp(a.session.date, a.session.time);
+      const tsB = parseDateToTimestamp(b.session.date, b.session.time);
+      return tsB - tsA;
     });
 
     return sessions;
-  }, [filteredList]);
+  }, [filteredList, dateFilterMode, customDateFilter, statusFilter, localTodayYMD, localYesterdayYMD]);
 
   // AI Analysis Handler with Session Caching
   const [aiReportsCache, setAiReportsCache] = useState<Record<string, string>>({});
@@ -1020,23 +1188,39 @@ export default function BackofficeDashboard() {
                 { id: 'RED', label: 'ยังไม่ตรวจ', dotColor: 'bg-rose-500', icon: null },
                 { id: 'ORANGE', label: 'สั่งตรวจซ้ำ', dotColor: 'bg-amber-500', icon: null },
                 { id: 'DONE', label: 'ตรวจแล้ว', dotColor: 'bg-emerald-500', icon: null },
+                { id: 'TODAY', label: `ตรวจวันนี้ (${dateStats.todayCount})`, dotColor: 'bg-emerald-500', icon: 'calendar' },
                 { id: 'OVERLOAD', label: 'โหลดเกิน 80%', dotColor: 'bg-rose-500', icon: null },
                 { id: 'UNBALANCE', label: 'ไม่สมดุล', dotColor: 'bg-amber-500', icon: null },
                 { id: 'CRYPTO', label: 'เสี่ยงบิตคอยน์', dotColor: null, icon: 'zap' },
               ].map(f => (
                 <button
                   key={f.id}
-                  onClick={() => setStatusFilter(f.id)}
+                  onClick={() => {
+                    setStatusFilter(f.id);
+                    if (f.id === 'TODAY') {
+                      setDateFilterMode('TODAY');
+                      setCustomDateFilter('');
+                    } else if (f.id === 'ALL' && dateFilterMode === 'TODAY') {
+                      setDateFilterMode('ALL');
+                    }
+                  }}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all duration-150 ${
                     statusFilter === f.id
                       ? 'bg-[#741b77] text-white shadow-sm font-semibold border border-[#741b77]'
                       : 'bg-slate-50 hover:bg-slate-100/90 text-slate-600 border border-slate-200/70 hover:border-slate-300 font-medium'
                   }`}
                 >
-                  {f.dotColor && (
+                  {f.dotColor && f.icon !== 'calendar' && (
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
                         statusFilter === f.id ? 'bg-white' : f.dotColor
+                      }`}
+                    />
+                  )}
+                  {f.icon === 'calendar' && (
+                    <Calendar
+                      className={`w-3 h-3 ${
+                        statusFilter === f.id ? 'text-white' : 'text-emerald-600'
                       }`}
                     />
                   )}
@@ -1428,20 +1612,387 @@ export default function BackofficeDashboard() {
           </div>
         </div>
 
+        {/* Date Filter & Inspection Status Toolbar */}
+        <div className="px-5 py-2.5 bg-gradient-to-r from-purple-50/40 via-white to-slate-50/60 border-b border-slate-200/70 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 mr-1">
+              <Calendar className="w-4 h-4 text-[#741b77]" />
+              <span>กรองวันที่ตรวจ:</span>
+            </div>
+
+            {/* All */}
+            <button
+              type="button"
+              onClick={() => {
+                setDateFilterMode('ALL');
+                setCustomDateFilter('');
+                if (statusFilter === 'TODAY') setStatusFilter('ALL');
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                dateFilterMode === 'ALL' && !customDateFilter && statusFilter !== 'TODAY'
+                  ? 'bg-[#741b77] text-white shadow-2xs font-bold'
+                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
+              }`}
+            >
+              ทั้งหมด
+            </button>
+
+            {/* วันนี้ with live count badge */}
+            <button
+              type="button"
+              onClick={() => {
+                setDateFilterMode('TODAY');
+                setCustomDateFilter('');
+                setStatusFilter('ALL');
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                dateFilterMode === 'TODAY' || statusFilter === 'TODAY'
+                  ? 'bg-emerald-600 text-white shadow-2xs font-bold ring-2 ring-emerald-500/20'
+                  : 'bg-white text-emerald-700 border border-emerald-200/90 hover:bg-emerald-50/70'
+              }`}
+              title="กรองเฉพาะหม้อแปลงที่ตรวจวัดเสร็จในวันนี้"
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  dateFilterMode === 'TODAY' || statusFilter === 'TODAY'
+                    ? 'bg-white'
+                    : 'bg-emerald-500 animate-pulse'
+                }`}
+              />
+              <span>วันนี้</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                  dateFilterMode === 'TODAY' || statusFilter === 'TODAY'
+                    ? 'bg-emerald-700 text-white'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}
+              >
+                {dateStats.todayCount} เครื่อง
+              </span>
+            </button>
+
+            {/* เมื่อวาน */}
+            <button
+              type="button"
+              onClick={() => {
+                setDateFilterMode('YESTERDAY');
+                setCustomDateFilter('');
+                setStatusFilter('ALL');
+              }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                dateFilterMode === 'YESTERDAY'
+                  ? 'bg-[#741b77] text-white shadow-2xs font-bold'
+                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
+              }`}
+            >
+              <span>เมื่อวาน</span>
+              {dateStats.yesterdayCount > 0 && (
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                    dateFilterMode === 'YESTERDAY'
+                      ? 'bg-purple-800 text-purple-100'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {dateStats.yesterdayCount}
+                </span>
+              )}
+            </button>
+
+            {/* 7 วันล่าสุด */}
+            <button
+              type="button"
+              onClick={() => {
+                setDateFilterMode('LAST_7_DAYS');
+                setCustomDateFilter('');
+                setStatusFilter('ALL');
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                dateFilterMode === 'LAST_7_DAYS'
+                  ? 'bg-[#741b77] text-white shadow-2xs font-bold'
+                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
+              }`}
+            >
+              7 วันล่าสุด
+            </button>
+
+            {/* เดือนนี้ */}
+            <button
+              type="button"
+              onClick={() => {
+                setDateFilterMode('THIS_MONTH');
+                setCustomDateFilter('');
+                setStatusFilter('ALL');
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                dateFilterMode === 'THIS_MONTH'
+                  ? 'bg-[#741b77] text-white shadow-2xs font-bold'
+                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
+              }`}
+            >
+              เดือนนี้
+            </button>
+
+            {/* Date Input */}
+            <div className="inline-flex items-center gap-1 bg-white border border-slate-200/90 rounded-lg px-2 py-0.5 shadow-2xs">
+              <span className="text-[11px] text-slate-400 font-medium">ระบุวันที่:</span>
+              <input
+                type="date"
+                value={customDateFilter}
+                onChange={e => {
+                  const val = e.target.value;
+                  setCustomDateFilter(val);
+                  if (val) {
+                    setDateFilterMode('CUSTOM');
+                    setStatusFilter('ALL');
+                  } else {
+                    setDateFilterMode('ALL');
+                  }
+                }}
+                className="text-xs text-slate-700 bg-transparent border-0 focus:outline-none cursor-pointer font-mono"
+              />
+            </div>
+
+            {/* Dropdown of past inspection dates */}
+            {dateStats.availableDates.length > 0 && (
+              <select
+                value={dateFilterMode === 'CUSTOM' ? customDateFilter : ''}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val) {
+                    setCustomDateFilter(val);
+                    setDateFilterMode('CUSTOM');
+                    setStatusFilter('ALL');
+                  } else {
+                    setCustomDateFilter('');
+                    setDateFilterMode('ALL');
+                  }
+                }}
+                className="text-xs text-slate-700 bg-white border border-slate-200/90 rounded-lg px-2.5 py-1 focus:outline-none cursor-pointer shadow-2xs"
+              >
+                <option value="">เลือกจากประวัติวันที่ตรวจ ({dateStats.availableDates.length} วัน)...</option>
+                {dateStats.availableDates.map(ymd => (
+                  <option key={ymd} value={ymd}>
+                    {formatYMDToThai(ymd)} ({dateStats.countsByYMD[ymd]} เครื่อง)
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Clear Button */}
+            {(dateFilterMode !== 'ALL' || customDateFilter || statusFilter === 'TODAY') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFilterMode('ALL');
+                  setCustomDateFilter('');
+                  if (statusFilter === 'TODAY') setStatusFilter('ALL');
+                }}
+                className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg border border-rose-200/60 font-semibold transition-all active:scale-95 shadow-2xs"
+                title="ล้างตัวกรองวันที่"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>ล้างตัวกรองวันที่</span>
+              </button>
+            )}
+          </div>
+
+          {/* Right Status Feedback */}
+          <div className="flex items-center gap-2">
+            {dateFilterMode === 'TODAY' || statusFilter === 'TODAY' ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 shadow-2xs animate-in fade-in">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>
+                  วันนี้ทำเสร็จไปแล้ว{' '}
+                  <span className="font-extrabold font-mono text-emerald-900 text-sm">
+                    {dateStats.todayCount}
+                  </span>{' '}
+                  เครื่อง
+                </span>
+              </div>
+            ) : dateFilterMode === 'CUSTOM' && customDateFilter ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-200 rounded-xl text-xs font-bold text-[#741b77] shadow-2xs animate-in fade-in">
+                <Calendar className="w-3.5 h-3.5 text-[#741b77] shrink-0" />
+                <span>
+                  วันที่ {formatYMDToThai(customDateFilter)} ทำเสร็จ{' '}
+                  <span className="font-extrabold font-mono text-[#741b77] text-sm">
+                    {dateStats.countsByYMD[customDateFilter] || 0}
+                  </span>{' '}
+                  เครื่อง
+                </span>
+              </div>
+            ) : dateFilterMode === 'YESTERDAY' ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shadow-2xs">
+                <span>
+                  เมื่อวานทำเสร็จ{' '}
+                  <span className="font-extrabold font-mono text-slate-900">
+                    {dateStats.yesterdayCount}
+                  </span>{' '}
+                  เครื่อง
+                </span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200/80 rounded-xl text-xs text-slate-600 shadow-2xs">
+                <Clock className="w-3.5 h-3.5 text-purple-600" />
+                <span>
+                  เรียงลำดับ:{' '}
+                  <span className="font-bold text-[#741b77]">
+                    {sortColumn === 'latestDate'
+                      ? sortDirection === 'desc'
+                        ? 'ตรวจล่าสุดขึ้นก่อนเสมอ'
+                        : 'ตรวจเก่าสุดขึ้นก่อน'
+                      : sortColumn === 'pctLoad'
+                      ? '%โหลด'
+                      : sortColumn === 'pctUnbalance'
+                      ? '%Unbalance'
+                      : sortColumn === 'harmonic'
+                      ? 'Harmonic'
+                      : sortColumn}
+                  </span>
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Scrollable Table */}
         <div className="overflow-x-auto">
           {tableViewMode === 'summary' ? (
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 text-slate-500 border-b border-slate-200/80 text-[11px] font-semibold tracking-wider uppercase">
+            <thead className="bg-slate-50/80 text-slate-500 border-b border-slate-200/80 text-[11px] font-semibold tracking-wider uppercase select-none">
               <tr>
-                <th className="py-3.5 px-5">PEA NO</th>
-                <th className="py-3.5 px-4">ขนาด (kVA)</th>
+                <th
+                  className="py-3.5 px-5 cursor-pointer hover:bg-slate-100/90 transition-colors"
+                  onClick={() => {
+                    if (sortColumn === 'peaNo') {
+                      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortColumn('peaNo');
+                      setSortDirection('asc');
+                    }
+                  }}
+                  title="คลิกเพื่อเรียงลำดับ PEA NO"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>PEA NO</span>
+                    {sortColumn === 'peaNo' ? (
+                      <span className="text-[#741b77]">{sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}</span>
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="py-3.5 px-4 cursor-pointer hover:bg-slate-100/90 transition-colors"
+                  onClick={() => {
+                    if (sortColumn === 'kva') {
+                      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortColumn('kva');
+                      setSortDirection('desc');
+                    }
+                  }}
+                  title="คลิกเพื่อเรียงลำดับขนาด kVA"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>ขนาด (kVA)</span>
+                    {sortColumn === 'kva' && (
+                      <span className="text-[#741b77]">{sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}</span>
+                    )}
+                  </div>
+                </th>
                 <th className="py-3.5 px-4">สถานที่ติดตั้ง</th>
                 <th className="py-3.5 px-4 text-center">สถานะตรวจวัด</th>
-                <th className="py-3.5 px-4">วัน-เวลาล่าสุด</th>
-                <th className="py-3.5 px-4 text-right">%โหลด (UF)</th>
-                <th className="py-3.5 px-4 text-right">%Unbalance</th>
-                <th className="py-3.5 px-5 text-right">Harmonic (A)</th>
+                <th
+                  className="py-3.5 px-4 cursor-pointer hover:bg-purple-50/70 transition-colors"
+                  onClick={() => {
+                    if (sortColumn === 'latestDate') {
+                      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortColumn('latestDate');
+                      setSortDirection('desc');
+                    }
+                  }}
+                  title="คลิกเพื่อสลับการเรียงลำดับวัน-เวลาล่าสุด (ล่าสุดขึ้นก่อนเสมอ)"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>วัน-เวลาล่าสุด</span>
+                    {sortColumn === 'latestDate' ? (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#741b77] bg-purple-100/90 border border-purple-200/90 px-1.5 py-0.5 rounded-full shadow-2xs">
+                        {sortDirection === 'desc' ? (
+                          <>
+                            <span>ล่าสุดก่อน</span>
+                            <ArrowDown className="w-3 h-3" />
+                          </>
+                        ) : (
+                          <>
+                            <span>เก่าสุดก่อน</span>
+                            <ArrowUp className="w-3 h-3" />
+                          </>
+                        )}
+                      </span>
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-300" />
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="py-3.5 px-4 text-right cursor-pointer hover:bg-slate-100/90 transition-colors"
+                  onClick={() => {
+                    if (sortColumn === 'pctLoad') {
+                      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortColumn('pctLoad');
+                      setSortDirection('desc');
+                    }
+                  }}
+                  title="คลิกเพื่อเรียงลำดับ %โหลด"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    {sortColumn === 'pctLoad' && (
+                      <span className="text-[#741b77]">{sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}</span>
+                    )}
+                    <span>%โหลด (UF)</span>
+                  </div>
+                </th>
+                <th
+                  className="py-3.5 px-4 text-right cursor-pointer hover:bg-slate-100/90 transition-colors"
+                  onClick={() => {
+                    if (sortColumn === 'pctUnbalance') {
+                      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortColumn('pctUnbalance');
+                      setSortDirection('desc');
+                    }
+                  }}
+                  title="คลิกเพื่อเรียงลำดับ %Unbalance"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    {sortColumn === 'pctUnbalance' && (
+                      <span className="text-[#741b77]">{sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}</span>
+                    )}
+                    <span>%Unbalance</span>
+                  </div>
+                </th>
+                <th
+                  className="py-3.5 px-5 text-right cursor-pointer hover:bg-slate-100/90 transition-colors"
+                  onClick={() => {
+                    if (sortColumn === 'harmonic') {
+                      setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortColumn('harmonic');
+                      setSortDirection('desc');
+                    }
+                  }}
+                  title="คลิกเพื่อเรียงลำดับ Harmonic"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    {sortColumn === 'harmonic' && (
+                      <span className="text-[#741b77]">{sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}</span>
+                    )}
+                    <span>Harmonic (A)</span>
+                  </div>
+                </th>
                 <th className="py-3.5 px-4 text-center">จัดการ</th>
               </tr>
             </thead>
@@ -1459,6 +2010,12 @@ export default function BackofficeDashboard() {
                   <td colSpan={9} className="text-center py-16 text-slate-500">
                     <Info className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                     <p className="font-semibold text-slate-700">ไม่พบรายการหม้อแปลงที่ตรงกับเงื่อนไขตัวกรอง</p>
+                    {(dateFilterMode === 'TODAY' || statusFilter === 'TODAY') && (
+                      <p className="text-xs text-emerald-600 font-medium mt-1">วันนี้ยังไม่มีรายการหม้อแปลงที่ตรวจวัดเสร็จ (0 เครื่อง)</p>
+                    )}
+                    {dateFilterMode === 'CUSTOM' && customDateFilter && (
+                      <p className="text-xs text-[#741b77] font-medium mt-1">ไม่พบรายการที่ตรวจวัดในวันที่ {formatYMDToThai(customDateFilter)}</p>
+                    )}
                     <button
                       onClick={handleResetFilters}
                       className="mt-2 text-xs font-semibold text-[#741b77] hover:underline"

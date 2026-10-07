@@ -10,6 +10,9 @@ import {
   extractDriveFileIds,
   getDriveThumbnailUrl,
   computeFeederStatus,
+  parseDateToTimestamp,
+  normalizeDateToYMD,
+  formatYMDToThai,
 } from './calculations';
 import {
   FeederRecord,
@@ -310,6 +313,38 @@ describe('Matt Pocock Defensive Engineering: Boundary Invariants & Zero Division
     expect(status.loadStatus).toBe('NORMAL');
     expect(Number.isFinite(status.pctLoad)).toBe(true);
     expect(Number.isFinite(status.pctUnbalance)).toBe(true);
+  });
+
+  it('parseDateToTimestamp: parses various date & time formats and sorts newest first', () => {
+    const ts1 = parseDateToTimestamp('25/07/2026', '20:05:41');
+    const ts2 = parseDateToTimestamp('25/07/2026', '14:07:24');
+    const ts3 = parseDateToTimestamp('20/08/2026', '15:10:00');
+    const ts4 = parseDateToTimestamp('14/09/2026', '10:41:00');
+
+    expect(ts1).toBeGreaterThan(0);
+    expect(ts2).toBeGreaterThan(0);
+    expect(ts1).toBeGreaterThan(ts2); // same day, later time
+    expect(ts3).toBeGreaterThan(ts1); // August > July
+    expect(ts4).toBeGreaterThan(ts3); // September > August
+
+    // Buddhist Era support
+    const tsBE = parseDateToTimestamp('25/07/2569', '20:05:41');
+    expect(tsBE).toBe(ts1);
+
+    // Empty and null values
+    expect(parseDateToTimestamp('')).toBe(0);
+    expect(parseDateToTimestamp(null)).toBe(0);
+  });
+
+  it('normalizeDateToYMD and formatYMDToThai: converts dates symmetrically', () => {
+    expect(normalizeDateToYMD('25/07/2026')).toBe('2026-07-25');
+    expect(normalizeDateToYMD('5/7/2026')).toBe('2026-07-05');
+    expect(normalizeDateToYMD('2026-07-25')).toBe('2026-07-25');
+    expect(normalizeDateToYMD('25/07/2569')).toBe('2026-07-25');
+    expect(normalizeDateToYMD('')).toBe('');
+
+    expect(formatYMDToThai('2026-07-25')).toBe('25/07/2026');
+    expect(formatYMDToThai('')).toBe('');
   });
 });
 

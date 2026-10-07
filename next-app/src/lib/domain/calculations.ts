@@ -267,3 +267,102 @@ export function computeFeederStatus(
   }
 }
 
+/**
+ * Parses "DD/MM/YYYY" or "YYYY-MM-DD" and "HH:MM:SS" into numeric timestamp (ms)
+ * Robustly handles Thai Buddhist Era (>2400) and missing times
+ */
+export function parseDateToTimestamp(d?: string | null, tm?: string | null): number {
+  if (!d) return 0;
+  const cleanD = d.trim();
+  const timeStr = tm ? tm.trim() : '00:00:00';
+
+  if (cleanD.includes('/')) {
+    const parts = cleanD.split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      let year = parseInt(parts[2], 10);
+      if (year > 2400) year -= 543;
+      const tp = timeStr.split(':');
+      const h = parseInt(tp[0] || '0', 10);
+      const m = parseInt(tp[1] || '0', 10);
+      const s = parseInt(tp[2] || '0', 10);
+      const dt = new Date(year, month, day, h, m, s).getTime();
+      if (!isNaN(dt)) return dt;
+    }
+  }
+
+  if (cleanD.includes('-')) {
+    const parts = cleanD.split('-');
+    if (parts.length === 3) {
+      let year = 0;
+      let month = 0;
+      let day = 0;
+      if (parts[0].length === 4) {
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1;
+        day = parseInt(parts[2], 10);
+      } else {
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1;
+        year = parseInt(parts[2], 10);
+      }
+      if (year > 2400) year -= 543;
+      const tp = timeStr.split(':');
+      const h = parseInt(tp[0] || '0', 10);
+      const m = parseInt(tp[1] || '0', 10);
+      const s = parseInt(tp[2] || '0', 10);
+      const dt = new Date(year, month, day, h, m, s).getTime();
+      if (!isNaN(dt)) return dt;
+    }
+  }
+
+  const fallback = new Date(`${cleanD} ${timeStr}`).getTime();
+  return isNaN(fallback) ? 0 : fallback;
+}
+
+/**
+ * Normalizes date to standard YYYY-MM-DD
+ */
+export function normalizeDateToYMD(d?: string | null): string {
+  if (!d) return '';
+  const cleanD = d.trim();
+  if (cleanD.includes('/')) {
+    const parts = cleanD.split('/');
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      let year = parseInt(parts[2], 10);
+      if (year > 2400) year -= 543;
+      return `${year}-${month}-${day}`;
+    }
+  }
+  if (cleanD.includes('-')) {
+    const parts = cleanD.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        let year = parseInt(parts[0], 10);
+        if (year > 2400) year -= 543;
+        return `${year}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      } else {
+        let year = parseInt(parts[2], 10);
+        if (year > 2400) year -= 543;
+        return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+  }
+  return '';
+}
+
+/**
+ * Formats YYYY-MM-DD to display DD/MM/YYYY
+ */
+export function formatYMDToThai(ymd: string): string {
+  if (!ymd) return '';
+  const parts = ymd.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return ymd;
+}
+
