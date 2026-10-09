@@ -810,93 +810,111 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                         points={unbPoints.join(' ')}
                       />
 
-                      {/* Data Point Nodes and Value Labels with Protective Badges */}
-                      {dataCoords.map((d, i) => (
-                        <g key={i}>
-                          {/* X-axis tick & label */}
-                          <line x1={d.x} y1="180" x2={d.x} y2="187" stroke="#cbd5e1" strokeWidth="1" />
-                          <rect
-                            x={d.x - 24}
-                            y="192"
-                            width="48"
-                            height="17"
-                            rx="5"
-                            fill="#f1f5f9"
-                            stroke="#e2e8f0"
-                            strokeWidth="0.8"
-                          />
-                          <text
-                            x={d.x}
-                            y="204"
-                            textAnchor="middle"
-                            fill="#334155"
-                            fontSize="9.5"
-                            fontWeight="bold"
-                          >
-                            รอบ {d.roundNum}
-                          </text>
-                          <text
-                            x={d.x}
-                            y="221"
-                            textAnchor="middle"
-                            fill="#64748b"
-                            fontSize="8.5"
-                            fontFamily="monospace"
-                          >
-                            {d.sess.date}
-                          </text>
+                      {/* Data Point Nodes and Value Labels with Dynamic Anti-Collision Placement */}
+                      {dataCoords.map((d, i) => {
+                        // Dynamically determine which series is higher (smaller Y coordinate in SVG)
+                        // Higher point badge always sits ABOVE its circle; lower point badge always sits BELOW its circle.
+                        // This mathematically guarantees zero criss-crossing or overlapping of badge labels.
+                        const isUnbHigher = d.yUnb < d.yUf;
 
-                          {/* %UF Circle & Shielded Tooltip */}
-                          <circle cx={d.x} cy={d.yUf} r="4.5" fill="#741b77" stroke="#ffffff" strokeWidth="2.5" />
-                          <rect
-                            x={d.x - 22}
-                            y={d.yUf - 23}
-                            width="44"
-                            height="16"
-                            rx="4"
-                            fill="#ffffff"
-                            stroke="#741b77"
-                            strokeWidth="1.2"
-                            filter="drop-shadow(0 1px 2px rgba(0,0,0,0.06))"
-                          />
-                          <text
-                            x={d.x}
-                            y={d.yUf - 11}
-                            textAnchor="middle"
-                            fill="#741b77"
-                            fontSize="9.5"
-                            fontWeight="bold"
-                            fontFamily="monospace"
-                          >
-                            {d.st.pctLoad.toFixed(1)}%
-                          </text>
+                        const yUfBadge = isUnbHigher
+                          ? Math.min(172, d.yUf + 7)   // UF is lower -> place below circle
+                          : Math.max(6, d.yUf - 23);  // UF is higher -> place above circle
 
-                          {/* %Unbalance Circle & Shielded Tooltip */}
-                          <circle cx={d.x} cy={d.yUnb} r="4.5" fill="#f59e0b" stroke="#ffffff" strokeWidth="2.5" />
-                          <rect
-                            x={d.x - 22}
-                            y={d.yUnb + 7}
-                            width="44"
-                            height="16"
-                            rx="4"
-                            fill="#ffffff"
-                            stroke="#d97706"
-                            strokeWidth="1.2"
-                            filter="drop-shadow(0 1px 2px rgba(0,0,0,0.06))"
-                          />
-                          <text
-                            x={d.x}
-                            y={d.yUnb + 19}
-                            textAnchor="middle"
-                            fill="#b45309"
-                            fontSize="9.5"
-                            fontWeight="bold"
-                            fontFamily="monospace"
-                          >
-                            {d.st.pctUnbalance.toFixed(1)}%
-                          </text>
-                        </g>
-                      ))}
+                        const yUnbBadge = isUnbHigher
+                          ? Math.max(6, d.yUnb - 23)  // Unbalance is higher -> place above circle
+                          : Math.min(172, d.yUnb + 7);  // Unbalance is lower -> place below circle
+
+                        const yUfText = yUfBadge + 12;
+                        const yUnbText = yUnbBadge + 12;
+
+                        return (
+                          <g key={i}>
+                            {/* X-axis tick & label */}
+                            <line x1={d.x} y1="180" x2={d.x} y2="187" stroke="#cbd5e1" strokeWidth="1" />
+                            <rect
+                              x={d.x - 24}
+                              y="192"
+                              width="48"
+                              height="17"
+                              rx="5"
+                              fill="#f1f5f9"
+                              stroke="#e2e8f0"
+                              strokeWidth="0.8"
+                            />
+                            <text
+                              x={d.x}
+                              y="204"
+                              textAnchor="middle"
+                              fill="#334155"
+                              fontSize="9.5"
+                              fontWeight="bold"
+                            >
+                              รอบ {d.roundNum}
+                            </text>
+                            <text
+                              x={d.x}
+                              y="221"
+                              textAnchor="middle"
+                              fill="#64748b"
+                              fontSize="8.5"
+                              fontFamily="monospace"
+                            >
+                              {d.sess.date}
+                            </text>
+
+                            {/* %UF Circle & Shielded Badge */}
+                            <circle cx={d.x} cy={d.yUf} r="4.5" fill="#741b77" stroke="#ffffff" strokeWidth="2.5" />
+                            <rect
+                              x={d.x - 22}
+                              y={yUfBadge}
+                              width="44"
+                              height="16"
+                              rx="4"
+                              fill="#ffffff"
+                              stroke="#741b77"
+                              strokeWidth="1.2"
+                              filter="drop-shadow(0 1px 2px rgba(0,0,0,0.06))"
+                            />
+                            <text
+                              x={d.x}
+                              y={yUfText}
+                              textAnchor="middle"
+                              fill="#741b77"
+                              fontSize="9.5"
+                              fontWeight="bold"
+                              fontFamily="monospace"
+                            >
+                              {d.st.pctLoad.toFixed(1)}%
+                            </text>
+
+                            {/* %Unbalance Circle & Shielded Badge */}
+                            <circle cx={d.x} cy={d.yUnb} r="4.5" fill="#f59e0b" stroke="#ffffff" strokeWidth="2.5" />
+                            <rect
+                              x={d.x - 22}
+                              y={yUnbBadge}
+                              width="44"
+                              height="16"
+                              rx="4"
+                              fill="#ffffff"
+                              stroke="#d97706"
+                              strokeWidth="1.2"
+                              filter="drop-shadow(0 1px 2px rgba(0,0,0,0.06))"
+                            />
+                            <text
+                              x={d.x}
+                              y={yUnbText}
+                              textAnchor="middle"
+                              fill="#b45309"
+                              fontSize="9.5"
+                              fontWeight="bold"
+                              fontFamily="monospace"
+                            >
+                              {d.st.pctUnbalance.toFixed(1)}%
+                            </text>
+                          </g>
+                        );
+                      })}
                     </svg>
                   );
                 })()}
