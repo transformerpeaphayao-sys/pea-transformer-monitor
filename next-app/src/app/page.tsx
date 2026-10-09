@@ -53,10 +53,16 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
+  AlertOctagon,
+  ShieldAlert,
+  ShieldCheck,
+  BarChart2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AiReportViewer } from '@/components/AiReportViewer';
 import { RegisterTransformerModal } from '@/components/RegisterTransformerModal';
+import { MeterViolationModal } from '@/components/MeterViolationModal';
+import { LoadAnalyticsCharts } from '@/components/LoadAnalyticsCharts';
 
 export default function BackofficeDashboard() {
   const [mounted, setMounted] = useState(false);
@@ -98,10 +104,13 @@ export default function BackofficeDashboard() {
 
   // Modals
   const [viewingTransformer, setViewingTransformer] = useState<TransformerWithStatus | null>(null);
+  const [showLoadCharts, setShowLoadCharts] = useState(false);
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [selectedAiTransformer, setSelectedAiTransformer] = useState<TransformerWithStatus | null>(null);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [violationModalTransformer, setViolationModalTransformer] = useState<TransformerWithStatus | null>(null);
+  const [violationModalMode, setViolationModalMode] = useState<'VIOLATION' | 'CLEARED'>('VIOLATION');
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
   
   // Delete Transformer Dialog State
@@ -356,6 +365,44 @@ export default function BackofficeDashboard() {
     }
   };
 
+  const handleDeleteViolation = async (transformerPeaNo: string, meterPeaNo: string) => {
+    if (!window.confirm(`ยืนยันการลบรายการตรวจพบการละเมิดของมิเตอร์ PEA ${meterPeaNo}?`)) return;
+    try {
+      const res = await fetch(
+        `/api/violations?transformerPeaNo=${encodeURIComponent(transformerPeaNo)}&meterPeaNo=${encodeURIComponent(meterPeaNo)}`,
+        { method: 'DELETE' }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'ไม่สามารถลบรายการละเมิดมิเตอร์ได้');
+      }
+      await fetchTransformers();
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
+    }
+  };
+
+  const handleUpdateViolationStatus = async (
+    transformerPeaNo: string,
+    meterPeaNo: string,
+    newStatus: 'INVESTIGATING' | 'LEGAL_ACTION' | 'RESOLVED' | 'PENDING' | 'CLEARED'
+  ) => {
+    try {
+      const res = await fetch('/api/violations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transformerPeaNo, meterPeaNo, status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'ไม่สามารถอัปเดตสถานะได้');
+      }
+      await fetchTransformers();
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
+    }
+  };
+
   const fetchTransformers = async () => {
     setLoading(true);
     setLoadError(null);
@@ -438,6 +485,8 @@ export default function BackofficeDashboard() {
     let overload = 0;
     let criticalUnbalance = 0;
     let harmonicRisk = 0;
+    let totalViolations = 0;
+    let totalAuditCleared = 0;
 
     for (const t of transformers) {
       if (t.engineeringStatus) {
@@ -445,9 +494,18 @@ export default function BackofficeDashboard() {
         if (t.engineeringStatus.unbalanceStatus === 'CRITICAL') criticalUnbalance++;
         if (t.engineeringStatus.isHarmonicRisk) harmonicRisk++;
       }
+      const vList = t.violations || [];
+      const hasViolation = vList.some(v => v.status !== 'CLEARED');
+      const hasCleared = vList.some(v => v.status === 'CLEARED');
+
+      if (hasViolation) {
+        totalViolations++;
+      } else if (hasCleared || t.isAuditCleared) {
+        totalAuditCleared++;
+      }
     }
 
-    return { total, completed, uninspected, pending, overload, criticalUnbalance, harmonicRisk };
+    return { total, completed, uninspected, pending, overload, criticalUnbalance, harmonicRisk, totalViolations, totalAuditCleared };
   }, [transformers]);
 
   // Local Today & Yesterday in YYYY-MM-DD
@@ -663,7 +721,13 @@ export default function BackofficeDashboard() {
       if (statusFilter === 'DONE' && t.statusColor !== 'done') return false;
       if (statusFilter === 'OVERLOAD' && t.engineeringStatus?.loadStatus !== 'OVERLOAD') return false;
       if (statusFilter === 'UNBALANCE' && t.engineeringStatus?.unbalanceStatus !== 'CRITICAL') return false;
-      if (statusFilter === 'CRYPTO' && !t.engineeringStatus?.isHarmonicRisk) return false;
+      if (statusFilter === 'VIOLATION' && (!t.violations || !t.violations.some(v => v.status !== 'CLEARED'))) return false;
+      if (statusFilter === 'AUDIT_CLEARED') {
+        const vList = t.violations || [];
+        const hasViolation = vList.some(v => v.status !== 'CLEARED');
+        const hasCleared = vList.some(v => v.status === 'CLEARED') || Boolean(t.isAuditCleared);
+        if (hasViolation || !hasCleared) return false;
+      }
 
       // 3. Date Filter (e.g. today completed count, custom date, presets)
       if (dateFilterMode !== 'ALL' || statusFilter === 'TODAY') {
@@ -1278,23 +1342,24 @@ export default function BackofficeDashboard() {
         </div>
       </div>
 
-      {/* Primary Search & Quick Filters Bar */}
-      <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3.5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Left Group: Search Input + Status Filter Pills naturally adjacent */}
-          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-72 md:w-80 flex-shrink-0">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+      {/* Primary Search & Quick Filters Bar - Executive Minimalist Design */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden transition-all duration-200">
+        {/* Tier 1: Search & Controls Header */}
+        <div className="p-3 sm:p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-2.5 bg-white">
+          {/* Integrated Search Input with Live Results Hint */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="relative flex-1 max-w-lg group">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#741b77] transition-colors pointer-events-none" />
               <input
                 type="text"
-                placeholder="ค้นหา PEA NO, สถานที่, ยี่ห้อ..."
+                placeholder="ค้นหา PEA NO, สถานที่, ยี่ห้อหม้อแปลง..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50/80 border border-slate-200/90 text-slate-800 placeholder:text-slate-400 text-xs md:text-sm focus:outline-none focus:bg-white focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
+                className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50/70 hover:bg-slate-50 border border-slate-200/80 text-slate-800 placeholder:text-slate-400 text-xs md:text-sm focus:outline-none focus:bg-white focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 shadow-2xs transition-all"
               />
               {search && (
                 <button
+                  type="button"
                   onClick={() => setSearch('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors"
                   title="ล้างคำค้นหา"
@@ -1304,85 +1369,175 @@ export default function BackofficeDashboard() {
               )}
             </div>
 
-            {/* Quick Status Buttons */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {[
-                { id: 'ALL', label: 'ทั้งหมด', dotColor: null, icon: null },
-                { id: 'RED', label: 'ยังไม่ตรวจ', dotColor: 'bg-rose-500', icon: null },
-                { id: 'ORANGE', label: 'สั่งตรวจซ้ำ', dotColor: 'bg-amber-500', icon: null },
-                { id: 'DONE', label: 'ตรวจแล้ว', dotColor: 'bg-emerald-500', icon: null },
-                { id: 'TODAY', label: `ตรวจวันนี้ (${dateStats.todayCount})`, dotColor: 'bg-emerald-500', icon: 'calendar' },
-                { id: 'OVERLOAD', label: 'โหลดเกิน 80%', dotColor: 'bg-rose-500', icon: null },
-                { id: 'UNBALANCE', label: 'ไม่สมดุล', dotColor: 'bg-amber-500', icon: null },
-                { id: 'CRYPTO', label: 'เสี่ยงบิตคอยน์', dotColor: null, icon: 'zap' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => {
-                    setStatusFilter(f.id);
-                    if (f.id === 'TODAY') {
-                      setDateFilterMode('TODAY');
-                      setCustomDateFilter('');
-                    } else if (f.id === 'ALL' && dateFilterMode === 'TODAY') {
-                      setDateFilterMode('ALL');
-                    }
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all duration-150 ${
-                    statusFilter === f.id
-                      ? 'bg-[#741b77] text-white shadow-sm font-semibold border border-[#741b77]'
-                      : 'bg-slate-50 hover:bg-slate-100/90 text-slate-600 border border-slate-200/70 hover:border-slate-300 font-medium'
-                  }`}
-                >
-                  {f.dotColor && f.icon !== 'calendar' && (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        statusFilter === f.id ? 'bg-white' : f.dotColor
-                      }`}
-                    />
-                  )}
-                  {f.icon === 'calendar' && (
-                    <Calendar
-                      className={`w-3 h-3 ${
-                        statusFilter === f.id ? 'text-white' : 'text-emerald-600'
-                      }`}
-                    />
-                  )}
-                  {f.icon === 'zap' && (
-                    <Zap
-                      className={`w-3 h-3 ${
-                        statusFilter === f.id ? 'text-amber-300 fill-amber-300' : 'text-[#f39c12] fill-[#f39c12]'
-                      }`}
-                    />
-                  )}
-                  <span>{f.label}</span>
-                </button>
-              ))}
+            {/* Quick Result Counter */}
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/60 text-slate-500 text-[11px] font-mono shrink-0 select-none">
+              <span className="text-slate-400">พบ</span>
+              <span className="font-bold text-slate-800 tabular-nums">{filteredList.length}</span>
+              <span className="text-slate-400">/ {transformers.length} เครื่อง</span>
             </div>
           </div>
 
-          {/* Right: Advanced Filter Toggle Button */}
-          <button
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className={`px-3.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all self-end lg:self-center shadow-2xs flex-shrink-0 ${
-              showAdvancedFilters || activeAdvancedFilterCount > 0
-                ? 'bg-purple-50 text-[#741b77] border-purple-200 font-bold ring-1 ring-purple-100'
-                : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 hover:border-slate-300'
-            }`}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-[#741b77]" />
-            <span>กรองกระแส &amp; Harmonic</span>
-            {activeAdvancedFilterCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-[#741b77] text-white text-[10px] flex items-center justify-center font-bold">
-                {activeAdvancedFilterCount}
-              </span>
+          {/* Right Action Tools: Reset Filters + Advanced Filter Toggle */}
+          <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+            {/* Reset Filter Button (Only when filter/search active) */}
+            {(search || statusFilter !== 'ALL' || dateFilterMode !== 'ALL' || customDateFilter || activeAdvancedFilterCount > 0) && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
+                title="ล้างตัวกรองและคำค้นหาทั้งหมด"
+              >
+                <RotateCcw className="w-3 h-3 text-rose-600" />
+                <span className="hidden sm:inline">ล้างตัวกรอง</span>
+              </button>
             )}
-            {showAdvancedFilters ? <ChevronUp className="w-3.5 h-3.5 text-[#741b77]" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-          </button>
+
+            {/* Advanced Filter Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 ${
+                showAdvancedFilters || activeAdvancedFilterCount > 0
+                  ? 'bg-purple-50 text-[#741b77] border-purple-300 font-bold ring-1 ring-purple-100 shadow-xs'
+                  : 'bg-slate-50 hover:bg-slate-100/90 text-slate-600 border-slate-200/80 hover:border-slate-300'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#741b77]" />
+              <span>กรองกระแส &amp; Harmonic</span>
+              {activeAdvancedFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-[#741b77] text-white text-[10px] flex items-center justify-center font-bold">
+                  {activeAdvancedFilterCount}
+                </span>
+              )}
+              {showAdvancedFilters ? (
+                <ChevronUp className="w-3.5 h-3.5 text-[#741b77]" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Tier 2: Minimalist Filter Pills Bar */}
+        <div className="px-3.5 sm:px-4 py-2 bg-slate-50/60 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
+          {[
+            { id: 'ALL', label: 'ทั้งหมด', count: null, dotColor: null, icon: null },
+            { id: 'RED', label: 'ยังไม่ตรวจ', count: null, dotColor: 'bg-rose-500', icon: null },
+            { id: 'ORANGE', label: 'สั่งตรวจซ้ำ', count: null, dotColor: 'bg-amber-500', icon: null },
+            { id: 'DONE', label: 'ตรวจแล้ว', count: null, dotColor: 'bg-emerald-500', icon: null },
+            { id: '__DIVIDER_1__', isDivider: true },
+            { id: 'OVERLOAD', label: 'โหลดเกิน 80%', count: null, dotColor: 'bg-rose-500', icon: null },
+            { id: 'UNBALANCE', label: 'ไม่สมดุล', count: null, dotColor: 'bg-amber-500', icon: null },
+            { id: 'CRYPTO', label: 'เสี่ยงบิตคอยน์', count: null, dotColor: null, icon: 'zap' },
+            { id: '__DIVIDER_2__', isDivider: true },
+            { id: 'VIOLATION', label: 'พบการละเมิด', count: metrics.totalViolations, dotColor: null, icon: 'alert' },
+            { id: 'AUDIT_CLEARED', label: 'ตรวจแล้วปกติ', count: metrics.totalAuditCleared, dotColor: null, icon: 'shield' },
+          ].map(f => {
+            if (f.isDivider) {
+              return (
+                <span
+                  key={f.id}
+                  className="w-px h-3.5 bg-slate-200/90 mx-1 shrink-0 hidden sm:inline-block select-none"
+                  aria-hidden="true"
+                />
+              );
+            }
+
+            const isSelected = statusFilter === f.id;
+
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(f.id);
+                  if (f.id === 'TODAY') {
+                    setDateFilterMode('TODAY');
+                    setCustomDateFilter('');
+                  } else if (f.id === 'ALL' && dateFilterMode === 'TODAY') {
+                    setDateFilterMode('ALL');
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 shrink-0 select-none shadow-2xs active:scale-95 ${
+                  isSelected
+                    ? f.id === 'VIOLATION'
+                      ? 'bg-rose-600 text-white font-semibold border border-rose-600 shadow-xs'
+                      : f.id === 'AUDIT_CLEARED'
+                      ? 'bg-emerald-600 text-white font-semibold border border-emerald-600 shadow-xs'
+                      : 'bg-[#741b77] text-white font-semibold border border-[#741b77] shadow-xs'
+                    : f.id === 'VIOLATION' && metrics.totalViolations > 0
+                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold'
+                    : f.id === 'AUDIT_CLEARED' && metrics.totalAuditCleared > 0
+                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold'
+                    : 'bg-white hover:bg-slate-100/90 text-slate-600 border border-slate-200/80 hover:border-slate-300'
+                }`}
+              >
+                {/* Dot / Icon */}
+                {f.dotColor && (
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      isSelected ? 'bg-white' : f.dotColor
+                    }`}
+                  />
+                )}
+                {f.icon === 'calendar' && (
+                  <Calendar
+                    className={`w-3 h-3 shrink-0 ${
+                      isSelected ? 'text-white' : 'text-emerald-600'
+                    }`}
+                  />
+                )}
+                {f.icon === 'zap' && (
+                  <Zap
+                    className={`w-3 h-3 shrink-0 ${
+                      isSelected ? 'text-amber-300 fill-amber-300' : 'text-[#f39c12] fill-[#f39c12]'
+                    }`}
+                  />
+                )}
+                {f.icon === 'alert' && (
+                  <AlertOctagon
+                    className={`w-3 h-3 shrink-0 ${
+                      isSelected ? 'text-white' : 'text-rose-600'
+                    }`}
+                  />
+                )}
+                {f.icon === 'shield' && (
+                  <ShieldCheck
+                    className={`w-3 h-3 shrink-0 ${
+                      isSelected ? 'text-white' : 'text-emerald-600'
+                    }`}
+                  />
+                )}
+
+                {/* Label */}
+                <span>{f.label}</span>
+
+                {/* Count Badge */}
+                {f.count !== null && f.count !== undefined && (
+                  <span
+                    className={`text-[10.5px] font-mono px-1.5 py-0.2 rounded-full tabular-nums ${
+                      isSelected
+                        ? 'bg-white/20 text-white font-bold'
+                        : f.count > 0
+                        ? f.id === 'VIOLATION'
+                          ? 'bg-rose-100 text-rose-700 font-bold'
+                          : f.id === 'AUDIT_CLEARED'
+                          ? 'bg-emerald-100 text-emerald-700 font-bold'
+                          : 'bg-emerald-100 text-emerald-800 font-semibold'
+                        : 'bg-slate-100 text-slate-400 font-medium'
+                    }`}
+                  >
+                    ({f.count})
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Collapsible Advanced Filters Drawer - Organized Executive Design */}
         {showAdvancedFilters && (
-          <div className="pt-3.5 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch animate-in fade-in duration-150">
+          <div className="p-4 sm:p-5 bg-slate-50/40 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch animate-in fade-in duration-150">
             {/* 1. Feeder Current Filter */}
             <div className="relative overflow-hidden p-4 sm:p-5 bg-gradient-to-b from-white via-white to-slate-50/40 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-3.5">
               <div className="h-1 w-full absolute top-0 left-0 bg-gradient-to-r from-[#741b77] to-purple-500" />
@@ -2443,6 +2598,38 @@ export default function BackofficeDashboard() {
                             {historyCount} รอบ
                           </span>
                         )}
+                        {(() => {
+                          const vList = t.violations || [];
+                          const activeViolations = vList.filter(v => v.status !== 'CLEARED');
+                          const clearedAudits = vList.filter(v => v.status === 'CLEARED');
+                          const isCleared = !activeViolations.length && (clearedAudits.length > 0 || t.isAuditCleared);
+
+                          if (activeViolations.length > 0) {
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-300 text-rose-700 text-[10px] font-bold shadow-2xs"
+                                title={`ตรวจพบการละเมิด: มิเตอร์ ${activeViolations.map(v => `${v.meterPeaNo} (${v.violationType})`).join(', ')}`}
+                              >
+                                <AlertOctagon className="w-3 h-3 text-rose-600 shrink-0" />
+                                <span>ละเมิด {activeViolations.length}</span>
+                              </span>
+                            );
+                          }
+
+                          if (isCleared) {
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] font-bold shadow-2xs"
+                                title={`ตรวจสอบมิเตอร์แล้ว: ไม่พบการละเมิด (${t.latestAuditClearedDate || 'ปกติ'})`}
+                              >
+                                <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>ตรวจแล้วปกติ</span>
+                              </span>
+                            );
+                          }
+
+                          return null;
+                        })()}
                       </td>
 
                       {/* kVA */}
@@ -2732,6 +2919,38 @@ export default function BackofficeDashboard() {
                                     <span className="font-mono text-xs font-semibold tracking-tight text-slate-800 group-hover:text-[#741b77] transition-colors">
                                       {session.peaNo}
                                     </span>
+                                    {(() => {
+                                      const vList = transformer.violations || [];
+                                      const activeViolations = vList.filter(v => v.status !== 'CLEARED');
+                                      const clearedAudits = vList.filter(v => v.status === 'CLEARED');
+                                      const isCleared = !activeViolations.length && (clearedAudits.length > 0 || transformer.isAuditCleared);
+
+                                      if (activeViolations.length > 0) {
+                                        return (
+                                          <span
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-300 text-rose-700 text-[10px] font-bold shadow-2xs"
+                                            title={`ตรวจพบการละเมิด: มิเตอร์ ${activeViolations.map(v => `${v.meterPeaNo} (${v.violationType})`).join(', ')}`}
+                                          >
+                                            <AlertOctagon className="w-3 h-3 text-rose-600 shrink-0" />
+                                            <span>ละเมิด {activeViolations.length}</span>
+                                          </span>
+                                        );
+                                      }
+
+                                      if (isCleared) {
+                                        return (
+                                          <span
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-300 text-emerald-800 text-[10px] font-bold shadow-2xs"
+                                            title={`ตรวจสอบมิเตอร์แล้ว: ไม่พบการละเมิด (${transformer.latestAuditClearedDate || 'ปกติ'})`}
+                                          >
+                                            <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                                            <span>ตรวจแล้วปกติ</span>
+                                          </span>
+                                        );
+                                      }
+
+                                      return null;
+                                    })()}
                                   </button>
                                 </td>
                               )}
@@ -2912,6 +3131,39 @@ export default function BackofficeDashboard() {
                   <span>AI วิเคราะห์</span>
                 </button>
 
+                {/* 🚨 บันทึกตรวจพบการละเมิดมิเตอร์ */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViolationModalMode('VIOLATION');
+                    setViolationModalTransformer(viewingTransformer);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
+                  title="บันทึกการตรวจพบการละเมิด/ลักใช้ไฟฟ้าจากมิเตอร์ที่เกาะกับหม้อแปลงลูกนี้"
+                >
+                  <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
+                  <span>บันทึกละเมิด</span>
+                  {viewingTransformer.violations && viewingTransformer.violations.filter(v => v.status !== 'CLEARED').length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-bold">
+                      {viewingTransformer.violations.filter(v => v.status !== 'CLEARED').length}
+                    </span>
+                  )}
+                </button>
+
+                {/* 🛡️ บันทึกผลตรวจ: ไม่พบละเมิด */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViolationModalMode('CLEARED');
+                    setViolationModalTransformer(viewingTransformer);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
+                  title="บันทึกว่าได้ลงพื้นที่ตรวจสอบมิเตอร์แล้วทุกลูก และไม่พบการละเมิด (พ้นข้อสงสัย)"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>บันทึกตรวจแล้วปกติ</span>
+                </button>
+
                 {viewingTransformer.lat && viewingTransformer.lng && (
                   <a
                     href={`https://www.google.com/maps?layer=c&cbll=${viewingTransformer.lat},${viewingTransformer.lng}`}
@@ -2939,7 +3191,7 @@ export default function BackofficeDashboard() {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-700">
               {/* Transformer Spec & Location Bar */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-slate-50/70 rounded-2xl border border-slate-200/80 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 bg-slate-50/70 rounded-2xl border border-slate-200/80 text-xs">
                 <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs">
                   <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-[#741b77] shrink-0 border border-purple-100/60">
                     <Zap className="w-4 h-4 text-[#741b77]" />
@@ -2975,6 +3227,60 @@ export default function BackofficeDashboard() {
                 </div>
 
                 <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs">
+                  {(() => {
+                    const vList = viewingTransformer.violations || [];
+                    const activeViolations = vList.filter(v => v.status !== 'CLEARED');
+                    const isCleared = !activeViolations.length && (vList.some(v => v.status === 'CLEARED') || viewingTransformer.isAuditCleared);
+
+                    if (activeViolations.length > 0) {
+                      return (
+                        <>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border bg-rose-50 text-rose-600 border-rose-200/80">
+                            <AlertOctagon className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[10.5px] font-medium text-slate-400 uppercase tracking-wider block">การละเมิดมิเตอร์</span>
+                            <b className="text-sm block truncate font-mono text-rose-600 font-bold">
+                              {activeViolations.length} รายการ
+                            </b>
+                          </div>
+                        </>
+                      );
+                    }
+
+                    if (isCleared) {
+                      return (
+                        <>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border bg-emerald-50 text-emerald-700 border-emerald-200/80">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[10.5px] font-medium text-slate-400 uppercase tracking-wider block">ผลตรวจมิเตอร์</span>
+                            <b className="text-sm block truncate font-sans text-emerald-700 font-bold">
+                              ปกติ (พ้นข้อสงสัย)
+                            </b>
+                          </div>
+                        </>
+                      );
+                    }
+
+                    return (
+                      <>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border bg-slate-50 text-slate-400 border-slate-200/80">
+                          <AlertOctagon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10.5px] font-medium text-slate-400 uppercase tracking-wider block">การละเมิดมิเตอร์</span>
+                          <b className="text-sm block truncate font-mono text-slate-700">
+                            0 รายการ
+                          </b>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs">
                   <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 border border-blue-100/60">
                     <MapPin className="w-4 h-4 text-blue-600" />
                   </div>
@@ -2997,6 +3303,174 @@ export default function BackofficeDashboard() {
                 </div>
               </div>
 
+              {/* Meter Violations Section */}
+              <div className="space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200/80 pb-3 gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center text-[#741b77]">
+                      <AlertOctagon className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm md:text-base font-bold text-slate-900 tracking-tight">
+                      ประวัติการตรวจสอบมิเตอร์และการละเมิด
+                    </h4>
+                    {(() => {
+                      const vList = viewingTransformer.violations || [];
+                      const activeCount = vList.filter(v => v.status !== 'CLEARED').length;
+                      const clearedCount = vList.filter(v => v.status === 'CLEARED').length;
+
+                      if (activeCount > 0) {
+                        return (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 font-mono">
+                            พบละเมิด {activeCount} รายการ
+                          </span>
+                        );
+                      }
+                      if (clearedCount > 0 || viewingTransformer.isAuditCleared) {
+                        return (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 font-mono">
+                            🛡️ ตรวจแล้วปกติ
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500">
+                          ปกติ (ยังไม่มีบันทึก)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {viewingTransformer.violations && viewingTransformer.violations.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {viewingTransformer.violations.map((v, vIdx) => {
+                      const isLegal = v.status === 'LEGAL_ACTION';
+                      const isResolved = v.status === 'RESOLVED';
+                      const isCleared = v.status === 'CLEARED';
+
+                      return (
+                        <div
+                          key={`${v.meterPeaNo}_${vIdx}`}
+                          className={`p-4 rounded-2xl border shadow-2xs space-y-3 ${
+                            isCleared
+                              ? 'bg-gradient-to-b from-emerald-50/50 via-white to-slate-50/50 border-emerald-200/90'
+                              : 'bg-gradient-to-b from-rose-50/40 via-white to-slate-50/50 border-rose-200/80'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm font-bold text-slate-900">
+                                  {isCleared ? '🛡️ ' : ''}PEA {v.meterPeaNo}
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+                                    isCleared
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : 'bg-rose-100 text-rose-800'
+                                  }`}
+                                >
+                                  {v.violationType}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-600">
+                                <span className="font-semibold text-slate-700">ผู้ใช้ไฟ:</span> {v.consumerName || '-'}
+                                {v.location && <span className="text-slate-400"> • {v.location}</span>}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteViolation(v.transformerPeaNo, v.meterPeaNo)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="ลบรายการนี้"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-[11px] bg-white p-2.5 rounded-xl border border-slate-100">
+                            <div>
+                              <span className="text-slate-400 block">ตรวจพบเมื่อ</span>
+                              <span className="font-medium text-slate-700 font-mono">
+                                {v.detectedDate} {v.detectedTime}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400 block">ผู้ตรวจพบ</span>
+                              <span className="font-medium text-slate-700">
+                                {v.inspectorName || '-'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {v.remark && (
+                            <div className={`text-xs p-2.5 rounded-xl border ${
+                              isCleared
+                                ? 'bg-emerald-50/60 border-emerald-200/70 text-emerald-900'
+                                : 'bg-amber-50/60 border-amber-200/60 text-slate-600'
+                            }`}>
+                              <span className={`font-semibold block text-[11px] ${isCleared ? 'text-emerald-900' : 'text-amber-900'}`}>
+                                {isCleared ? 'ผลการตรวจสอบ:' : 'รายละเอียด / พฤติการณ์:'}
+                              </span>
+                              <p className="mt-0.5">{v.remark}</p>
+                            </div>
+                          )}
+
+                          {v.imageUrls && v.imageUrls.length > 0 && (
+                            <div className="space-y-1.5">
+                              <span className="text-[11px] font-semibold text-slate-600 block">รูปถ่ายหลักฐาน ({v.imageUrls.length} รูป):</span>
+                              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                                {v.imageUrls.map((imgUrl, imgIdx) => (
+                                  <a
+                                    key={imgIdx}
+                                    href={imgUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-100 block hover:opacity-80 transition-opacity"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={imgUrl} alt="หลักฐาน" className="w-full h-full object-cover" />
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="pt-1 flex items-center justify-between gap-2 border-t border-slate-100">
+                            <span className="text-[11px] text-slate-500 font-medium">สถานะ:</span>
+                            <select
+                              value={v.status || (isCleared ? 'CLEARED' : 'INVESTIGATING')}
+                              onChange={(e) => handleUpdateViolationStatus(v.transformerPeaNo, v.meterPeaNo, e.target.value as any)}
+                              className={`text-xs font-bold rounded-lg px-2.5 py-1 border transition-all cursor-pointer ${
+                                isCleared
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : isLegal
+                                  ? 'bg-rose-50 text-rose-700 border-rose-300'
+                                  : isResolved
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                  : 'bg-amber-50 text-amber-700 border-amber-300'
+                              }`}
+                            >
+                              <option value="INVESTIGATING">กำลังตรวจสอบ</option>
+                              <option value="LEGAL_ACTION">ส่งฝ่ายกฎหมาย/ดำเนินคดี</option>
+                              <option value="RESOLVED">เปรียบเทียบปรับแล้ว</option>
+                              <option value="PENDING">รอตรวจซ้ำ</option>
+                              <option value="CLEARED">🛡️ ตรวจแล้วปกติ (Cleared)</option>
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 flex items-center gap-2 text-xs text-slate-500">
+                    <ShieldAlert className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span>ยังไม่มีประวัติการบันทึกผลตรวจสอบมิเตอร์สำหรับหม้อแปลงลูกนี้</span>
+                  </div>
+                )}
+              </div>
+
               {/* History Records Timeline Section */}
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
@@ -3013,10 +3487,27 @@ export default function BackofficeDashboard() {
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-slate-400 font-medium hidden sm:flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-slate-300" />
-                    <span>เรียงจากรอบล่าสุดไปรอบแรกสุด</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {((viewingTransformer.historySessions && viewingTransformer.historySessions.length > 0) || viewingTransformer.latestSession) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowLoadCharts(prev => !prev)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs select-none ${
+                          showLoadCharts
+                            ? 'bg-[#741b77] text-white shadow-purple-900/20'
+                            : 'bg-purple-50 text-[#741b77] hover:bg-purple-100/80 border border-purple-200/80'
+                        }`}
+                        title="เปิด/ปิดการแสดงกราฟวิเคราะห์สมดุลโหลดและแรงดันตก"
+                      >
+                        <BarChart2 className="w-3.5 h-3.5" />
+                        <span>{showLoadCharts ? 'ซ่อนกราฟวิเคราะห์' : '📊 ดูกราฟวิเคราะห์สมดุลโหลด'}</span>
+                      </button>
+                    )}
+                    <span className="text-xs text-slate-400 font-medium hidden sm:flex items-center gap-1 pl-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-300" />
+                      <span>เรียงจากรอบล่าสุด</span>
+                    </span>
+                  </div>
                 </div>
 
                 {/* Save Feedback Alerts */}
@@ -3074,6 +3565,11 @@ export default function BackofficeDashboard() {
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                )}
+
+                {/* Visual Analytics Load & Voltage Charts (When Toggled) */}
+                {showLoadCharts && viewingTransformer && (
+                  <LoadAnalyticsCharts transformer={viewingTransformer} />
                 )}
 
                 {(!viewingTransformer.historySessions || viewingTransformer.historySessions.length === 0) && !viewingTransformer.latestSession ? (
@@ -4023,6 +4519,19 @@ export default function BackofficeDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 🚨 Meter Violation Modal */}
+      {violationModalTransformer && (
+        <MeterViolationModal
+          isOpen={Boolean(violationModalTransformer)}
+          onClose={() => setViolationModalTransformer(null)}
+          onSuccess={async () => {
+            await fetchTransformers();
+          }}
+          transformer={violationModalTransformer}
+          initialAuditType={violationModalMode}
+        />
       )}
     </div>
   );

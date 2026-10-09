@@ -72,6 +72,23 @@ export interface EngineeringStatus {
 
 export type MapMarkerColor = 'red' | 'orange' | 'done';
 
+export const MeterViolationSchema = z.object({
+  id: z.string().optional(),
+  transformerPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEANO หม้อแปลง'),
+  meterPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEA มิเตอร์'),
+  consumerName: z.string().optional(),
+  location: z.string().optional(),
+  violationType: z.string().min(1, 'กรุณาระบุประเภทการละเมิด'),
+  detectedDate: z.string().min(1, 'กรุณาระบุวันที่ตรวจพบ'),
+  detectedTime: z.string().optional(),
+  inspectorName: z.string().optional(),
+  status: z.enum(['PENDING', 'INVESTIGATING', 'LEGAL_ACTION', 'RESOLVED', 'CLEARED']).default('INVESTIGATING'),
+  remark: z.string().optional(),
+  imageUrls: z.array(z.string()).optional(),
+  createdAt: z.string().optional(),
+});
+export type MeterViolation = z.infer<typeof MeterViolationSchema>;
+
 export interface TransformerWithStatus extends TransformerMaster {
   statusColor: MapMarkerColor;
   latestSession?: MeasurementSession;
@@ -81,6 +98,9 @@ export interface TransformerWithStatus extends TransformerMaster {
     orderDate: string;
     assigner: string;
   };
+  violations?: MeterViolation[];
+  isAuditCleared?: boolean;
+  latestAuditClearedDate?: string;
 }
 
 /**
@@ -202,6 +222,35 @@ export const CancelTaskInputSchema = z.object({
   peaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEANO หม้อแปลง'),
 });
 export type CancelTaskInput = z.infer<typeof CancelTaskInputSchema>;
+
+export const CreateViolationInputSchema = z.object({
+  transformerPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEANO หม้อแปลง'),
+  meterPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEA มิเตอร์'),
+  consumerName: z.string().optional().default(''),
+  location: z.string().optional().default(''),
+  violationType: z.string().min(1, 'กรุณาระบุประเภทการละเมิด'),
+  detectedDate: z.string().min(1, 'กรุณาระบุวันที่ตรวจพบ'),
+  detectedTime: z.string().optional().default(''),
+  inspectorName: z.string().optional().default(''),
+  status: z.enum(['PENDING', 'INVESTIGATING', 'LEGAL_ACTION', 'RESOLVED', 'CLEARED']).optional().default('INVESTIGATING'),
+  remark: z.string().optional().default(''),
+  images: z.array(z.string()).optional().default([]),
+});
+export type CreateViolationInput = z.infer<typeof CreateViolationInputSchema>;
+
+export const DeleteViolationInputSchema = z.object({
+  transformerPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEANO หม้อแปลง'),
+  meterPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEA มิเตอร์'),
+  detectedDate: z.string().optional(),
+});
+export type DeleteViolationInput = z.infer<typeof DeleteViolationInputSchema>;
+
+export const UpdateViolationStatusInputSchema = z.object({
+  transformerPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEANO หม้อแปลง'),
+  meterPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEA มิเตอร์'),
+  status: z.enum(['PENDING', 'INVESTIGATING', 'LEGAL_ACTION', 'RESOLVED', 'CLEARED']),
+});
+export type UpdateViolationStatusInput = z.infer<typeof UpdateViolationStatusInputSchema>;
 
 /**
  * Matt Pocock Total TypeScript Standards

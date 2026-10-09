@@ -12,6 +12,10 @@ import {
   DeleteRecordSessionInput,
   CreateTaskInput,
   CancelTaskInput,
+  MeterViolation,
+  CreateViolationInput,
+  DeleteViolationInput,
+  UpdateViolationStatusInput,
   SheetRow,
   getErrorMessage,
 } from '../domain/types';
@@ -123,16 +127,18 @@ export async function getTransformersWithStatus(): Promise<TransformerWithStatus
   const drive = google.drive({ version: 'v3', auth });
   const spreadsheetId = await getSpreadsheetId(sheets, drive);
 
-  // Read MasterData, Record Data, and Task Data concurrently
-  const [masterRes, recordRes, taskRes] = await Promise.all([
+  // Read MasterData, Record Data, Task Data, and Violations concurrently
+  const [masterRes, recordRes, taskRes, violationRes] = await Promise.all([
     sheets.spreadsheets.values.get({ spreadsheetId, range: 'MasterData!A1:Z' }),
     sheets.spreadsheets.values.get({ spreadsheetId, range: 'Record Data!A1:Z' }),
     sheets.spreadsheets.values.get({ spreadsheetId, range: 'Task Data!A1:Z' }),
+    sheets.spreadsheets.values.get({ spreadsheetId, range: 'Violations!A1:Z' }).catch(() => ({ data: { values: [] } })),
   ]);
 
   const masterRows = masterRes.data.values || [];
   const recordRows = recordRes.data.values || [];
   const taskRows = taskRes.data.values || [];
+  const violationRows = violationRes.data.values || [];
 
   if (masterRows.length <= 1) return [];
 
@@ -324,6 +330,59 @@ export async function getTransformersWithStatus(): Promise<TransformerWithStatus
     }
   }
 
+  // Parse Violations
+  const violationsMap: Map<string, MeterViolation[]> = new Map();
+  if (violationRows.length > 1) {
+    const vHeaders = (violationRows[0] || []).map(h => String(h).trim());
+    const vPeaIdx = vHeaders.indexOf('PEANO หม้อแปลง') !== -1 ? vHeaders.indexOf('PEANO หม้อแปลง') : 0;
+    const vMeterIdx = vHeaders.indexOf('PEA NO มิเตอร์') !== -1 ? vHeaders.indexOf('PEA NO มิเตอร์') : 1;
+    const vConsumerIdx = vHeaders.indexOf('ชื่อผู้ใช้ไฟ/สถานที่') !== -1 ? vHeaders.indexOf('ชื่อผู้ใช้ไฟ/สถานที่') : 2;
+    const vTypeIdx = vHeaders.indexOf('ประเภทการละเมิด') !== -1 ? vHeaders.indexOf('ประเภทการละเมิด') : 3;
+    const vDateIdx = vHeaders.indexOf('วันที่ตรวจพบ') !== -1 ? vHeaders.indexOf('วันที่ตรวจพบ') : 4;
+    const vTimeIdx = vHeaders.indexOf('เวลา') !== -1 ? vHeaders.indexOf('เวลา') : 5;
+    const vInspectorIdx = vHeaders.indexOf('ผู้ตรวจพบ') !== -1 ? vHeaders.indexOf('ผู้ตรวจพบ') : 6;
+    const vStatusIdx = vHeaders.indexOf('สถานะ') !== -1 ? vHeaders.indexOf('สถานะ') : 7;
+    const vRemarkIdx = vHeaders.indexOf('หมายเหตุ/รายละเอียด') !== -1 ? vHeaders.indexOf('หมายเหตุ/รายละเอียด') : 8;
+    const vImgIdx = vHeaders.indexOf('รูปถ่ายหลักฐาน') !== -1 ? vHeaders.indexOf('รูปถ่ายหลักฐาน') : 9;
+    const vCreatedIdx = vHeaders.indexOf('Timestamp') !== -1 ? vHeaders.indexOf('Timestamp') : 10;
+
+    for (let i = 1; i < violationRows.length; i++) {
+      const row = violationRows[i];
+      const pea = String(row[vPeaIdx] || '').trim();
+      const meter = String(row[vMeterIdx] || '').trim();
+      if (!pea || !meter) continue;
+
+      const rawImgs = String(row[vImgIdx] || '').trim();
+      const imageUrls = rawImgs ? rawImgs.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      const rawStatus = String(row[vStatusIdx] || 'INVESTIGATING').trim().toUpperCase();
+      const status: MeterViolation['status'] =
+        rawStatus === 'RESOLVED' || rawStatus === 'LEGAL_ACTION' || rawStatus === 'PENDING' || rawStatus === 'CLEARED' || rawStatus.includes('ไม่พบ') || rawStatus.includes('ปกติ')
+          ? (rawStatus.includes('ไม่พบ') || rawStatus.includes('ปกติ') || rawStatus === 'CLEARED' ? 'CLEARED' : (rawStatus as MeterViolation['status']))
+          : 'INVESTIGATING';
+
+      const vItem: MeterViolation = {
+        transformerPeaNo: pea,
+        meterPeaNo: meter,
+        consumerName: String(row[vConsumerIdx] || '').trim(),
+        location: '',
+        violationType: String(row[vTypeIdx] || 'ไม่ระบุ').trim(),
+        detectedDate: String(row[vDateIdx] || '').trim(),
+        detectedTime: String(row[vTimeIdx] || '').trim(),
+        inspectorName: String(row[vInspectorIdx] || '').trim(),
+        status,
+        remark: String(row[vRemarkIdx] || '').trim(),
+        imageUrls,
+        createdAt: String(row[vCreatedIdx] || '').trim(),
+      };
+
+      if (!violationsMap.has(pea)) {
+        violationsMap.set(pea, []);
+      }
+      violationsMap.get(pea)!.push(vItem);
+    }
+  }
+
   // Combine into final list
   const results: TransformerWithStatus[] = [];
   for (const [peaNo, t] of transformers.entries()) {
@@ -343,6 +402,12 @@ export async function getTransformersWithStatus(): Promise<TransformerWithStatus
       engStatus = calculateEngineeringStatus(latest.total, t.kva, t.system);
     }
 
+    const vList = violationsMap.get(peaNo) || [];
+    const hasViolation = vList.some(v => v.status !== 'CLEARED');
+    const clearedList = vList.filter(v => v.status === 'CLEARED');
+    const isAuditCleared = !hasViolation && clearedList.length > 0;
+    const latestAuditClearedDate = isAuditCleared ? clearedList[0]?.detectedDate : undefined;
+
     results.push({
       ...t,
       statusColor,
@@ -350,6 +415,9 @@ export async function getTransformersWithStatus(): Promise<TransformerWithStatus
       historySessions: historySessionsMap.get(peaNo) || [],
       engineeringStatus: engStatus,
       pendingTask: pendingTasks.get(peaNo),
+      violations: vList,
+      isAuditCleared,
+      latestAuditClearedDate,
     });
   }
 
@@ -1071,14 +1139,18 @@ export async function deleteTransformer(rawPeaNo: string): Promise<DeleteTransfo
   const recordSheet = allSheets.find(s => s.properties?.title === 'Record Data');
   const taskSheet = allSheets.find(s => s.properties?.title === 'Task Data');
   const aiReportSheet = allSheets.find(s => s.properties?.title === 'AI Reports');
+  const violationSheet = allSheets.find(s => s.properties?.title === 'Violations');
 
   // 2. Fetch rows from all worksheets in parallel
-  const [masterRes, recordRes, taskRes, aiRes] = await Promise.all([
+  const [masterRes, recordRes, taskRes, aiRes, violationRes] = await Promise.all([
     sheets.spreadsheets.values.get({ spreadsheetId, range: 'MasterData!A1:Z' }),
     sheets.spreadsheets.values.get({ spreadsheetId, range: 'Record Data!A1:Z' }),
     sheets.spreadsheets.values.get({ spreadsheetId, range: 'Task Data!A1:Z' }),
     aiReportSheet
       ? sheets.spreadsheets.values.get({ spreadsheetId, range: 'AI Reports!A1:Z' }).catch(() => ({ data: { values: [] } }))
+      : Promise.resolve({ data: { values: [] } }),
+    violationSheet
+      ? sheets.spreadsheets.values.get({ spreadsheetId, range: 'Violations!A1:Z' }).catch(() => ({ data: { values: [] } }))
       : Promise.resolve({ data: { values: [] } }),
   ]);
 
@@ -1086,6 +1158,7 @@ export async function deleteTransformer(rawPeaNo: string): Promise<DeleteTransfo
   const recordRows = recordRes.data.values || [];
   const taskRows = taskRes.data.values || [];
   const aiRows = aiRes.data.values || [];
+  const violationRows = violationRes.data.values || [];
 
   const targetPea = peaNo.toLowerCase();
   const isMatch = (val: unknown) => String(val ?? '').trim().toLowerCase() === targetPea;
@@ -1134,12 +1207,25 @@ export async function deleteTransformer(rawPeaNo: string): Promise<DeleteTransfo
     }
   }
 
+  // 6.5 Find matches in Violations
+  const vHeaders = (violationRows[0] || []).map(h => String(h).trim());
+  const vPeaCol = vHeaders.indexOf('PEANO หม้อแปลง') !== -1 ? vHeaders.indexOf('PEANO หม้อแปลง') : 0;
+  const violationRowIndicesToDelete: number[] = [];
+  const matchedViolationRows: unknown[][] = [];
+  for (let i = 1; i < violationRows.length; i++) {
+    if (isMatch(violationRows[i][vPeaCol])) {
+      violationRowIndicesToDelete.push(i);
+      matchedViolationRows.push(violationRows[i]);
+    }
+  }
+
   // Check if anything was found
   const totalFound =
     masterRowIndicesToDelete.length +
     recordRowIndicesToDelete.length +
     taskRowIndicesToDelete.length +
-    aiRowIndicesToDelete.length;
+    aiRowIndicesToDelete.length +
+    violationRowIndicesToDelete.length;
 
   if (totalFound === 0) {
     return {
@@ -1151,8 +1237,8 @@ export async function deleteTransformer(rawPeaNo: string): Promise<DeleteTransfo
     };
   }
 
-  // 7. Extract all Drive photo IDs from matched rows across Record Data and Task Data
-  const driveFileIds = extractDriveFileIds([...matchedRecordRows, ...matchedTaskRows]);
+  // 7. Extract all Drive photo IDs from matched rows across Record Data, Task Data, and Violations
+  const driveFileIds = extractDriveFileIds([...matchedRecordRows, ...matchedTaskRows, ...matchedViolationRows]);
 
   // 8. Build Google Sheets batch delete requests (descending order per sheet)
   const batchRequests: sheets_v4.Schema$Request[] = [];
@@ -1179,6 +1265,9 @@ export async function deleteTransformer(rawPeaNo: string): Promise<DeleteTransfo
   addDeleteRequestsForSheet(taskSheet?.properties?.sheetId, taskRowIndicesToDelete);
   if (aiReportSheet) {
     addDeleteRequestsForSheet(aiReportSheet.properties?.sheetId, aiRowIndicesToDelete);
+  }
+  if (violationSheet) {
+    addDeleteRequestsForSheet(violationSheet.properties?.sheetId, violationRowIndicesToDelete);
   }
 
   if (batchRequests.length > 0) {
@@ -1432,6 +1521,269 @@ export async function cancelTask(
       ? `ยกเลิกคำสั่งตรวจซ้ำหม้อแปลง PEA ${cleanPeaNo} สำเร็จ`
       : `ไม่พบรายการสั่งตรวจซ้ำที่ค้างอยู่ของหม้อแปลง PEA ${cleanPeaNo}`,
     peaNo: cleanPeaNo,
+  };
+}
+
+/**
+ * Ensures 'Violations' sheet exists with canonical 11-column header.
+ */
+async function ensureViolationsSheet(
+  sheets: ReturnType<typeof google.sheets>,
+  spreadsheetId: string
+): Promise<void> {
+  const sheetMeta = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = sheetMeta.data.sheets?.some(s => s.properties?.title === 'Violations');
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            addSheet: {
+              properties: { title: 'Violations' },
+            },
+          },
+        ],
+      },
+    });
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Violations!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          'PEANO หม้อแปลง',
+          'PEA NO มิเตอร์',
+          'ชื่อผู้ใช้ไฟ/สถานที่',
+          'ประเภทการละเมิด',
+          'วันที่ตรวจพบ',
+          'เวลา',
+          'ผู้ตรวจพบ',
+          'สถานะ',
+          'หมายเหตุ/รายละเอียด',
+          'รูปถ่ายหลักฐาน',
+          'Timestamp',
+        ]],
+      },
+    });
+  }
+}
+
+/**
+ * Creates a new meter violation record in 'Violations' sheet.
+ */
+export async function createMeterViolation(
+  input: CreateViolationInput
+): Promise<{ success: boolean; message: string; violation: MeterViolation }> {
+  const auth = getAuth();
+  const sheets = google.sheets({ version: 'v4', auth });
+  const drive = google.drive({ version: 'v3', auth });
+  const spreadsheetId = await getSpreadsheetId(sheets, drive);
+
+  await ensureViolationsSheet(sheets, spreadsheetId);
+
+  // 1. Upload evidence images to Google Drive if provided
+  let imgUrlString = '';
+  if (input.images && input.images.length > 0) {
+    const uploadPromises = input.images.map(async (img, i) => {
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+      } else if (img.startsWith('data:image') || img.length > 100) {
+        const cleanDate = (input.detectedDate || '').replace(/[-/]/g, '');
+        const cleanTime = (input.detectedTime || '').replace(/[:]/g, '');
+        const fileName = `VIOLATION_${input.transformerPeaNo}_${input.meterPeaNo}_${cleanDate}_${cleanTime}_${i + 1}.jpg`;
+        return await uploadImageToDrive(img, fileName);
+      }
+      return null;
+    });
+
+    const results = await Promise.all(uploadPromises);
+    const validUrls = results.filter((url): url is string => Boolean(url && url.startsWith('http')));
+    imgUrlString = validUrls.join(', ');
+  }
+
+  const timestamp = new Date().toISOString();
+  const newRow: SheetRow = [
+    input.transformerPeaNo.trim(),
+    input.meterPeaNo.trim(),
+    input.consumerName?.trim() || '',
+    input.violationType.trim(),
+    input.detectedDate.trim(),
+    input.detectedTime?.trim() || '',
+    input.inspectorName?.trim() || '',
+    input.status || 'INVESTIGATING',
+    input.remark?.trim() || '',
+    imgUrlString,
+    timestamp,
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'Violations!A1',
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [newRow],
+    },
+  });
+
+  const violation: MeterViolation = {
+    transformerPeaNo: input.transformerPeaNo.trim(),
+    meterPeaNo: input.meterPeaNo.trim(),
+    consumerName: input.consumerName?.trim() || '',
+    location: input.location?.trim() || '',
+    violationType: input.violationType.trim(),
+    detectedDate: input.detectedDate.trim(),
+    detectedTime: input.detectedTime?.trim() || '',
+    inspectorName: input.inspectorName?.trim() || '',
+    status: input.status || 'INVESTIGATING',
+    remark: input.remark?.trim() || '',
+    imageUrls: imgUrlString ? imgUrlString.split(',').map(s => s.trim()).filter(Boolean) : [],
+    createdAt: timestamp,
+  };
+
+  return {
+    success: true,
+    message: `บันทึกข้อมูลการตรวจพบการละเมิดมิเตอร์ ${input.meterPeaNo} (หม้อแปลง ${input.transformerPeaNo}) เรียบร้อยแล้ว`,
+    violation,
+  };
+}
+
+/**
+ * Updates status of an existing meter violation.
+ */
+export async function updateMeterViolationStatus(
+  input: UpdateViolationStatusInput
+): Promise<{ success: boolean; message: string }> {
+  const auth = getAuth();
+  const sheets = google.sheets({ version: 'v4', auth });
+  const drive = google.drive({ version: 'v3', auth });
+  const spreadsheetId = await getSpreadsheetId(sheets, drive);
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'Violations!A1:Z',
+  });
+  const rows = res.data.values || [];
+  if (rows.length <= 1) {
+    return { success: false, message: 'ไม่พบตารางข้อมูลการละเมิด' };
+  }
+
+  const headers = rows[0].map(h => String(h).trim());
+  const peaIdx = headers.indexOf('PEANO หม้อแปลง') !== -1 ? headers.indexOf('PEANO หม้อแปลง') : 0;
+  const meterIdx = headers.indexOf('PEA NO มิเตอร์') !== -1 ? headers.indexOf('PEA NO มิเตอร์') : 1;
+  const statusIdx = headers.indexOf('สถานะ') !== -1 ? headers.indexOf('สถานะ') : 7;
+
+  const targetPea = input.transformerPeaNo.trim().toLowerCase();
+  const targetMeter = input.meterPeaNo.trim().toLowerCase();
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const pea = String(row[peaIdx] || '').trim().toLowerCase();
+    const meter = String(row[meterIdx] || '').trim().toLowerCase();
+    if (pea === targetPea && meter === targetMeter) {
+      const colLetter = String.fromCharCode(65 + statusIdx);
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `Violations!${colLetter}${i + 1}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[input.status]],
+        },
+      });
+      return { success: true, message: `อัปเดตสถานะมิเตอร์ ${input.meterPeaNo} เป็น ${input.status} สำเร็จ` };
+    }
+  }
+
+  return { success: false, message: `ไม่พบข้อมูลมิเตอร์ ${input.meterPeaNo}` };
+}
+
+/**
+ * Deletes a meter violation from 'Violations' sheet.
+ */
+export async function deleteMeterViolation(
+  input: DeleteViolationInput
+): Promise<{ success: boolean; message: string }> {
+  const auth = getAuth();
+  const sheets = google.sheets({ version: 'v4', auth });
+  const drive = google.drive({ version: 'v3', auth });
+  const spreadsheetId = await getSpreadsheetId(sheets, drive);
+
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const vSheet = meta.data.sheets?.find(s => s.properties?.title === 'Violations');
+  if (vSheet?.properties?.sheetId === undefined) {
+    return { success: false, message: 'ไม่พบชีต Violations' };
+  }
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'Violations!A1:Z',
+  });
+  const rows = res.data.values || [];
+  if (rows.length <= 1) {
+    return { success: false, message: 'ไม่มีข้อมูลในชีต Violations' };
+  }
+
+  const headers = rows[0].map(h => String(h).trim());
+  const peaIdx = headers.indexOf('PEANO หม้อแปลง') !== -1 ? headers.indexOf('PEANO หม้อแปลง') : 0;
+  const meterIdx = headers.indexOf('PEA NO มิเตอร์') !== -1 ? headers.indexOf('PEA NO มิเตอร์') : 1;
+  const dateIdx = headers.indexOf('วันที่ตรวจพบ') !== -1 ? headers.indexOf('วันที่ตรวจพบ') : 4;
+  const imgIdx = headers.indexOf('รูปถ่ายหลักฐาน') !== -1 ? headers.indexOf('รูปถ่ายหลักฐาน') : 9;
+
+  const targetPea = input.transformerPeaNo.trim().toLowerCase();
+  const targetMeter = input.meterPeaNo.trim().toLowerCase();
+  const targetDate = input.detectedDate?.trim().toLowerCase();
+
+  const matchedIndices: number[] = [];
+  const photosToDelete: string[] = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const pea = String(row[peaIdx] || '').trim().toLowerCase();
+    const meter = String(row[meterIdx] || '').trim().toLowerCase();
+    const date = String(row[dateIdx] || '').trim().toLowerCase();
+
+    if (pea === targetPea && meter === targetMeter) {
+      if (!targetDate || date === targetDate) {
+        matchedIndices.push(i);
+        const rawImgs = String(row[imgIdx] || '');
+        if (rawImgs) {
+          photosToDelete.push(...extractDriveFileIds([row]));
+        }
+      }
+    }
+  }
+
+  if (matchedIndices.length === 0) {
+    return { success: false, message: `ไม่พบรายการละเมิดของมิเตอร์ ${input.meterPeaNo}` };
+  }
+
+  // Delete rows in descending order
+  const requests = matchedIndices.sort((a, b) => b - a).map(rowIndex => ({
+    deleteDimension: {
+      range: {
+        sheetId: vSheet.properties!.sheetId!,
+        dimension: 'ROWS' as const,
+        startIndex: rowIndex,
+        endIndex: rowIndex + 1,
+      },
+    },
+  }));
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: { requests },
+  });
+
+  // Clean up photos from Drive asynchronously
+  if (photosToDelete.length > 0) {
+    deleteImagesBatch(photosToDelete, drive, 5).catch(err => {
+      console.warn('[deleteMeterViolation] Photo deletion warning:', err);
+    });
+  }
+
+  return {
+    success: true,
+    message: `ลบรายการละเมิดมิเตอร์ ${input.meterPeaNo} เรียบร้อยแล้ว`,
   };
 }
 

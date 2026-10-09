@@ -34,7 +34,10 @@ import {
   Camera,
   ChevronDown,
   ChevronUp,
+  AlertOctagon,
+  ShieldCheck,
 } from 'lucide-react';
+import { MeterViolationModal } from '@/components/MeterViolationModal';
 
 // Dynamically import Leaflet map with SSR disabled
 const TransformerMap = dynamic(
@@ -84,6 +87,8 @@ export default function FieldInspectionPage() {
   const [transformers, setTransformers] = useState<TransformerWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTransformer, setSelectedTransformer] = useState<TransformerWithStatus | null>(null);
+  const [fieldViolationModal, setFieldViolationModal] = useState<TransformerWithStatus | null>(null);
+  const [fieldViolationMode, setFieldViolationMode] = useState<'VIOLATION' | 'CLEARED'>('VIOLATION');
   const [filterMode, setFilterMode] = useState<'ALL' | 'RED' | 'ORANGE'>('RED');
   const [mobileTab, setMobileTab] = useState<'map' | 'form'>('map');
   const [offlineCount, setOfflineCount] = useState<number>(0);
@@ -834,6 +839,38 @@ export default function FieldInspectionPage() {
                             : 'ตรวจแล้ว'}
                         </span>
                       </span>
+
+                      {(() => {
+                        const vList = selectedTransformer.violations || [];
+                        const activeViolations = vList.filter(v => v.status !== 'CLEARED');
+                        const isCleared = !activeViolations.length && (vList.some(v => v.status === 'CLEARED') || selectedTransformer.isAuditCleared);
+
+                        if (activeViolations.length > 0) {
+                          return (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] sm:text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs"
+                              title={`ตรวจพบการละเมิดมิเตอร์: ${activeViolations.map(v => `${v.meterPeaNo} (${v.violationType})`).join(', ')}`}
+                            >
+                              <AlertOctagon className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                              <span>พบละเมิด ({activeViolations.length})</span>
+                            </span>
+                          );
+                        }
+
+                        if (isCleared) {
+                          return (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] sm:text-[9.5px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
+                              title={`ตรวจสอบมิเตอร์แล้ว: ไม่พบการละเมิด (${selectedTransformer.latestAuditClearedDate || 'ปกติ'})`}
+                            >
+                              <ShieldCheck className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                              <span>ตรวจแล้วปกติ</span>
+                            </span>
+                          );
+                        }
+
+                        return null;
+                      })()}
                     </div>
 
                     {/* Row 2: Specs */}
@@ -860,6 +897,32 @@ export default function FieldInspectionPage() {
 
                   {/* Right Column: Icon Action Buttons */}
                   <div className="flex items-center gap-1.5 shrink-0 self-center">
+                    {/* Log Meter Violation / Audit Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const vList = selectedTransformer.violations || [];
+                        const hasActive = vList.some(v => v.status !== 'CLEARED');
+                        setFieldViolationMode(hasActive ? 'VIOLATION' : 'CLEARED');
+                        setFieldViolationModal(selectedTransformer);
+                      }}
+                      aria-label="บันทึกผลตรวจสอบมิเตอร์ / ละเมิด"
+                      title="บันทึกผลตรวจสอบมิเตอร์ / ละเมิด"
+                      className={`w-9 h-9 sm:w-9.5 sm:h-9.5 rounded-xl border flex items-center justify-center shadow-2xs hover:shadow transition-all active:scale-95 ${
+                        (selectedTransformer.violations?.some(v => v.status === 'CLEARED') || selectedTransformer.isAuditCleared) &&
+                        !selectedTransformer.violations?.some(v => v.status !== 'CLEARED')
+                          ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-700'
+                          : 'bg-rose-50 hover:bg-rose-100 border-rose-300 text-rose-700'
+                      }`}
+                    >
+                      {(selectedTransformer.violations?.some(v => v.status === 'CLEARED') || selectedTransformer.isAuditCleared) &&
+                      !selectedTransformer.violations?.some(v => v.status !== 'CLEARED') ? (
+                        <ShieldCheck className="w-4.5 h-4.5 text-emerald-600" strokeWidth={2.2} />
+                      ) : (
+                        <AlertOctagon className="w-4.5 h-4.5 text-rose-600" strokeWidth={2.2} />
+                      )}
+                    </button>
+
                     {/* GPS Navigation Icon Button */}
                     {selectedTransformer.lat && selectedTransformer.lng ? (
                       <a
@@ -945,6 +1008,124 @@ export default function FieldInspectionPage() {
             </div>
 
             <div className="p-3.5 sm:p-4 space-y-4 text-xs">
+              {/* Violation Alert / Action Banner */}
+              {selectedTransformer && (() => {
+                const vList = selectedTransformer.violations || [];
+                const activeViolations = vList.filter(v => v.status !== 'CLEARED');
+                const hasActive = activeViolations.length > 0;
+                const isCleared =
+                  !hasActive &&
+                  (vList.some(v => v.status === 'CLEARED') || Boolean(selectedTransformer.isAuditCleared));
+
+                if (hasActive) {
+                  return (
+                    <div className="p-3 rounded-2xl border border-rose-200/90 bg-rose-50 text-rose-900 flex items-center justify-between gap-2.5 transition-all">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                          <AlertOctagon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs block truncate text-rose-800">
+                            🚨 พบการละเมิดมิเตอร์ ({activeViolations.length} รายการ)
+                          </span>
+                          <span className="text-[10px] text-rose-600/90 block truncate">
+                            {activeViolations.map(v => `${v.meterPeaNo} (${v.violationType})`).join(', ')}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFieldViolationMode('VIOLATION');
+                          setFieldViolationModal(selectedTransformer);
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-white border border-rose-300 text-rose-700 hover:bg-rose-100/50 font-bold text-[11px] shrink-0 shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+                      >
+                        <AlertOctagon className="w-3 h-3 text-rose-600" />
+                        <span>ดู/บันทึก</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                if (isCleared) {
+                  return (
+                    <div className="p-3 rounded-2xl border border-emerald-200/90 bg-emerald-50 text-emerald-900 flex items-center justify-between gap-2.5 transition-all">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs block truncate text-emerald-800">
+                            🛡️ ผลตรวจมิเตอร์: ปกติ (พ้นข้อสงสัย)
+                          </span>
+                          <span className="text-[10px] text-emerald-600/90 block truncate">
+                            {selectedTransformer.latestAuditClearedDate
+                              ? `ตรวจสอบแล้วเมื่อ ${selectedTransformer.latestAuditClearedDate} (ไม่พบละเมิด)`
+                              : 'ตรวจสอบมิเตอร์แล้วทุกราย ไม่พบการละเมิด'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFieldViolationMode('CLEARED');
+                          setFieldViolationModal(selectedTransformer);
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-100/50 font-bold text-[11px] shrink-0 shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+                      >
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        <span>ดูบันทึก</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="p-3 rounded-2xl border border-slate-200/80 bg-slate-50 text-slate-700 flex items-center justify-between gap-2.5 transition-all">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-xl bg-slate-200/70 text-slate-500 flex items-center justify-center shrink-0">
+                        <AlertOctagon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-bold text-xs block truncate text-slate-800">
+                          สถานะมิเตอร์ผู้ใช้ไฟ
+                        </span>
+                        <span className="text-[10px] text-slate-500 block truncate">
+                          ยังไม่มีบันทึกผลตรวจสอบมิเตอร์
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFieldViolationMode('CLEARED');
+                          setFieldViolationModal(selectedTransformer);
+                        }}
+                        className="px-2 py-1 rounded-xl bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-bold text-[10.5px] shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+                        title="บันทึกผลตรวจสอบว่าปกติ (ไม่พบละเมิด)"
+                      >
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        <span>ตรวจแล้วปกติ</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFieldViolationMode('VIOLATION');
+                          setFieldViolationModal(selectedTransformer);
+                        }}
+                        className="px-2 py-1 rounded-xl bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-[10.5px] shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+                        title="บันทึกตรวจพบการละเมิดมิเตอร์"
+                      >
+                        <AlertOctagon className="w-3 h-3 text-rose-600" />
+                        <span>บันทึกละเมิด</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* === Section 1: ข้อมูลทั่วไป === */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between pt-0.5">
@@ -1820,6 +2001,19 @@ export default function FieldInspectionPage() {
           </div>
         </div>
       </div>
+
+      {/* Meter Violation Modal */}
+      {fieldViolationModal && (
+        <MeterViolationModal
+          isOpen={Boolean(fieldViolationModal)}
+          onClose={() => setFieldViolationModal(null)}
+          onSuccess={async () => {
+            await fetchTransformers();
+          }}
+          transformer={fieldViolationModal}
+          initialAuditType={fieldViolationMode}
+        />
+      )}
     </div>
   );
 }
