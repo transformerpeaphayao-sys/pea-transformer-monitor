@@ -21,8 +21,10 @@ import {
   Check,
   Settings2,
   Plus,
+  Pencil,
+  Save,
 } from 'lucide-react';
-import { TransformerWithStatus, getErrorMessage } from '@/lib/domain/types';
+import { TransformerWithStatus, MeterViolation, getErrorMessage } from '@/lib/domain/types';
 
 interface MeterViolationModalProps {
   isOpen: boolean;
@@ -30,6 +32,7 @@ interface MeterViolationModalProps {
   onSuccess: () => void;
   transformer: TransformerWithStatus;
   initialAuditType?: 'VIOLATION' | 'CLEARED';
+  editingViolation?: MeterViolation | null;
 }
 
 const VIOLATION_TYPES = [
@@ -55,46 +58,100 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
   onSuccess,
   transformer,
   initialAuditType = 'VIOLATION',
+  editingViolation = null,
 }) => {
   // Format today's date DD/MM/YYYY
   const now = new Date();
   const defaultDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
   const defaultTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  const [auditMode, setAuditMode] = useState<'VIOLATION' | 'CLEARED'>(initialAuditType);
+  const [auditMode, setAuditMode] = useState<'VIOLATION' | 'CLEARED'>(
+    editingViolation ? (editingViolation.status === 'CLEARED' ? 'CLEARED' : 'VIOLATION') : initialAuditType
+  );
   const [meterPeaNo, setMeterPeaNo] = useState(
-    initialAuditType === 'CLEARED' ? 'ตรวจสอบมิเตอร์ไม่พบการละเมิด' : ''
+    editingViolation
+      ? editingViolation.meterPeaNo
+      : initialAuditType === 'CLEARED'
+      ? 'ตรวจสอบมิเตอร์ไม่พบการละเมิด'
+      : ''
   );
   const [consumerName, setConsumerName] = useState(
-    initialAuditType === 'CLEARED' ? 'ผู้ใช้ไฟทุกรายที่เกาะหม้อแปลง' : ''
+    editingViolation
+      ? editingViolation.consumerName || ''
+      : initialAuditType === 'CLEARED'
+      ? 'ผู้ใช้ไฟทุกรายที่เกาะหม้อแปลง'
+      : ''
   );
-  const [location, setLocation] = useState(transformer.location || '');
+  const [location, setLocation] = useState(
+    editingViolation?.location || transformer.location || ''
+  );
   const [violationTypes, setViolationTypes] = useState<string[]>(VIOLATION_TYPES);
   const [isManagingTypes, setIsManagingTypes] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [newTypeInput, setNewTypeInput] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [violationType, setViolationType] = useState(
-    initialAuditType === 'CLEARED'
+    editingViolation
+      ? editingViolation.violationType
+      : initialAuditType === 'CLEARED'
       ? 'ปกติ ไม่พบการกระทำผิดหรือลักใช้ไฟ'
       : VIOLATION_TYPES[0]
   );
-  const [detectedDate, setDetectedDate] = useState(defaultDate);
-  const [detectedTime, setDetectedTime] = useState(defaultTime);
-  const [inspectorName, setInspectorName] = useState('');
+  const [detectedDate, setDetectedDate] = useState(editingViolation?.detectedDate || defaultDate);
+  const [detectedTime, setDetectedTime] = useState(editingViolation?.detectedTime || defaultTime);
+  const [inspectorName, setInspectorName] = useState(editingViolation?.inspectorName || '');
   const [status, setStatus] = useState<'INVESTIGATING' | 'LEGAL_ACTION' | 'RESOLVED' | 'PENDING' | 'CLEARED'>(
-    initialAuditType === 'CLEARED' ? 'CLEARED' : 'INVESTIGATING'
+    editingViolation?.status || (initialAuditType === 'CLEARED' ? 'CLEARED' : 'INVESTIGATING')
   );
   const [remark, setRemark] = useState(
-    initialAuditType === 'CLEARED'
+    editingViolation
+      ? editingViolation.remark || ''
+      : initialAuditType === 'CLEARED'
       ? 'ลงพื้นที่ตรวจสอบมิเตอร์ของผู้ใช้ไฟทุกรายแล้ว สภาพสมบูรณ์ กลไกและซีลปกติ ไม่พบการดัดแปลงหรือลักใช้ไฟ (โหลดสูงจากพฤติกรรมผู้ใช้ไฟจริง)'
       : ''
   );
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>(editingViolation?.imageUrls || []);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (editingViolation) {
+      const isCl = editingViolation.status === 'CLEARED';
+      setAuditMode(isCl ? 'CLEARED' : 'VIOLATION');
+      setMeterPeaNo(editingViolation.meterPeaNo);
+      setConsumerName(editingViolation.consumerName || '');
+      setLocation(editingViolation.location || transformer.location || '');
+      setViolationType(editingViolation.violationType);
+      setDetectedDate(editingViolation.detectedDate);
+      setDetectedTime(editingViolation.detectedTime || defaultTime);
+      setInspectorName(editingViolation.inspectorName || '');
+      setStatus(editingViolation.status);
+      setRemark(editingViolation.remark || '');
+      setImages(editingViolation.imageUrls || []);
+    } else {
+      setAuditMode(initialAuditType);
+      setMeterPeaNo(initialAuditType === 'CLEARED' ? 'ตรวจสอบมิเตอร์ไม่พบการละเมิด' : '');
+      setConsumerName(initialAuditType === 'CLEARED' ? 'ผู้ใช้ไฟทุกรายที่เกาะหม้อแปลง' : '');
+      setLocation(transformer.location || '');
+      setViolationType(
+        initialAuditType === 'CLEARED'
+          ? 'ปกติ ไม่พบการกระทำผิดหรือลักใช้ไฟ'
+          : (violationTypes[0] || VIOLATION_TYPES[0])
+      );
+      setDetectedDate(defaultDate);
+      setDetectedTime(defaultTime);
+      setInspectorName('');
+      setStatus(initialAuditType === 'CLEARED' ? 'CLEARED' : 'INVESTIGATING');
+      setRemark(
+        initialAuditType === 'CLEARED'
+          ? 'ลงพื้นที่ตรวจสอบมิเตอร์ของผู้ใช้ไฟทุกรายแล้ว สภาพสมบูรณ์ กลไกและซีลปกติ ไม่พบการดัดแปลงหรือลักใช้ไฟ (โหลดสูงจากพฤติกรรมผู้ใช้ไฟจริง)'
+          : ''
+      );
+      setImages([]);
+    }
+  }, [editingViolation, initialAuditType, transformer.location]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -252,13 +309,15 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
     }
 
     setLoading(true);
+    const isEditing = Boolean(editingViolation);
     try {
       const res = await fetch('/api/violations', {
-        method: 'POST',
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transformerPeaNo: transformer.peaNo,
           meterPeaNo: cleanMeter,
+          originalMeterPeaNo: editingViolation?.meterPeaNo,
           consumerName: consumerName.trim(),
           location: location.trim(),
           violationType,
@@ -278,7 +337,9 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
 
       setSuccessMsg(
         data.message ||
-          (auditMode === 'CLEARED'
+          (isEditing
+            ? `แก้ไขข้อมูลการตรวจมิเตอร์ ${cleanMeter} เรียบร้อยแล้ว`
+            : auditMode === 'CLEARED'
             ? 'บันทึกผลตรวจสอบมิเตอร์: ปกติ (ไม่พบละเมิด) เรียบร้อยแล้ว'
             : `บันทึกข้อมูลการละเมิดมิเตอร์ ${cleanMeter} เรียบร้อยแล้ว`)
       );
@@ -300,7 +361,9 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
         {/* Minimal Hairline Accent Bar */}
         <div
           className={`h-1 w-full transition-colors duration-200 ${
-            auditMode === 'CLEARED'
+            editingViolation
+              ? 'bg-gradient-to-r from-blue-500 to-indigo-600'
+              : auditMode === 'CLEARED'
               ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
               : 'bg-gradient-to-r from-rose-500 to-red-600'
           }`}
@@ -311,12 +374,16 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs transition-colors ${
-                auditMode === 'CLEARED'
+                editingViolation
+                  ? 'bg-blue-50 border-blue-200/80 text-blue-600'
+                  : auditMode === 'CLEARED'
                   ? 'bg-emerald-50 border-emerald-200/80 text-emerald-600'
                   : 'bg-rose-50 border-rose-200/80 text-rose-600'
               }`}
             >
-              {auditMode === 'CLEARED' ? (
+              {editingViolation ? (
+                <Pencil className="w-4.5 h-4.5 text-blue-600" />
+              ) : auditMode === 'CLEARED' ? (
                 <ShieldCheck className="w-4.5 h-4.5 text-emerald-600" />
               ) : (
                 <AlertOctagon className="w-4.5 h-4.5 text-rose-600" />
@@ -326,13 +393,17 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-tight truncate">
-                  {auditMode === 'CLEARED'
+                  {editingViolation
+                    ? 'แก้ไขข้อมูลการตรวจสอบมิเตอร์'
+                    : auditMode === 'CLEARED'
                     ? 'บันทึกผลตรวจสอบมิเตอร์: ปกติ (Cleared)'
                     : 'บันทึกตรวจพบการละเมิดมิเตอร์'}
                 </h3>
                 <span
                   className={`px-2 py-0.5 rounded-lg text-[10.5px] font-mono font-bold border tabular-nums shrink-0 ${
-                    auditMode === 'CLEARED'
+                    editingViolation
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : auditMode === 'CLEARED'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}
@@ -341,10 +412,16 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium leading-none mt-1 truncate">
-                หม้อแปลง {transformer.kva} kVA ({transformer.system}P) •{' '}
-                {auditMode === 'CLEARED'
-                  ? 'ยืนยันผลการลงพื้นที่ตรวจสอบมิเตอร์แล้วพ้นข้อสงสัย'
-                  : 'บันทึกการลักใช้ไฟ/ดัดแปลงมิเตอร์เพื่อดำเนินคดี'}
+                {editingViolation ? (
+                  <>หม้อแปลง {transformer.kva} kVA ({transformer.system}P) • รหัสมิเตอร์เดิม {editingViolation.meterPeaNo}</>
+                ) : (
+                  <>
+                    หม้อแปลง {transformer.kva} kVA ({transformer.system}P) •{' '}
+                    {auditMode === 'CLEARED'
+                      ? 'ยืนยันผลการลงพื้นที่ตรวจสอบมิเตอร์แล้วพ้นข้อสงสัย'
+                      : 'บันทึกการลักใช้ไฟ/ดัดแปลงมิเตอร์เพื่อดำเนินคดี'}
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -838,7 +915,9 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
             onClick={handleSubmit}
             disabled={loading || !meterPeaNo.trim()}
             className={`px-5 py-2.5 rounded-xl text-white text-xs font-bold flex items-center gap-2 shadow-xs hover:shadow transition-all active:scale-95 disabled:opacity-50 ${
-              auditMode === 'CLEARED'
+              editingViolation
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : auditMode === 'CLEARED'
                 ? 'bg-emerald-600 hover:bg-emerald-700'
                 : 'bg-rose-600 hover:bg-rose-700'
             }`}
@@ -847,6 +926,11 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>กำลังบันทึกข้อมูล...</span>
+              </>
+            ) : editingViolation ? (
+              <>
+                <Save className="w-4 h-4 text-white" />
+                <span>บันทึกการแก้ไขข้อมูล</span>
               </>
             ) : auditMode === 'CLEARED' ? (
               <>

@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import {
   createMeterViolation,
+  updateMeterViolation,
   deleteMeterViolation,
   updateMeterViolationStatus,
   getTransformersWithStatus,
 } from '@/lib/adapters/google-sheets';
 import {
   CreateViolationInputSchema,
+  UpdateViolationInputSchema,
   DeleteViolationInputSchema,
   UpdateViolationStatusInputSchema,
   getErrorMessage,
@@ -73,6 +75,39 @@ export async function POST(req: Request) {
       {
         success: false,
         error: getErrorMessage(error) || 'เกิดข้อผิดพลาดในการบันทึกการละเมิดมิเตอร์',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const rawBody = await req.json();
+    const parsed = UpdateViolationInputSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      const errorMsg = parsed.error.issues.map((i) => i.message).join(', ');
+      return NextResponse.json({ success: false, error: errorMsg }, { status: 400 });
+    }
+
+    const result = await updateMeterViolation(parsed.data);
+
+    if (!result.success) {
+      return NextResponse.json({ success: false, error: result.message }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+      data: result.violation,
+    });
+  } catch (error: unknown) {
+    console.error('Error in PUT /api/violations:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: getErrorMessage(error) || 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลการละเมิดมิเตอร์',
       },
       { status: 500 }
     );

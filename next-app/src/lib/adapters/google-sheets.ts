@@ -16,6 +16,7 @@ import {
   CreateViolationInput,
   DeleteViolationInput,
   UpdateViolationStatusInput,
+  UpdateViolationInput,
   SheetRow,
   getErrorMessage,
 } from '../domain/types';
@@ -1695,6 +1696,120 @@ export async function updateMeterViolationStatus(
   }
 
   return { success: false, message: `ไม่พบข้อมูลมิเตอร์ ${input.meterPeaNo}` };
+}
+
+/**
+ * Updates full information of an existing meter violation.
+ */
+export async function updateMeterViolation(
+  input: UpdateViolationInput
+): Promise<{ success: boolean; message: string; violation: MeterViolation }> {
+  const auth = getAuth();
+  const sheets = google.sheets({ version: 'v4', auth });
+  const drive = google.drive({ version: 'v3', auth });
+  const spreadsheetId = await getSpreadsheetId(sheets, drive);
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'Violations!A1:Z',
+  });
+  const rows = res.data.values || [];
+  if (rows.length <= 1) {
+    throw new Error('ไม่พบตารางข้อมูลการละเมิด');
+  }
+
+  const headers = rows[0].map(h => String(h).trim());
+  const peaIdx = headers.indexOf('PEANO หม้อแปลง') !== -1 ? headers.indexOf('PEANO หม้อแปลง') : 0;
+  const meterIdx = headers.indexOf('PEA NO มิเตอร์') !== -1 ? headers.indexOf('PEA NO มิเตอร์') : 1;
+  const imgIdx = headers.indexOf('รูปถ่ายหลักฐาน') !== -1 ? headers.indexOf('รูปถ่ายหลักฐาน') : 9;
+
+  const targetPea = input.transformerPeaNo.trim().toLowerCase();
+  const targetMeter = (input.originalMeterPeaNo || input.meterPeaNo).trim().toLowerCase();
+
+  let targetRowIndex = -1;
+  let existingRow: any[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const pea = String(row[peaIdx] || '').trim().toLowerCase();
+    const meter = String(row[meterIdx] || '').trim().toLowerCase();
+    if (pea === targetPea && meter === targetMeter) {
+      targetRowIndex = i + 1; // 1-indexed for Sheets
+      existingRow = row;
+      break;
+    }
+  }
+
+  if (targetRowIndex === -1) {
+    throw new Error(`ไม่พบข้อมูลมิเตอร์ ${input.originalMeterPeaNo || input.meterPeaNo}`);
+  }
+
+  // Handle images: preserve existing valid Drive URLs, and upload any new base64 images
+  let finalImgUrls: string[] = [];
+  if (input.images && input.images.length > 0) {
+    const uploadPromises = input.images.map(async (img, i) => {
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+      } else if (img.startsWith('data:image') || img.length > 100) {
+        const cleanDate = (input.detectedDate || '').replace(/[-/]/g, '');
+        const cleanTime = (input.detectedTime || '').replace(/[:]/g, '');
+        const fileName = `VIOLATION_${input.transformerPeaNo}_${input.meterPeaNo}_${cleanDate}_${cleanTime}_edit_${i + 1}.jpg`;
+        return await uploadImageToDrive(img, fileName);
+      }
+      return null;
+    });
+
+    const results = await Promise.all(uploadPromises);
+    finalImgUrls = results.filter((url): url is string => Boolean(url && url.startsWith('http')));
+  } else if (existingRow[imgIdx]) {
+    finalImgUrls = String(existingRow[imgIdx]).split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  const imgUrlString = finalImgUrls.join(', ');
+  const timestamp = new Date().toISOString();
+
+  const updatedRow: SheetRow = [
+    input.transformerPeaNo.trim(),
+    input.meterPeaNo.trim(),
+    input.consumerName?.trim() || '',
+    input.violationType.trim(),
+    input.detectedDate.trim(),
+    input.detectedTime?.trim() || '',
+    input.inspectorName?.trim() || '',
+    input.status || 'INVESTIGATING',
+    input.remark?.trim() || '',
+    imgUrlString,
+    timestamp,
+  ];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `Violations!A${targetRowIndex}:K${targetRowIndex}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [updatedRow],
+    },
+  });
+
+  const violation: MeterViolation = {
+    transformerPeaNo: input.transformerPeaNo.trim(),
+    meterPeaNo: input.meterPeaNo.trim(),
+    consumerName: input.consumerName?.trim() || '',
+    location: input.location?.trim() || '',
+    violationType: input.violationType.trim(),
+    detectedDate: input.detectedDate.trim(),
+    detectedTime: input.detectedTime?.trim() || '',
+    inspectorName: input.inspectorName?.trim() || '',
+    status: input.status || 'INVESTIGATING',
+    remark: input.remark?.trim() || '',
+    imageUrls: finalImgUrls,
+    createdAt: timestamp,
+  };
+
+  return {
+    success: true,
+    message: `อัปเดตข้อมูลการตรวจมิเตอร์ ${input.meterPeaNo} สำเร็จ`,
+    violation,
+  };
 }
 
 /**

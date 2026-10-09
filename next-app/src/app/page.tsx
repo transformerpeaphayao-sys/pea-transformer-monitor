@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { TransformerWithStatus, MeasurementSession, FeederRecord, getErrorMessage } from '@/lib/domain/types';
+import { TransformerWithStatus, MeasurementSession, FeederRecord, MeterViolation, getErrorMessage } from '@/lib/domain/types';
 import {
   calculateEngineeringStatus,
   safeFloat,
@@ -57,6 +57,9 @@ import {
   ShieldAlert,
   ShieldCheck,
   BarChart2,
+  Pencil,
+  UserCheck,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AiReportViewer } from '@/components/AiReportViewer';
@@ -111,6 +114,7 @@ export default function BackofficeDashboard() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [violationModalTransformer, setViolationModalTransformer] = useState<TransformerWithStatus | null>(null);
   const [violationModalMode, setViolationModalMode] = useState<'VIOLATION' | 'CLEARED'>('VIOLATION');
+  const [editingViolation, setEditingViolation] = useState<MeterViolation | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
   
   // Delete Transformer Dialog State
@@ -363,6 +367,13 @@ export default function BackofficeDashboard() {
     } finally {
       setSubmittingTaskPea(null);
     }
+  };
+
+  const handleEditViolation = (v: MeterViolation) => {
+    if (!viewingTransformer) return;
+    setEditingViolation(v);
+    setViolationModalMode(v.status === 'CLEARED' ? 'CLEARED' : 'VIOLATION');
+    setViolationModalTransformer(viewingTransformer);
   };
 
   const handleDeleteViolation = async (transformerPeaNo: string, meterPeaNo: string) => {
@@ -3342,92 +3353,123 @@ export default function BackofficeDashboard() {
                 </div>
 
                 {viewingTransformer.violations && viewingTransformer.violations.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
                     {viewingTransformer.violations.map((v, vIdx) => {
                       const isLegal = v.status === 'LEGAL_ACTION';
                       const isResolved = v.status === 'RESOLVED';
                       const isCleared = v.status === 'CLEARED';
+                      const isPending = v.status === 'PENDING';
 
                       return (
                         <div
                           key={`${v.meterPeaNo}_${vIdx}`}
-                          className={`p-4 rounded-2xl border shadow-2xs space-y-3 ${
+                          className={`p-3 sm:p-3.5 rounded-xl border shadow-xs hover:shadow-sm transition-all space-y-2.5 ${
                             isCleared
-                              ? 'bg-gradient-to-b from-emerald-50/50 via-white to-slate-50/50 border-emerald-200/90'
-                              : 'bg-gradient-to-b from-rose-50/40 via-white to-slate-50/50 border-rose-200/80'
+                              ? 'bg-gradient-to-br from-emerald-50/40 via-white to-slate-50/60 border-emerald-200/80 hover:border-emerald-300'
+                              : 'bg-gradient-to-br from-rose-50/30 via-white to-slate-50/60 border-rose-200/80 hover:border-rose-300'
                           }`}
                         >
+                          {/* Card Header: PEA No, Badge, and Action Buttons (Edit / Delete) */}
                           <div className="flex items-start justify-between gap-2">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm font-bold text-slate-900">
+                            <div className="space-y-0.5 min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono text-xs sm:text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1">
                                   {isCleared ? '🛡️ ' : ''}PEA {v.meterPeaNo}
                                 </span>
                                 <span
-                                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+                                  className={`px-2 py-0.5 rounded-full text-[10.5px] font-semibold inline-flex items-center gap-1 border shadow-2xs ${
                                     isCleared
-                                      ? 'bg-emerald-100 text-emerald-800'
-                                      : 'bg-rose-100 text-rose-800'
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200/90'
+                                      : 'bg-rose-50 text-rose-800 border-rose-200/90'
                                   }`}
                                 >
-                                  {v.violationType}
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                      isCleared ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
+                                    }`}
+                                  />
+                                  <span className="truncate max-w-[140px] sm:max-w-[180px]">{v.violationType}</span>
                                 </span>
                               </div>
-                              <p className="text-xs text-slate-600">
-                                <span className="font-semibold text-slate-700">ผู้ใช้ไฟ:</span> {v.consumerName || '-'}
-                                {v.location && <span className="text-slate-400"> • {v.location}</span>}
+                              <p className="text-xs text-slate-600 flex items-center gap-1 mt-0.5 truncate">
+                                <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span className="font-semibold text-slate-700">ผู้ใช้ไฟ:</span>
+                                <span className="truncate">{v.consumerName || '-'}</span>
+                                {v.location && <span className="text-slate-400 truncate">• {v.location}</span>}
                               </p>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteViolation(v.transformerPeaNo, v.meterPeaNo)}
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="ลบรายการนี้"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {/* Action Buttons: Edit & Delete */}
+                            <div className="flex items-center gap-0.5 shrink-0 bg-slate-100/70 p-0.5 rounded-lg border border-slate-200/60">
+                              <button
+                                type="button"
+                                onClick={() => handleEditViolation(v)}
+                                className="p-1 sm:p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-md transition-all shadow-2xs active:scale-95"
+                                title="แก้ไขข้อมูลมิเตอร์นี้"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteViolation(v.transformerPeaNo, v.meterPeaNo)}
+                                className="p-1 sm:p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-md transition-all shadow-2xs active:scale-95"
+                                title="ลบรายการนี้"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-[11px] bg-white p-2.5 rounded-xl border border-slate-100">
-                            <div>
-                              <span className="text-slate-400 block">ตรวจพบเมื่อ</span>
-                              <span className="font-medium text-slate-700 font-mono">
+                          {/* Compact Meta Row: Detected Date/Time & Inspector */}
+                          <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-white/90 rounded-lg border border-slate-100 text-[11px] shadow-2xs">
+                            <div className="flex items-center gap-1.5 text-slate-600 min-w-0">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="text-slate-400">ตรวจพบ:</span>
+                              <span className="font-semibold font-mono text-slate-700 truncate">
                                 {v.detectedDate} {v.detectedTime}
                               </span>
                             </div>
-                            <div>
-                              <span className="text-slate-400 block">ผู้ตรวจพบ</span>
-                              <span className="font-medium text-slate-700">
+                            <div className="flex items-center gap-1.5 text-slate-600 shrink-0">
+                              <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="text-slate-400">ผู้ตรวจ:</span>
+                              <span className="font-semibold text-slate-700 truncate max-w-[110px] sm:max-w-[140px]">
                                 {v.inspectorName || '-'}
                               </span>
                             </div>
                           </div>
 
+                          {/* Remarks / Details if available */}
                           {v.remark && (
-                            <div className={`text-xs p-2.5 rounded-xl border ${
-                              isCleared
-                                ? 'bg-emerald-50/60 border-emerald-200/70 text-emerald-900'
-                                : 'bg-amber-50/60 border-amber-200/60 text-slate-600'
-                            }`}>
-                              <span className={`font-semibold block text-[11px] ${isCleared ? 'text-emerald-900' : 'text-amber-900'}`}>
-                                {isCleared ? 'ผลการตรวจสอบ:' : 'รายละเอียด / พฤติการณ์:'}
-                              </span>
-                              <p className="mt-0.5">{v.remark}</p>
+                            <div
+                              className={`text-[11px] px-2.5 py-1.5 rounded-lg border leading-relaxed flex items-start gap-1.5 ${
+                                isCleared
+                                  ? 'bg-emerald-50/50 border-emerald-100/80 text-emerald-900'
+                                  : 'bg-amber-50/50 border-amber-100/80 text-slate-700'
+                              }`}
+                            >
+                              <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                              <div className="min-w-0 flex-1">
+                                <span className="font-semibold">{isCleared ? 'ผลตรวจ: ' : 'หมายเหตุ: '}</span>
+                                <span>{v.remark}</span>
+                              </div>
                             </div>
                           )}
 
+                          {/* Evidence Photos Thumbnail Strip */}
                           {v.imageUrls && v.imageUrls.length > 0 && (
-                            <div className="space-y-1.5">
-                              <span className="text-[11px] font-semibold text-slate-600 block">รูปถ่ายหลักฐาน ({v.imageUrls.length} รูป):</span>
-                              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                            <div className="flex items-center gap-2 pt-0.5">
+                              <span className="text-[10.5px] font-semibold text-slate-500 shrink-0">
+                                รูปถ่าย ({v.imageUrls.length}):
+                              </span>
+                              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                                 {v.imageUrls.map((imgUrl, imgIdx) => (
                                   <a
                                     key={imgIdx}
                                     href={imgUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-100 block hover:opacity-80 transition-opacity"
+                                    className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200/90 shrink-0 bg-slate-100 hover:ring-2 hover:ring-purple-400 transition-all shadow-2xs block"
+                                    title="คลิกเพื่อดูรูปขนาดเต็ม"
                                   >
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={imgUrl} alt="หลักฐาน" className="w-full h-full object-cover" />
@@ -3437,27 +3479,33 @@ export default function BackofficeDashboard() {
                             </div>
                           )}
 
-                          <div className="pt-1 flex items-center justify-between gap-2 border-t border-slate-100">
+                          {/* Status Dropdown Footer */}
+                          <div className="pt-1.5 flex items-center justify-between gap-2 border-t border-slate-100/80">
                             <span className="text-[11px] text-slate-500 font-medium">สถานะ:</span>
-                            <select
-                              value={v.status || (isCleared ? 'CLEARED' : 'INVESTIGATING')}
-                              onChange={(e) => handleUpdateViolationStatus(v.transformerPeaNo, v.meterPeaNo, e.target.value as any)}
-                              className={`text-xs font-bold rounded-lg px-2.5 py-1 border transition-all cursor-pointer ${
-                                isCleared
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : isLegal
-                                  ? 'bg-rose-50 text-rose-700 border-rose-300'
-                                  : isResolved
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                  : 'bg-amber-50 text-amber-700 border-amber-300'
-                              }`}
-                            >
-                              <option value="INVESTIGATING">กำลังตรวจสอบ</option>
-                              <option value="LEGAL_ACTION">ส่งฝ่ายกฎหมาย/ดำเนินคดี</option>
-                              <option value="RESOLVED">เปรียบเทียบปรับแล้ว</option>
-                              <option value="PENDING">รอตรวจซ้ำ</option>
-                              <option value="CLEARED">🛡️ ตรวจแล้วปกติ (Cleared)</option>
-                            </select>
+                            <div className="relative">
+                              <select
+                                value={v.status || (isCleared ? 'CLEARED' : 'INVESTIGATING')}
+                                onChange={(e) => handleUpdateViolationStatus(v.transformerPeaNo, v.meterPeaNo, e.target.value as any)}
+                                className={`text-[11px] font-bold rounded-lg pl-2.5 pr-6 py-1 border transition-all cursor-pointer shadow-2xs appearance-none focus:outline-none focus:ring-1 focus:ring-purple-500 ${
+                                  isCleared
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100/60'
+                                    : isLegal
+                                    ? 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100/60'
+                                    : isResolved
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100/60'
+                                    : isPending
+                                    ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100/60'
+                                    : 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100/60'
+                                }`}
+                              >
+                                <option value="INVESTIGATING">กำลังตรวจสอบ</option>
+                                <option value="LEGAL_ACTION">ส่งฝ่ายกฎหมาย/ดำเนินคดี</option>
+                                <option value="RESOLVED">เปรียบเทียบปรับแล้ว</option>
+                                <option value="PENDING">รอตรวจซ้ำ</option>
+                                <option value="CLEARED">🛡️ ตรวจแล้วปกติ (Cleared)</option>
+                              </select>
+                              <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2" />
+                            </div>
                           </div>
                         </div>
                       );
@@ -4525,12 +4573,16 @@ export default function BackofficeDashboard() {
       {violationModalTransformer && (
         <MeterViolationModal
           isOpen={Boolean(violationModalTransformer)}
-          onClose={() => setViolationModalTransformer(null)}
+          onClose={() => {
+            setViolationModalTransformer(null);
+            setEditingViolation(null);
+          }}
           onSuccess={async () => {
             await fetchTransformers();
           }}
           transformer={violationModalTransformer}
           initialAuditType={violationModalMode}
+          editingViolation={editingViolation}
         />
       )}
     </div>

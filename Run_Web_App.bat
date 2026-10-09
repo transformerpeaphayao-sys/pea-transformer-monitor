@@ -9,7 +9,11 @@ echo.
 
 REM 1. Start Next.js Server on Port 3000
 echo [*] Starting Next.js Server on Port 3000...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -WindowStyle Minimized -FilePath 'node.exe' -ArgumentList ('-e \"const fs=require(''fs''); let p=''' + '%~dp0next-app'.Replace('\', '/') + '''; try{if(fs.lstatSync(p).isSymbolicLink()){p=fs.readlinkSync(p);}}catch(e){} process.chdir(p); require(p+''/node_modules/next/dist/bin/next'');\" start -p 3000')"
+if exist "C:\Users\admin\OneDrive\5DD3~1\GitHub\PEA-TR~1\next-app" (
+    start "PEA Next.js Server" /min cmd /c "cd /d "C:\Users\admin\OneDrive\5DD3~1\GitHub\PEA-TR~1\next-app" && npm run start"
+) else (
+    start "PEA Next.js Server" /min cmd /c "cd /d "%~dp0next-app" && npm run start"
+)
 
 REM 2. Wait 2 seconds for server to initialize
 ping 127.0.0.1 -n 3 >nul

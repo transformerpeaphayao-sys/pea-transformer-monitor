@@ -252,6 +252,22 @@ export const UpdateViolationStatusInputSchema = z.object({
 });
 export type UpdateViolationStatusInput = z.infer<typeof UpdateViolationStatusInputSchema>;
 
+export const UpdateViolationInputSchema = z.object({
+  transformerPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEANO หม้อแปลง'),
+  meterPeaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEA มิเตอร์'),
+  originalMeterPeaNo: z.string().optional(),
+  consumerName: z.string().optional().default(''),
+  location: z.string().optional().default(''),
+  violationType: z.string().min(1, 'กรุณาระบุประเภทการละเมิด'),
+  detectedDate: z.string().min(1, 'กรุณาระบุวันที่ตรวจพบ'),
+  detectedTime: z.string().optional().default(''),
+  inspectorName: z.string().optional().default(''),
+  status: z.enum(['PENDING', 'INVESTIGATING', 'LEGAL_ACTION', 'RESOLVED', 'CLEARED']).optional().default('INVESTIGATING'),
+  remark: z.string().optional().default(''),
+  images: z.array(z.string()).optional().default([]),
+});
+export type UpdateViolationInput = z.infer<typeof UpdateViolationInputSchema>;
+
 /**
  * Matt Pocock Total TypeScript Standards
  */
