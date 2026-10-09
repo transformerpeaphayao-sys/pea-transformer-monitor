@@ -10,6 +10,8 @@ import {
   calculateEngineeringStatus,
   calculateIMax,
   safeFloat,
+  calculateVectorNeutral,
+  detectHarmonicRisk,
 } from '@/lib/domain/calculations';
 import {
   Activity,
@@ -24,13 +26,18 @@ import {
   Sliders,
   ChevronDown,
   Check,
+  Waves,
+  Flame,
+  ShieldAlert,
+  ShieldCheck,
+  Radio,
 } from 'lucide-react';
 
 interface LoadAnalyticsChartsProps {
   transformer: TransformerWithStatus;
 }
 
-type ChartTab = 'BALANCE' | 'TREND' | 'VOLTAGE';
+type ChartTab = 'BALANCE' | 'TREND' | 'VOLTAGE' | 'HARMONIC';
 
 export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
   transformer,
@@ -144,12 +151,93 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
     );
   });
 
+  // Harmonic & Neutral Data Extraction for current session
+  const inTheory = calculateVectorNeutral(ia, ib, ic);
+  const totHarmonic = inVal - inTheory;
+  const harmonicRisk = detectHarmonicRisk(ia, ib, ic, inVal, 15);
+
+  const feederHarmonics = (currentSession.feeders || []).map((f, fIdx) => {
+    const fIa = safeFloat(f.currentA);
+    const fIb = safeFloat(f.currentB);
+    const fIc = safeFloat(f.currentC);
+    const fIn = safeFloat(f.currentN);
+    const fInTheory = calculateVectorNeutral(fIa, fIb, fIc);
+    const fHarmonic = fIn - fInTheory;
+    return {
+      record: f,
+      name: f.name || `F${fIdx + 1}`,
+      cableSize: f.cableSize || '',
+      ia: fIa,
+      ib: fIb,
+      ic: fIc,
+      inVal: fIn,
+      inTheory: fInTheory,
+      harmonic: fHarmonic,
+      isSevere: fHarmonic > 15,
+      isPositive: fHarmonic > 0,
+    };
+  });
+
+  const sortedHarmonics = [...feederHarmonics].sort((a, b) => b.harmonic - a.harmonic);
+  const maxHarmonicFeeder = sortedHarmonics.length > 0 ? sortedHarmonics[0] : null;
+
+  // Clustered Bars Data (Feeders + Total)
+  const allHarmonicClusters = [
+    ...feederHarmonics.map((fh) => ({
+      name: `Feeder ${fh.name}`,
+      shortName: `F${fh.name}`,
+      sub: fh.cableSize ? `${fh.cableSize} ตร.มม.` : undefined,
+      inVal: fh.inVal,
+      inTheory: fh.inTheory,
+      harmonic: fh.harmonic,
+      isSevere: fh.isSevere,
+      isTotal: false,
+    })),
+    {
+      name: 'รวมทั้งหม้อแปลง',
+      shortName: 'รวม',
+      sub: `${kva} kVA (${system}P)`,
+      inVal,
+      inTheory,
+      harmonic: totHarmonic,
+      isSevere: totHarmonic > 15,
+      isTotal: true,
+    },
+  ];
+
+  const maxHarmonicVal = Math.max(
+    16,
+    ...allHarmonicClusters.map((c) =>
+      Math.max(c.inVal, c.inTheory, Math.max(0, c.harmonic))
+    ),
+    10
+  );
+  const harmonicChartScale = maxHarmonicVal * 1.15;
+
+  // Multi-round harmonic history
+  const multiRoundHarmonics = chronoSessions.map((sess, idx) => {
+    const sIa = safeFloat(sess.total?.currentA);
+    const sIb = safeFloat(sess.total?.currentB);
+    const sIc = safeFloat(sess.total?.currentC);
+    const sIn = safeFloat(sess.total?.currentN);
+    const sInTheory = calculateVectorNeutral(sIa, sIb, sIc);
+    const sHarmonic = sIn - sInTheory;
+    return {
+      sess,
+      roundNum: idx + 1,
+      inVal: sIn,
+      inTheory: sInTheory,
+      harmonic: sHarmonic,
+      isSevere: sHarmonic > 15,
+    };
+  });
+
   return (
     <div className="bg-slate-50/70 rounded-2xl border border-slate-200/90 p-4 sm:p-5 space-y-4 shadow-2xs transition-all">
       {/* Top Header: Tabs & Session Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3.5">
         {/* Minimal Segmented Tab Switcher */}
-        <div className="flex items-center p-1 bg-slate-200/70 rounded-xl gap-1 self-start sm:self-auto">
+        <div className="flex items-center p-1 bg-slate-200/70 rounded-xl gap-1 self-start sm:self-auto flex-wrap">
           <button
             type="button"
             onClick={() => setActiveTab('BALANCE')}
@@ -187,6 +275,19 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
           >
             <Zap className="w-3.5 h-3.5" />
             <span>แรงดันตกฟีดเดอร์</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('HARMONIC')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+              activeTab === 'HARMONIC'
+                ? 'bg-white text-[#741b77] shadow-2xs border border-slate-200/60'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+            }`}
+          >
+            <Waves className="w-3.5 h-3.5" />
+            <span>ฮาร์มอนิกแฝง (Harmonic)</span>
           </button>
         </div>
 
@@ -1154,6 +1255,809 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: HARMONIC & NEUTRAL CURRENT ANALYSIS (ฮาร์มอนิกแฝง & สายนิวตรอล) */}
+      {/* ========================================================================= */}
+      {activeTab === 'HARMONIC' && (
+        <div className="bg-white rounded-xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs space-y-5">
+          {/* Header & Comprehensive Legend Strip */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+            <div>
+              <div className="flex items-center gap-2">
+                <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <Waves className="w-4 h-4 text-purple-600" />
+                  <span>วิเคราะห์กระแสฮาร์มอนิกแฝงและสายนิวตรอล (Harmonic & Neutral Current)</span>
+                </h5>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                    totHarmonic > 15
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
+                      : totHarmonic > 0
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}
+                >
+                  {totHarmonic > 15 ? (
+                    <>
+                      <ShieldAlert className="w-3 h-3" />
+                      <span>เสี่ยงสูง (≥ 15A)</span>
+                    </>
+                  ) : totHarmonic > 0 ? (
+                    <>
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>ตรวจพบฮาร์มอนิก</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>ปกติสมบูรณ์</span>
+                    </>
+                  )}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                หม้อแปลง {kva} kVA ({system}P) • รอบวันที่ {currentSession.date} ({currentSession.time}) • คำนวณจาก In(วัดจริง) ลบ In(เวกเตอร์ 3 เฟสตามทฤษฎี)
+              </p>
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs bg-slate-50/80 px-3 py-1.5 rounded-xl border border-slate-200/70">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-700 shadow-2xs" />
+                <span className="font-semibold text-slate-700 text-[11px]">In วัดจริง</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shadow-2xs" />
+                <span className="font-semibold text-slate-700 text-[11px]">In คำนวณ (เวกเตอร์)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#741b77] shadow-2xs" />
+                <span className="font-semibold text-[#741b77] text-[11px]">Harmonic แฝง</span>
+              </div>
+              <div className="h-3 w-px bg-slate-200 hidden sm:block" />
+              <div className="flex items-center gap-1.5 text-slate-500 text-[10.5px]">
+                <span className="w-3 border-b-2 border-dashed border-rose-500" />
+                <span className="text-rose-600 font-semibold">เกณฑ์เสี่ยง กฟภ. (15 A)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Top 4 KPI Metric Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Card 1: Total Harmonic Current */}
+            <div className="p-3.5 bg-purple-50/50 rounded-xl border border-purple-100/90 shadow-2xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-purple-950 flex items-center gap-1.5">
+                  <Waves className="w-3.5 h-3.5 text-purple-600" />
+                  ฮาร์มอนิกแฝงรวม (Total)
+                </span>
+                <span
+                  className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded ${
+                    totHarmonic > 15
+                      ? 'bg-rose-100 text-rose-700'
+                      : totHarmonic > 0
+                      ? 'bg-purple-100 text-[#741b77]'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {totHarmonic > 15 ? 'เกิน 15A' : totHarmonic > 0 ? 'พบแฝง' : 'ปกติ'}
+                </span>
+              </div>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span
+                  className={`text-xl font-extrabold font-mono ${
+                    totHarmonic > 15
+                      ? 'text-rose-600'
+                      : totHarmonic > 0
+                      ? 'text-[#741b77]'
+                      : 'text-slate-600'
+                  }`}
+                >
+                  {totHarmonic.toFixed(2)}
+                </span>
+                <span className="text-xs font-bold text-slate-500">A</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-mono truncate">
+                In({inVal.toFixed(1)}) - In_calc({inTheory.toFixed(1)})
+              </p>
+            </div>
+
+            {/* Card 2: Measured vs Calculated Neutral */}
+            <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/90 shadow-2xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-slate-600" />
+                  สายนิวตรอล In วัดจริง
+                </span>
+                <span className="text-[9.5px] font-mono font-bold text-sky-700 bg-sky-50 px-1.5 py-0.2 rounded border border-sky-100">
+                  ทฤษฎี {inTheory.toFixed(1)} A
+                </span>
+              </div>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-xl font-extrabold font-mono text-slate-900">
+                  {inVal.toFixed(1)}
+                </span>
+                <span className="text-xs font-bold text-slate-500">A</span>
+              </div>
+              <p className="text-[10px] text-slate-400 truncate">
+                ส่วนต่างเกิน: <span className="font-mono font-semibold text-purple-700">+{Math.max(0, totHarmonic).toFixed(1)} A</span>
+              </p>
+            </div>
+
+            {/* Card 3: Peak Harmonic Feeder */}
+            <div className="p-3.5 bg-amber-50/50 rounded-xl border border-amber-100/90 shadow-2xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-amber-950 flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-amber-600" />
+                  ฟีดเดอร์สูงสุด (Peak)
+                </span>
+                {maxHarmonicFeeder?.isSevere && (
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700">
+                    เสี่ยงสูง
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline gap-2 mt-1">
+                <span className="text-xl font-extrabold font-mono text-amber-950">
+                  {maxHarmonicFeeder ? `F${maxHarmonicFeeder.name}` : '-'}
+                </span>
+                <span className="text-xs font-mono font-bold text-amber-700">
+                  {maxHarmonicFeeder ? `${maxHarmonicFeeder.harmonic.toFixed(2)} A` : ''}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 truncate">
+                {maxHarmonicFeeder
+                  ? totHarmonic > 0
+                    ? `คิดเป็น ${Math.min(100, Math.round((Math.max(0, maxHarmonicFeeder.harmonic) / totHarmonic) * 100))}% ของฮาร์โมนิกรวม`
+                    : 'จุดกำเนิดฮาร์มอนิกหลัก'
+                  : 'ไม่มีข้อมูลฟีดเดอร์'}
+              </p>
+            </div>
+
+            {/* Card 4: PEA Standard Risk Assessment */}
+            <div
+              className={`p-3.5 rounded-xl border shadow-2xs space-y-1 ${
+                totHarmonic > 15
+                  ? 'bg-rose-50/60 border-rose-200'
+                  : totHarmonic > 5
+                  ? 'bg-amber-50/60 border-amber-200'
+                  : 'bg-emerald-50/60 border-emerald-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={`text-[11px] font-bold flex items-center gap-1.5 ${
+                    totHarmonic > 15
+                      ? 'text-rose-950'
+                      : totHarmonic > 5
+                      ? 'text-amber-950'
+                      : 'text-emerald-950'
+                  }`}
+                >
+                  {totHarmonic > 15 ? (
+                    <Flame className="w-3.5 h-3.5 text-rose-600" />
+                  ) : (
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  )}
+                  เกณฑ์ประเมิน กฟภ.
+                </span>
+              </div>
+              <div className="mt-1">
+                <span
+                  className={`text-base font-extrabold ${
+                    totHarmonic > 15
+                      ? 'text-rose-700'
+                      : totHarmonic > 5
+                      ? 'text-amber-700'
+                      : 'text-emerald-700'
+                  }`}
+                >
+                  {totHarmonic > 15
+                    ? 'สุ่มเสี่ยงสูง (≥ 15A)'
+                    : totHarmonic > 5
+                    ? 'เฝ้าระวัง (5-15A)'
+                    : 'ปลอดภัย (< 5A)'}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 truncate">
+                {totHarmonic > 15
+                  ? 'เสี่ยงโหลดบิตคอยน์/ขดลวด/ลักลอบ'
+                  : totHarmonic > 5
+                  ? 'โหลดสวิตชิ่ง/แอร์อินเวอร์เตอร์'
+                  : 'โหลดอุปกรณ์ไฟฟ้าทั่วไป'}
+              </p>
+            </div>
+          </div>
+
+          {/* Section 1: Feeder Harmonic & Neutral Breakdown Bar Chart */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h6 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span>การกระจายตัวของกระแสนิวตรอลและฮาร์มอนิกแฝงรายฟีดเดอร์</span>
+                </h6>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  เปรียบเทียบระหว่าง In วัดจริง, In คำนวณตามทฤษฎี และค่า Harmonic แฝงแยกตามฟีดเดอร์
+                </p>
+              </div>
+              <span className="text-[10.5px] font-mono text-slate-400 hidden sm:inline-block">
+                Max Scale: {harmonicChartScale.toFixed(1)} A
+              </span>
+            </div>
+
+            {/* Custom High-Precision Clustered Bar Chart Container */}
+            <div className="relative pt-6 pb-4 px-3 sm:px-4 bg-slate-50/70 rounded-xl border border-slate-200/80 overflow-x-auto">
+              <div className="min-w-[500px] flex flex-col justify-end">
+                {/* 15A PEA Guideline Marker Line across the entire chart */}
+                {15 <= harmonicChartScale && (
+                  <div
+                    className="absolute left-0 right-0 border-b border-dashed border-rose-400/90 pointer-events-none z-10 flex items-center justify-start pl-2 sm:pl-3"
+                    style={{ bottom: `${(15 / harmonicChartScale) * 115 + 46}px` }}
+                  >
+                    <span className="bg-rose-50 border border-rose-200 text-rose-700 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs -translate-y-1/2 backdrop-blur-xs">
+                      เกณฑ์เสี่ยง กฟภ. 15.0 A
+                    </span>
+                  </div>
+                )}
+
+                {/* Plot Area: Clustered Columns */}
+                <div className="relative h-40 w-full flex items-end justify-around gap-4 sm:gap-6 px-12 sm:px-16 z-20">
+                  {allHarmonicClusters.map((cluster, cIdx) => {
+                    const hInVal = Math.max(2, Math.min(100, (cluster.inVal / harmonicChartScale) * 100));
+                    const hInTheory = Math.max(2, Math.min(100, (cluster.inTheory / harmonicChartScale) * 100));
+                    const hHarmonic = Math.max(
+                      2,
+                      Math.min(100, (Math.max(0, cluster.harmonic) / harmonicChartScale) * 100)
+                    );
+
+                    return (
+                      <div
+                        key={cIdx}
+                        className={`flex flex-col items-center justify-end h-full flex-1 max-w-[120px] ${
+                          cluster.isTotal ? 'border-l border-dashed border-slate-300 pl-3 sm:pl-5' : ''
+                        }`}
+                      >
+                        {/* Clustered Bars for this feeder */}
+                        <div className="flex items-end justify-center gap-1.5 sm:gap-2 w-full h-full pb-1">
+                          {/* Bar 1: In Measured (Dark Slate) */}
+                          <div className="flex flex-col items-center justify-end h-full">
+                            <span className="font-mono text-[9.5px] font-bold text-slate-700 leading-none mb-1">
+                              {cluster.inVal.toFixed(1)}
+                            </span>
+                            <div
+                              className="w-5 sm:w-6 bg-slate-200/50 rounded-t-md flex items-end overflow-hidden"
+                              style={{ height: '100%' }}
+                              title={`${cluster.name} - In วัดจริง: ${cluster.inVal.toFixed(2)} A`}
+                            >
+                              <div
+                                className="w-full bg-gradient-to-t from-slate-700 to-slate-500 rounded-t-md transition-all duration-500 shadow-2xs"
+                                style={{ height: `${hInVal}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Bar 2: In Theoretical Vector (Sky Blue) */}
+                          <div className="flex flex-col items-center justify-end h-full">
+                            <span className="font-mono text-[9.5px] font-bold text-sky-700 leading-none mb-1">
+                              {cluster.inTheory.toFixed(1)}
+                            </span>
+                            <div
+                              className="w-5 sm:w-6 bg-slate-200/50 rounded-t-md flex items-end overflow-hidden"
+                              style={{ height: '100%' }}
+                              title={`${cluster.name} - In คำนวณเวกเตอร์: ${cluster.inTheory.toFixed(2)} A`}
+                            >
+                              <div
+                                className="w-full bg-gradient-to-t from-sky-600 to-sky-400 rounded-t-md transition-all duration-500 shadow-2xs"
+                                style={{ height: `${hInTheory}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Bar 3: Harmonic Current (Purple / Rose) */}
+                          <div className="flex flex-col items-center justify-end h-full">
+                            <span
+                              className={`font-mono text-[9.5px] font-bold leading-none mb-1 ${
+                                cluster.isSevere
+                                  ? 'text-rose-600'
+                                  : cluster.harmonic > 0
+                                  ? 'text-[#741b77]'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              {cluster.harmonic.toFixed(1)}
+                            </span>
+                            <div
+                              className="w-5 sm:w-6 bg-slate-200/50 rounded-t-md flex items-end overflow-hidden"
+                              style={{ height: '100%' }}
+                              title={`${cluster.name} - Harmonic แฝง: ${cluster.harmonic.toFixed(2)} A`}
+                            >
+                              <div
+                                className={`w-full rounded-t-md transition-all duration-500 shadow-2xs ${
+                                  cluster.isSevere
+                                    ? 'bg-gradient-to-t from-rose-600 to-amber-500 animate-pulse'
+                                    : cluster.harmonic > 0
+                                    ? 'bg-gradient-to-t from-[#741b77] to-purple-500'
+                                    : 'bg-slate-300'
+                                }`}
+                                style={{ height: `${hHarmonic}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cluster Baseline Label & Status Pill */}
+                        <div className="w-full pt-2 border-t border-slate-200/80 flex flex-col items-center text-center">
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold block whitespace-nowrap shadow-2xs ${
+                              cluster.isTotal
+                                ? 'bg-purple-100 text-[#741b77] border border-purple-200'
+                                : 'bg-white text-slate-800 border border-slate-200'
+                            }`}
+                          >
+                            {cluster.name}
+                          </span>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded mt-1 block whitespace-nowrap ${
+                              cluster.isSevere
+                                ? 'bg-rose-100 text-rose-700 font-extrabold'
+                                : cluster.harmonic > 0
+                                ? 'text-purple-700 bg-purple-50'
+                                : 'text-slate-400'
+                            }`}
+                          >
+                            {cluster.isSevere
+                              ? '⚠️ เกิน 15A'
+                              : cluster.harmonic > 0
+                              ? `แฝง +${cluster.harmonic.toFixed(1)}A`
+                              : 'ปกติ (ไม่มีแฝง)'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Sub-Legend at Bottom of Bar Chart */}
+                <div className="flex flex-wrap items-center justify-center gap-5 pt-3 mt-1 border-t border-slate-200/60 text-[10.5px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-slate-700" />
+                    <span className="text-slate-600 font-medium">In วัดจริง (นิวตรอลหน้างาน)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-sky-500" />
+                    <span className="text-slate-600 font-medium">In คำนวณ (ทฤษฎีเวกเตอร์ 3 เฟส)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#741b77]" />
+                    <span className="text-[#741b77] font-semibold">Harmonic แฝง (In จริง - In คำนวณ)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 animate-pulse" />
+                    <span className="text-rose-600 font-semibold">เกินเกณฑ์เสี่ยง กฟภ. (≥ 15 A)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Multi-Round Harmonic Trend Line Chart (ข้ามรอบตรวจวัด) */}
+          {chronoSessions.length >= 2 ? (
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h6 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-purple-600" />
+                    <span>แนวโน้มกระแสฮาร์มอนิกและนิวตรอลข้ามรอบตรวจวัด ({chronoSessions.length} รอบ)</span>
+                  </h6>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    ติดตามการสะสมตัวของฮาร์มอนิกแฝงเพื่อตรวจจับการเริ่มเปิดใช้งานโหลดไม่เชิงเส้นหรือเครื่องขุดบิตคอยน์
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 text-[11px] bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/80">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#741b77]" />
+                    <span className="font-semibold text-slate-700">Harmonic แฝง</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+                    <span className="text-slate-600">In วัดจริง</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
+                    <span className="text-slate-600">In คำนวณ</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Multi-Round Trend SVG Chart */}
+              <div className="relative w-full h-64 bg-slate-50/60 rounded-xl border border-slate-100 p-2 overflow-hidden">
+                {(() => {
+                  const svgWidth = Math.max(540, chronoSessions.length * 130);
+                  const stepX = (svgWidth - 140) / Math.max(1, chronoSessions.length - 1);
+
+                  const maxTrendH = Math.max(
+                    25,
+                    ...multiRoundHarmonics.map((m) =>
+                      Math.max(m.inVal, m.inTheory, Math.max(0, m.harmonic))
+                    )
+                  ) * 1.15;
+
+                  const getY = (val: number) =>
+                    Math.max(20, Math.min(180, 180 - (Math.max(0, val) / maxTrendH) * 160));
+
+                  const harmonicPoints: string[] = [];
+                  const inMeasPoints: string[] = [];
+                  const inTheoryPoints: string[] = [];
+
+                  const trendCoords = multiRoundHarmonics.map((m, idx) => {
+                    const x = 90 + idx * stepX;
+                    const yHarmonic = getY(m.harmonic);
+                    const yInMeas = getY(m.inVal);
+                    const yInTheory = getY(m.inTheory);
+
+                    harmonicPoints.push(`${x},${yHarmonic}`);
+                    inMeasPoints.push(`${x},${yInMeas}`);
+                    inTheoryPoints.push(`${x},${yInTheory}`);
+
+                    return { x, yHarmonic, yInMeas, yInTheory, m };
+                  });
+
+                  const firstX = trendCoords[0]?.x || 90;
+                  const lastX = trendCoords[trendCoords.length - 1]?.x || svgWidth - 50;
+                  const harmonicAreaPoints = `${firstX},180 ${harmonicPoints.join(' ')} ${lastX},180`;
+                  const y15 = getY(15);
+
+                  return (
+                    <svg
+                      viewBox={`0 0 ${svgWidth} 230`}
+                      className="w-full h-full overflow-visible"
+                    >
+                      <defs>
+                        <linearGradient id="harmonicAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#741b77" stopOpacity="0.18" />
+                          <stop offset="100%" stopColor="#741b77" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* 15A PEA Threshold Line */}
+                      {15 <= maxTrendH && (
+                        <>
+                          <line
+                            x1="74"
+                            y1={y15}
+                            x2={svgWidth - 20}
+                            y2={y15}
+                            stroke="#f43f5e"
+                            strokeWidth="1.2"
+                            strokeDasharray="4 4"
+                            opacity="0.9"
+                          />
+                          <rect
+                            x="12"
+                            y={y15 - 8}
+                            width="58"
+                            height="16"
+                            rx="4"
+                            fill="#fff1f2"
+                            stroke="#fecdd3"
+                            strokeWidth="0.8"
+                          />
+                          <text
+                            x="41"
+                            y={y15 + 3}
+                            textAnchor="middle"
+                            fill="#e11d48"
+                            fontSize="9"
+                            fontWeight="bold"
+                            fontFamily="monospace"
+                          >
+                            15.0 A เสี่ยง
+                          </text>
+                        </>
+                      )}
+
+                      {/* Horizontal Baseline 0A */}
+                      <line
+                        x1="74"
+                        y1="180"
+                        x2={svgWidth - 20}
+                        y2="180"
+                        stroke="#e2e8f0"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x="41"
+                        y="184"
+                        textAnchor="middle"
+                        fill="#94a3b8"
+                        fontSize="8.5"
+                        fontFamily="monospace"
+                      >
+                        0.0 A
+                      </text>
+
+                      {/* Area Fill for Harmonic */}
+                      <polygon points={harmonicAreaPoints} fill="url(#harmonicAreaGradient)" />
+
+                      {/* In Measured Line (Slate Dashed) */}
+                      <polyline
+                        fill="none"
+                        stroke="#64748b"
+                        strokeWidth="2"
+                        strokeDasharray="4 4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={inMeasPoints.join(' ')}
+                      />
+
+                      {/* In Calculated Line (Sky Dotted) */}
+                      <polyline
+                        fill="none"
+                        stroke="#0284c7"
+                        strokeWidth="2"
+                        strokeDasharray="2 3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={inTheoryPoints.join(' ')}
+                      />
+
+                      {/* Harmonic Current Main Polyline (Rich Violet) */}
+                      <polyline
+                        fill="none"
+                        stroke="#741b77"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={harmonicPoints.join(' ')}
+                      />
+
+                      {/* Data Point Nodes and Value Labels with Dynamic Anti-Collision Placement */}
+                      {trendCoords.map((d, i) => {
+                        const isSevere = d.m.isSevere;
+                        // Determine badge placement to avoid collision with InMeas
+                        const isHarmonicHigher = d.yHarmonic < d.yInMeas;
+                        const yBadge = isHarmonicHigher
+                          ? Math.max(6, d.yHarmonic - 23)
+                          : Math.min(172, d.yHarmonic + 7);
+                        const yText = yBadge + 12;
+
+                        return (
+                          <g key={i}>
+                            {/* X-axis tick & label */}
+                            <line x1={d.x} y1="180" x2={d.x} y2="187" stroke="#cbd5e1" strokeWidth="1" />
+                            <rect
+                              x={d.x - 24}
+                              y="192"
+                              width="48"
+                              height="17"
+                              rx="5"
+                              fill="#f1f5f9"
+                              stroke="#e2e8f0"
+                              strokeWidth="0.8"
+                            />
+                            <text
+                              x={d.x}
+                              y="204"
+                              textAnchor="middle"
+                              fill="#334155"
+                              fontSize="9.5"
+                              fontWeight="bold"
+                            >
+                              รอบ {d.m.roundNum}
+                            </text>
+                            <text
+                              x={d.x}
+                              y="221"
+                              textAnchor="middle"
+                              fill="#64748b"
+                              fontSize="8.5"
+                              fontFamily="monospace"
+                            >
+                              {d.m.sess.date}
+                            </text>
+
+                            {/* Measured In Node */}
+                            <circle cx={d.x} cy={d.yInMeas} r="3.5" fill="#64748b" stroke="#ffffff" strokeWidth="1.5" />
+
+                            {/* Harmonic Circle & Shielded Badge */}
+                            <circle
+                              cx={d.x}
+                              cy={d.yHarmonic}
+                              r="5"
+                              fill={isSevere ? '#e11d48' : '#741b77'}
+                              stroke="#ffffff"
+                              strokeWidth="2.5"
+                            />
+                            <rect
+                              x={d.x - 26}
+                              y={yBadge}
+                              width="52"
+                              height="17"
+                              rx="4"
+                              fill="#ffffff"
+                              stroke={isSevere ? '#e11d48' : '#741b77'}
+                              strokeWidth={isSevere ? '1.5' : '1.2'}
+                              filter="drop-shadow(0 1px 2px rgba(0,0,0,0.06))"
+                            />
+                            <text
+                              x={d.x}
+                              y={yText}
+                              textAnchor="middle"
+                              fill={isSevere ? '#e11d48' : '#741b77'}
+                              fontSize="9.5"
+                              fontWeight="bold"
+                              fontFamily="monospace"
+                            >
+                              {d.m.harmonic.toFixed(1)} A
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  );
+                })()}
+              </div>
+
+              {/* Multi-Round Trend Delta Summary Cards */}
+              {(() => {
+                const first = multiRoundHarmonics[0];
+                const latest = multiRoundHarmonics[multiRoundHarmonics.length - 1];
+                const diffH = latest.harmonic - first.harmonic;
+                const diffIn = latest.inVal - first.inVal;
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {/* Card 1: Harmonic Delta */}
+                    <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/90 flex items-center justify-between gap-3 shadow-2xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <Waves className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                          <span className="text-xs font-bold text-slate-800">
+                            การเปลี่ยนแปลงฮาร์มอนิกแฝง (Δ Harmonic)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-bold text-slate-600">
+                            {first.harmonic.toFixed(1)} A
+                          </span>
+                          <span className="text-slate-400 text-xs">➔</span>
+                          <span
+                            className={`font-mono text-sm font-bold ${
+                              latest.harmonic > 15
+                                ? 'text-rose-600'
+                                : latest.harmonic > 0
+                                ? 'text-[#741b77]'
+                                : 'text-slate-500'
+                            }`}
+                          >
+                            {latest.harmonic.toFixed(1)} A
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium hidden xs:inline sm:inline">
+                            {latest.harmonic <= 15 ? '(อยู่ในเกณฑ์ ≤15A)' : '(เกินเกณฑ์เสี่ยง)'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span
+                          className={`text-xs font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1 ${
+                            diffH > 0
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-2xs'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
+                          }`}
+                        >
+                          {diffH > 0 ? (
+                            <>
+                              <TrendingUp className="w-3 h-3" />
+                              <span>เพิ่มขึ้น +{diffH.toFixed(1)} A</span>
+                            </>
+                          ) : (
+                            <>
+                              <TrendingDown className="w-3 h-3" />
+                              <span>ลดลง {Math.abs(diffH).toFixed(1)} A</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Neutral Delta */}
+                    <div className="p-3.5 bg-purple-50/50 rounded-xl border border-purple-100 flex items-center justify-between gap-3 shadow-2xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5 text-[#741b77] shrink-0" />
+                          <span className="text-xs font-bold text-purple-950">
+                            การเปลี่ยนแปลงสายนิวตรอล In (Δ In)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-bold text-slate-600">
+                            {first.inVal.toFixed(1)} A
+                          </span>
+                          <span className="text-slate-400 text-xs">➔</span>
+                          <span className="font-mono text-sm font-bold text-[#741b77]">
+                            {latest.inVal.toFixed(1)} A
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg border border-purple-200/80 bg-white text-[#741b77] shadow-2xs">
+                          {diffIn >= 0 ? `+${diffIn.toFixed(1)} A` : `${diffIn.toFixed(1)} A`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="p-6 bg-slate-50/60 rounded-xl border border-dashed border-slate-200 text-center space-y-2">
+              <Calendar className="w-6 h-6 text-slate-400 mx-auto" />
+              <p className="text-xs font-bold text-slate-700">มีประวัติการตรวจวัด 1 รอบ</p>
+              <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                เมื่อมีการบันทึกตรวจวัดรอบถัดไป ระบบจะวาดเส้นกราฟแนวโน้มข้ามรอบเพื่อติดตามว่าฮาร์มอนิกแฝงมีแนวโน้มเพิ่มขึ้นหรือลดลงให้อัตโนมัติทันที
+              </p>
+            </div>
+          )}
+
+          {/* Section 3: PEA Engineering Diagnostic & Advisory Box */}
+          <div className="p-4 sm:p-5 rounded-xl border bg-gradient-to-r from-purple-50/60 via-slate-50/70 to-purple-50/40 border-purple-200/80 shadow-2xs space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#741b77] shrink-0" />
+              <h6 className="text-xs font-bold text-slate-900">
+                การวินิจฉัยและข้อแนะนำทางวิศวกรรม กฟภ. (PEA Engineering Diagnostic & Advisory)
+              </h6>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              {/* Left Column: Theory & Background */}
+              <div className="p-3 bg-white/90 rounded-lg border border-slate-200/80 space-y-1.5">
+                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                  หลักการคำนวณและที่มาของค่าฮาร์มอนิกแฝง
+                </span>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  ค่ากระแสฮาร์มอนิกแฝงคำนวณจากสูตร <span className="font-mono font-bold text-[#741b77]">In(วัดจริง) - In_calc(เวกเตอร์)</span> โดยกระแสความถี่มูลฐาน 50 Hz ของ 3 เฟสจะหักล้างกันในสายนิวตรอลตามสมการเวกเตอร์ แต่โหลดไม่เชิงเส้นจะสร้างกระแสฮาร์มอนิกอันดับคี่ที่หารด้วย 3 ลงตัว (Triplen Harmonics เช่น อันดับที่ 3: 150 Hz) ซึ่งเฟสทั้งสามจะรวมตัวกันแบบ In-Phase ไหลกลับสายนิวตรอล
+                </p>
+              </div>
+
+              {/* Right Column: Site Diagnosis & Action Plan */}
+              <div
+                className={`p-3 rounded-lg border space-y-1.5 ${
+                  totHarmonic > 15
+                    ? 'bg-rose-50/80 border-rose-200 text-rose-900'
+                    : 'bg-white/90 border-slate-200/80 text-slate-800'
+                }`}
+              >
+                <span className="font-bold flex items-center gap-1.5">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      totHarmonic > 15 ? 'bg-rose-600' : 'bg-emerald-600'
+                    }`}
+                  />
+                  การประเมินความเสี่ยงและมาตรการแก้ไข
+                </span>
+                {totHarmonic > 15 ? (
+                  <p className="text-[11px] text-rose-700 leading-relaxed font-medium">
+                    ⚠️ <strong>ความเสี่ยงสูงมาก:</strong> พบฮาร์มอนิกแฝงเกิน 15 A สุ่มเสี่ยงการลักลอบใช้ไฟฟ้า, แอบติดตั้งเครื่องขุดบิตคอยน์ (Crypto Mining), หรือแท่นชาร์จ EV ผิดมาตรฐาน ซึ่งทำให้สายนิวตรอลร้อนจัด เสี่ยงต่อนิวตรอลขาดลอย (Floating Neutral) ไฟเกินเข้าบ้านเรือน แนะนำส่งทีมตรวจจับลงพื้นที่ Feeder ที่พบค่าผิดปกติทันที
+                  </p>
+                ) : totHarmonic > 0 ? (
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    ✅ <strong>สถานะปกติ/เฝ้าระวัง:</strong> ตรวจพบฮาร์มอนิกแฝงในระดับปลอดภัย (&lt; 15 A) เกิดจากอุปกรณ์แปลงไฟสวิตชิ่งทั่วไป (คอมพิวเตอร์, หลอด LED, แอร์อินเวอร์เตอร์) ควรติดตามค่าในรอบตรวจวัดถัดไปและตรวจเช็คความแน่นของขั้วต่อสายนิวตรอล
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    ✅ <strong>สถานะสมบูรณ์:</strong> กระแสนิวตรอลวัดจริงไม่เกินค่าคำนวณเวกเตอร์ โหลดส่วนใหญ่เป็นโหลดเชิงเส้นปกติ ระบบทำงานด้วยประสิทธิภาพสูงสุด
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
