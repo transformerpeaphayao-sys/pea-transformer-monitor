@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
   AlertOctagon,
@@ -18,6 +18,8 @@ import {
   ShieldCheck,
   Zap,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Check,
   Settings2,
   Plus,
@@ -51,6 +53,41 @@ const STATUS_OPTIONS: { id: 'INVESTIGATING' | 'LEGAL_ACTION' | 'RESOLVED' | 'PEN
   { id: 'PENDING', label: 'รอตรวจซ้ำ', desc: 'รอนัดหมายเข้าตรวจซ้ำ' },
   { id: 'CLEARED', label: 'ไม่พบการละเมิด (ปกติ)', desc: 'ตรวจสอบมิเตอร์ครบแล้ว ไม่พบการลักใช้ไฟ' },
 ];
+
+const THAI_MONTHS = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+];
+const THAI_DAY_HEADERS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+
+function parseDateForCalendar(dateStr: string): { year: number; month: number; day: number } {
+  const now = new Date();
+  if (!dateStr || !dateStr.trim()) {
+    return { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+  }
+  const clean = dateStr.trim();
+  if (clean.includes('/')) {
+    const parts = clean.split('/').map((p) => parseInt(p, 10));
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      let y = parts[2];
+      if (y > 2400) y -= 543;
+      const m = Math.max(0, Math.min(11, parts[1] - 1));
+      const d = Math.max(1, Math.min(31, parts[0]));
+      return { year: y, month: m, day: d };
+    }
+  }
+  if (clean.includes('-')) {
+    const parts = clean.split('-').map((p) => parseInt(p, 10));
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      let y = parts[0];
+      if (y > 2400) y -= 543;
+      const m = Math.max(0, Math.min(11, parts[1] - 1));
+      const d = Math.max(1, Math.min(31, parts[2]));
+      return { year: y, month: m, day: d };
+    }
+  }
+  return { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+}
 
 export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
   isOpen,
@@ -90,6 +127,19 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [newTypeInput, setNewTypeInput] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Calendar State & Handlers
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const [calendarYear, setCalendarYear] = useState<number>(() => {
+    const initialParsed = parseDateForCalendar(editingViolation?.detectedDate || defaultDate);
+    return initialParsed.year;
+  });
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => {
+    const initialParsed = parseDateForCalendar(editingViolation?.detectedDate || defaultDate);
+    return initialParsed.month;
+  });
+
   const [violationType, setViolationType] = useState(
     editingViolation
       ? editingViolation.violationType
@@ -103,6 +153,86 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
   const [status, setStatus] = useState<'INVESTIGATING' | 'LEGAL_ACTION' | 'RESOLVED' | 'PENDING' | 'CLEARED'>(
     editingViolation?.status || (initialAuditType === 'CLEARED' ? 'CLEARED' : 'INVESTIGATING')
   );
+
+  const calendarGridDays = useMemo(() => {
+    const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+    const firstDayOfWeek = new Date(calendarYear, calendarMonth, 1).getDay();
+    const days: Array<{
+      day: number;
+      year: number;
+      month: number;
+      isCurrentMonth: boolean;
+    }> = [];
+
+    // Prev month padding
+    const prevMonthDays = new Date(calendarYear, calendarMonth, 0).getDate();
+    const prevMonth = calendarMonth === 0 ? 11 : calendarMonth - 1;
+    const prevYear = calendarMonth === 0 ? calendarYear - 1 : calendarYear;
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+      const d = prevMonthDays - i;
+      days.push({ day: d, year: prevYear, month: prevMonth, isCurrentMonth: false });
+    }
+
+    // Current month
+    for (let d = 1; d <= daysInMonth; d++) {
+      days.push({ day: d, year: calendarYear, month: calendarMonth, isCurrentMonth: true });
+    }
+
+    // Next month padding
+    const nextMonth = calendarMonth === 11 ? 0 : calendarMonth + 1;
+    const nextYear = calendarMonth === 11 ? calendarYear + 1 : calendarYear;
+    const remaining = (7 - (days.length % 7)) % 7;
+    for (let d = 1; d <= remaining; d++) {
+      days.push({ day: d, year: nextYear, month: nextMonth, isCurrentMonth: false });
+    }
+
+    return days;
+  }, [calendarYear, calendarMonth]);
+
+  const handlePrevMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11);
+      setCalendarYear((prev) => prev - 1);
+    } else {
+      setCalendarMonth((prev) => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0);
+      setCalendarYear((prev) => prev + 1);
+    } else {
+      setCalendarMonth((prev) => prev + 1);
+    }
+  };
+
+  const toggleCalendar = () => {
+    if (!isCalendarOpen) {
+      const parsed = parseDateForCalendar(detectedDate);
+      setCalendarYear(parsed.year);
+      setCalendarMonth(parsed.month);
+    }
+    setIsCalendarOpen(!isCalendarOpen);
+  };
+
+  const handleSelectCalendarDate = (year: number, month: number, day: number) => {
+    const dd = String(day).padStart(2, '0');
+    const mm = String(month + 1).padStart(2, '0');
+    setDetectedDate(`${dd}/${mm}/${year}`);
+    setIsCalendarOpen(false);
+  };
+
+  const handleSelectToday = () => {
+    const t = new Date();
+    const dd = String(t.getDate()).padStart(2, '0');
+    const mm = String(t.getMonth() + 1).padStart(2, '0');
+    const yy = t.getFullYear();
+    setDetectedDate(`${dd}/${mm}/${yy}`);
+    setCalendarYear(yy);
+    setCalendarMonth(t.getMonth());
+    setIsCalendarOpen(false);
+  };
   const [remark, setRemark] = useState(
     editingViolation
       ? editingViolation.remark || ''
@@ -125,6 +255,9 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
       setLocation(editingViolation.location || transformer.location || '');
       setViolationType(editingViolation.violationType);
       setDetectedDate(editingViolation.detectedDate);
+      const parsed = parseDateForCalendar(editingViolation.detectedDate);
+      setCalendarYear(parsed.year);
+      setCalendarMonth(parsed.month);
       setDetectedTime(editingViolation.detectedTime || defaultTime);
       setInspectorName(editingViolation.inspectorName || '');
       setStatus(editingViolation.status);
@@ -141,6 +274,9 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
           : (violationTypes[0] || VIOLATION_TYPES[0])
       );
       setDetectedDate(defaultDate);
+      const parsedDef = parseDateForCalendar(defaultDate);
+      setCalendarYear(parsedDef.year);
+      setCalendarMonth(parsedDef.month);
       setDetectedTime(defaultTime);
       setInspectorName('');
       setStatus(initialAuditType === 'CLEARED' ? 'CLEARED' : 'INVESTIGATING');
@@ -177,13 +313,17 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setIsCalendarOpen(false);
+      }
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setIsDropdownOpen(false);
+        setIsCalendarOpen(false);
       }
     }
-    if (isDropdownOpen) {
+    if (isDropdownOpen || isCalendarOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
     }
@@ -191,7 +331,7 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isCalendarOpen]);
 
   const handleAddViolationType = () => {
     const trimmed = newTypeInput.trim();
@@ -728,26 +868,173 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
 
           {/* Section 3: วันที่ เวลา และ ผู้ตรวจพบ */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                วันที่ตรวจพบ
-              </label>
+            {/* Field: วันที่ตรวจพบ with Interactive Calendar Popover */}
+            <div className="relative" ref={calendarRef}>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  วันที่ตรวจพบ <span className="text-rose-500 font-normal">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={toggleCalendar}
+                  className="text-[11px] font-semibold text-[#741b77] hover:text-[#58145a] flex items-center gap-1 hover:underline cursor-pointer"
+                  title="คลิกเพื่อเปิดปฏิทินเลือกวันที่"
+                >
+                  <Calendar className="w-3 h-3 text-[#741b77]" />
+                  <span>{isCalendarOpen ? 'ซ่อนปฏิทิน' : 'ปฏิทิน'}</span>
+                </button>
+              </div>
+
               <div className="relative">
-                <Calendar className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <button
+                  type="button"
+                  onClick={toggleCalendar}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#741b77] p-0.5 rounded transition-colors cursor-pointer"
+                  title="คลิกเปิดปฏิทิน"
+                >
+                  <Calendar className="w-4 h-4" />
+                </button>
                 <input
                   type="text"
                   value={detectedDate}
                   onChange={(e) => setDetectedDate(e.target.value)}
-                  className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-50 focus:bg-white border border-slate-200/90 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 transition-all shadow-2xs"
+                  onClick={() => {
+                    if (!isCalendarOpen) toggleCalendar();
+                  }}
+                  className={`w-full h-10 pl-9 pr-8 rounded-xl bg-slate-50/70 hover:bg-slate-50 focus:bg-white border text-xs font-mono text-slate-800 focus:outline-none transition-all shadow-2xs cursor-pointer ${
+                    isCalendarOpen
+                      ? 'border-[#741b77] ring-2 ring-purple-600/10 bg-white'
+                      : 'border-slate-200/90 focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10'
+                  }`}
                   placeholder="DD/MM/YYYY"
                 />
+                <button
+                  type="button"
+                  onClick={toggleCalendar}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
+                  title="เปิด/ปิด ปฏิทิน"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isCalendarOpen ? 'rotate-180 text-[#741b77]' : ''}`} />
+                </button>
               </div>
+
+              {/* Minimalist Floating Calendar Popover */}
+              {isCalendarOpen && (
+                <div className="absolute left-0 top-full mt-2 z-50 w-72 bg-white/98 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl p-3 animate-in fade-in zoom-in-95 duration-150 select-none">
+                  {/* Month/Year Header */}
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <button
+                      type="button"
+                      onClick={handlePrevMonth}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="เดือนก่อนหน้า"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="text-center">
+                      <span className="text-xs font-bold text-slate-800 tracking-tight">
+                        {THAI_MONTHS[calendarMonth]} {calendarYear + 543}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono ml-1 font-normal">
+                        ({calendarYear})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleNextMonth}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="เดือนถัดไป"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Day Headers */}
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {THAI_DAY_HEADERS.map((d) => (
+                      <div key={d} className="text-center text-[10px] font-bold text-slate-400 py-0.5">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Days Grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {calendarGridDays.map((cell, idx) => {
+                      const parsedCur = parseDateForCalendar(detectedDate);
+                      const isSelected =
+                        parsedCur.year === cell.year &&
+                        parsedCur.month === cell.month &&
+                        parsedCur.day === cell.day;
+                      const today = new Date();
+                      const isToday =
+                        cell.year === today.getFullYear() &&
+                        cell.month === today.getMonth() &&
+                        cell.day === today.getDate();
+
+                      return (
+                        <button
+                          key={`${cell.year}_${cell.month}_${cell.day}_${idx}`}
+                          type="button"
+                          onClick={() => handleSelectCalendarDate(cell.year, cell.month, cell.day)}
+                          className={`relative flex items-center justify-center h-8 rounded-xl text-xs font-mono transition-all duration-150 cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#741b77] text-white font-bold shadow-xs scale-105 z-10'
+                              : cell.isCurrentMonth
+                              ? isToday
+                                ? 'bg-purple-50 text-[#741b77] font-bold ring-1 ring-[#741b77]/40 hover:bg-purple-100'
+                                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              : 'text-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>{cell.day}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-xs px-1">
+                    <button
+                      type="button"
+                      onClick={handleSelectToday}
+                      className="text-[#741b77] hover:text-[#58145a] font-bold text-[11px] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>วันนี้ ({new Date().getDate()}/{new Date().getMonth() + 1})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsCalendarOpen(false)}
+                      className="text-slate-400 hover:text-slate-600 font-medium text-[11px] cursor-pointer"
+                    >
+                      ปิด
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Field: เวลาที่ตรวจพบ */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                เวลาที่ตรวจพบ
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  เวลาที่ตรวจพบ
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    setDetectedTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+                  }}
+                  className="text-[11px] font-semibold text-[#741b77] hover:text-[#58145a] flex items-center gap-1 hover:underline cursor-pointer"
+                  title="ใส่เวลาปัจจุบัน"
+                >
+                  <Clock className="w-3 h-3 text-[#741b77]" />
+                  <span>เวลาปัจจุบัน</span>
+                </button>
+              </div>
               <div className="relative">
                 <Clock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input
@@ -755,22 +1042,26 @@ export const MeterViolationModal: React.FC<MeterViolationModalProps> = ({
                   value={detectedTime}
                   onChange={(e) => setDetectedTime(e.target.value)}
                   className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-50 focus:bg-white border border-slate-200/90 text-xs font-mono text-slate-800 focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 transition-all shadow-2xs"
-                  placeholder="HH:mm"
+                  placeholder="HH:mm (เช่น 14:30)"
                 />
               </div>
             </div>
 
+            {/* Field: ผู้ตรวจพบ / ช่างเทคนิค */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 ผู้ตรวจพบ / ช่างเทคนิค
               </label>
-              <input
-                type="text"
-                value={inspectorName}
-                onChange={(e) => setInspectorName(e.target.value)}
-                className="w-full h-10 px-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-50 focus:bg-white border border-slate-200/90 text-xs text-slate-800 focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 transition-all shadow-2xs"
-                placeholder="ชื่อ-นามสกุล ช่าง"
-              />
+              <div className="relative">
+                <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={inspectorName}
+                  onChange={(e) => setInspectorName(e.target.value)}
+                  className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-slate-50/70 hover:bg-slate-50 focus:bg-white border border-slate-200/90 text-xs text-slate-800 focus:outline-none focus:border-[#741b77] focus:ring-2 focus:ring-purple-600/10 transition-all shadow-2xs"
+                  placeholder="ชื่อ-นามสกุล ช่าง"
+                />
+              </div>
             </div>
           </div>
 

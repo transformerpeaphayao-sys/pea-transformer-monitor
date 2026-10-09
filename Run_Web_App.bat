@@ -9,11 +9,7 @@ echo.
 
 REM 1. Start Next.js Server on Port 3000
 echo [*] Starting Next.js Server on Port 3000...
-if exist "C:\Users\admin\OneDrive\5DD3~1\GitHub\PEA-TR~1\next-app" (
-    start "PEA Next.js Server" /min cmd /c "cd /d "C:\Users\admin\OneDrive\5DD3~1\GitHub\PEA-TR~1\next-app" && npm run start"
-) else (
-    start "PEA Next.js Server" /min cmd /c "cd /d "%~dp0next-app" && npm run start"
-)
+start "PEA Next.js Server" /min node "%~dp0start_server.js"
 
 REM 2. Wait 2 seconds for server to initialize
 ping 127.0.0.1 -n 3 >nul

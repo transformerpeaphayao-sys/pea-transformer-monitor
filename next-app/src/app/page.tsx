@@ -47,6 +47,7 @@ import {
   ListTree,
   Link2,
   PlusCircle,
+  Plus,
   Trash2,
   Flag,
   ArrowUpDown,
@@ -3350,10 +3351,39 @@ export default function BackofficeDashboard() {
                       );
                     })()}
                   </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViolationModalMode('VIOLATION');
+                        setEditingViolation(null);
+                        setViolationModalTransformer(viewingTransformer);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-semibold flex items-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      title="บันทึกตรวจพบการละเมิดมิเตอร์ใหม่"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>บันทึกละเมิด</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViolationModalMode('CLEARED');
+                        setEditingViolation(null);
+                        setViolationModalTransformer(viewingTransformer);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold flex items-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      title="บันทึกตรวจมิเตอร์ครบทุกตัว ไม่พบละเมิด"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>ตรวจแล้วปกติ</span>
+                    </button>
+                  </div>
                 </div>
 
                 {viewingTransformer.violations && viewingTransformer.violations.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
                     {viewingTransformer.violations.map((v, vIdx) => {
                       const isLegal = v.status === 'LEGAL_ACTION';
                       const isResolved = v.status === 'RESOLVED';
@@ -3363,7 +3393,7 @@ export default function BackofficeDashboard() {
                       return (
                         <div
                           key={`${v.meterPeaNo}_${vIdx}`}
-                          className={`p-3 sm:p-3.5 rounded-xl border shadow-xs hover:shadow-sm transition-all space-y-2.5 ${
+                          className={`w-full max-w-[400px] p-3 sm:p-3.5 rounded-xl border shadow-xs hover:shadow-sm transition-all space-y-2.5 ${
                             isCleared
                               ? 'bg-gradient-to-br from-emerald-50/40 via-white to-slate-50/60 border-emerald-200/80 hover:border-emerald-300'
                               : 'bg-gradient-to-br from-rose-50/30 via-white to-slate-50/60 border-rose-200/80 hover:border-rose-300'

@@ -338,6 +338,7 @@ export async function getTransformersWithStatus(): Promise<TransformerWithStatus
     const vPeaIdx = vHeaders.indexOf('PEANO หม้อแปลง') !== -1 ? vHeaders.indexOf('PEANO หม้อแปลง') : 0;
     const vMeterIdx = vHeaders.indexOf('PEA NO มิเตอร์') !== -1 ? vHeaders.indexOf('PEA NO มิเตอร์') : 1;
     const vConsumerIdx = vHeaders.indexOf('ชื่อผู้ใช้ไฟ/สถานที่') !== -1 ? vHeaders.indexOf('ชื่อผู้ใช้ไฟ/สถานที่') : 2;
+    const vLocIdx = vHeaders.indexOf('สถานที่') !== -1 ? vHeaders.indexOf('สถานที่') : (vHeaders.indexOf('จุดติดตั้งมิเตอร์') !== -1 ? vHeaders.indexOf('จุดติดตั้งมิเตอร์') : -1);
     const vTypeIdx = vHeaders.indexOf('ประเภทการละเมิด') !== -1 ? vHeaders.indexOf('ประเภทการละเมิด') : 3;
     const vDateIdx = vHeaders.indexOf('วันที่ตรวจพบ') !== -1 ? vHeaders.indexOf('วันที่ตรวจพบ') : 4;
     const vTimeIdx = vHeaders.indexOf('เวลา') !== -1 ? vHeaders.indexOf('เวลา') : 5;
@@ -362,11 +363,21 @@ export async function getTransformersWithStatus(): Promise<TransformerWithStatus
           ? (rawStatus.includes('ไม่พบ') || rawStatus.includes('ปกติ') || rawStatus === 'CLEARED' ? 'CLEARED' : (rawStatus as MeterViolation['status']))
           : 'INVESTIGATING';
 
+      const rawConsumer = String(row[vConsumerIdx] || '').trim();
+      let consumerName = rawConsumer;
+      let location = vLocIdx !== -1 ? String(row[vLocIdx] || '').trim() : '';
+
+      if (!location && rawConsumer.includes(' • ')) {
+        const parts = rawConsumer.split(' • ');
+        consumerName = parts[0].trim();
+        location = parts.slice(1).join(' • ').trim();
+      }
+
       const vItem: MeterViolation = {
         transformerPeaNo: pea,
         meterPeaNo: meter,
-        consumerName: String(row[vConsumerIdx] || '').trim(),
-        location: '',
+        consumerName,
+        location,
         violationType: String(row[vTypeIdx] || 'ไม่ระบุ').trim(),
         detectedDate: String(row[vDateIdx] || '').trim(),
         detectedTime: String(row[vTimeIdx] || '').trim(),
@@ -1604,10 +1615,14 @@ export async function createMeterViolation(
   }
 
   const timestamp = new Date().toISOString();
+  const consumerField = input.location?.trim()
+    ? (input.consumerName?.trim() ? `${input.consumerName.trim()} • ${input.location.trim()}` : input.location.trim())
+    : (input.consumerName?.trim() || '');
+
   const newRow: SheetRow = [
     input.transformerPeaNo.trim(),
     input.meterPeaNo.trim(),
-    input.consumerName?.trim() || '',
+    consumerField,
     input.violationType.trim(),
     input.detectedDate.trim(),
     input.detectedTime?.trim() || '',
@@ -1766,11 +1781,14 @@ export async function updateMeterViolation(
 
   const imgUrlString = finalImgUrls.join(', ');
   const timestamp = new Date().toISOString();
+  const consumerField = input.location?.trim()
+    ? (input.consumerName?.trim() ? `${input.consumerName.trim()} • ${input.location.trim()}` : input.location.trim())
+    : (input.consumerName?.trim() || '');
 
   const updatedRow: SheetRow = [
     input.transformerPeaNo.trim(),
     input.meterPeaNo.trim(),
-    input.consumerName?.trim() || '',
+    consumerField,
     input.violationType.trim(),
     input.detectedDate.trim(),
     input.detectedTime?.trim() || '',
