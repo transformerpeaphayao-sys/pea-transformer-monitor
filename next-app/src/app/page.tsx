@@ -60,6 +60,8 @@ import {
   Pencil,
   UserCheck,
   User,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AiReportViewer } from '@/components/AiReportViewer';
@@ -107,6 +109,7 @@ export default function BackofficeDashboard() {
 
   // Modals
   const [viewingTransformer, setViewingTransformer] = useState<TransformerWithStatus | null>(null);
+  const [isDetailFullscreen, setIsDetailFullscreen] = useState(false);
   const [showLoadCharts, setShowLoadCharts] = useState(false);
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -3064,10 +3067,20 @@ export default function BackofficeDashboard() {
       {/* 🌟 TRANSFORMER DETAILS & MEASUREMENT HISTORY MODAL (ประวัติการบันทึกโหลด) 🌟 */}
       {/* ========================================================================= */}
       {viewingTransformer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[94vh] flex flex-col overflow-hidden my-auto">
+        <div
+          className={`fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center overflow-y-auto animate-in fade-in duration-200 ${
+            isDetailFullscreen ? 'p-0' : 'p-3 md:p-6'
+          }`}
+        >
+          <div
+            className={`bg-white flex flex-col overflow-hidden transition-all duration-200 ${
+              isDetailFullscreen
+                ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none'
+                : 'rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[94vh] my-auto'
+            }`}
+          >
             {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-[#741b77] border border-purple-100">
                   <History className="w-5 h-5 text-[#741b77]" />
@@ -3190,8 +3203,25 @@ export default function BackofficeDashboard() {
                 )}
 
                 <button
+                  type="button"
+                  onClick={() => setIsDetailFullscreen(prev => !prev)}
+                  className={`p-1.5 rounded-xl transition-all ml-1 ${
+                    isDetailFullscreen
+                      ? 'bg-purple-100 text-[#741b77] hover:bg-purple-200/80 border border-purple-200'
+                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                  }`}
+                  title={isDetailFullscreen ? 'ย่อขนาดหน้าต่างปกติ' : 'ขยายขนาดหน้ารายละเอียดเต็มจอ (Full Screen)'}
+                >
+                  {isDetailFullscreen ? (
+                    <Minimize2 className="w-5 h-5" />
+                  ) : (
+                    <Maximize2 className="w-5 h-5" />
+                  )}
+                </button>
+
+                <button
                   onClick={() => setViewingTransformer(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ml-1"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                   title="ปิดหน้าต่าง"
                 >
                   <X className="w-5 h-5" />
@@ -4359,12 +4389,34 @@ export default function BackofficeDashboard() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-slate-50/90 border-t border-slate-100 flex items-center justify-between">
+            <div className="p-4 bg-slate-50/90 border-t border-slate-100 flex items-center justify-between shrink-0">
               <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                 <span>แหล่งข้อมูล: Google Sheets (Record Data)</span>
               </span>
               <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsDetailFullscreen(prev => !prev)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-95 shadow-2xs border ${
+                    isDetailFullscreen
+                      ? 'bg-purple-50 hover:bg-purple-100 text-[#741b77] border-purple-200'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                  title={isDetailFullscreen ? 'ย่อขนาดหน้าต่างปกติ' : 'ขยายขนาดหน้ารายละเอียดเต็มจอ (Full Screen)'}
+                >
+                  {isDetailFullscreen ? (
+                    <>
+                      <Minimize2 className="w-3.5 h-3.5 text-[#741b77]" />
+                      <span>ย่อขนาดปกติ</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="w-3.5 h-3.5 text-slate-500" />
+                      <span>ขยายเต็มจอ</span>
+                    </>
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={() => setDeletingPea(viewingTransformer.peaNo)}
