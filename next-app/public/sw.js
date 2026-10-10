@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pea-load-cache-v1';
+const CACHE_NAME = 'pea-load-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/field',
@@ -44,6 +44,24 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // For HTML navigation: Network first to ensure instant updates, fallback to offline cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((res) => res || caches.match('/'));
         })
     );
     return;
