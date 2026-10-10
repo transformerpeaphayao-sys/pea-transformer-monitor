@@ -109,7 +109,29 @@ export default function BackofficeDashboard() {
 
   // Modals
   const [viewingTransformer, setViewingTransformer] = useState<TransformerWithStatus | null>(null);
-  const [isDetailFullscreen, setIsDetailFullscreen] = useState(false);
+  const [isDetailFullscreen, setIsDetailFullscreen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('pea_detail_fullscreen') === 'true';
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  const toggleDetailFullscreen = () => {
+    setIsDetailFullscreen(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('pea_detail_fullscreen', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   const [showLoadCharts, setShowLoadCharts] = useState(false);
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -676,6 +698,7 @@ export default function BackofficeDashboard() {
       if (event.key === 'Escape') {
         setIsCalendarOpen(false);
         setIsHistoryOpen(false);
+        setIsDetailFullscreen(false);
       }
     };
 
@@ -3067,18 +3090,14 @@ export default function BackofficeDashboard() {
       {/* 🌟 TRANSFORMER DETAILS & MEASUREMENT HISTORY MODAL (ประวัติการบันทึกโหลด) 🌟 */}
       {/* ========================================================================= */}
       {viewingTransformer && (
-        <div
-          className={`fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center overflow-y-auto animate-in fade-in duration-200 ${
-            isDetailFullscreen ? 'p-0' : 'p-3 md:p-6'
-          }`}
-        >
-          <div
-            className={`bg-white flex flex-col overflow-hidden transition-all duration-200 ${
-              isDetailFullscreen
-                ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none'
-                : 'rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[94vh] my-auto'
-            }`}
-          >
+        <div className={`fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center ${
+          isDetailFullscreen ? 'p-0' : 'p-3 md:p-6'
+        } overflow-y-auto animate-in fade-in duration-200`}>
+          <div className={`bg-white ${
+            isDetailFullscreen
+              ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none my-0'
+              : 'rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[94vh] my-auto'
+          } flex flex-col overflow-hidden transition-all duration-200`}>
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
               <div className="flex items-center gap-3">
@@ -3202,26 +3221,34 @@ export default function BackofficeDashboard() {
                   </a>
                 )}
 
+                {/* ⛶ โหมดขนาดเต็มจอ (Full Screen Mode Toggle) */}
                 <button
                   type="button"
-                  onClick={() => setIsDetailFullscreen(prev => !prev)}
-                  className={`p-1.5 rounded-xl transition-all ml-1 ${
+                  onClick={toggleDetailFullscreen}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 ml-1 ${
                     isDetailFullscreen
-                      ? 'bg-purple-100 text-[#741b77] hover:bg-purple-200/80 border border-purple-200'
-                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                      ? 'bg-purple-100 hover:bg-purple-200 text-[#741b77] border border-purple-300'
+                      : 'bg-slate-50 hover:bg-purple-50 text-slate-700 hover:text-[#741b77] border border-slate-200 hover:border-purple-200'
                   }`}
-                  title={isDetailFullscreen ? 'ย่อขนาดหน้าต่างปกติ' : 'ขยายขนาดหน้ารายละเอียดเต็มจอ (Full Screen)'}
+                  title={isDetailFullscreen ? 'ออกจากโหมดเต็มจอ (ย่อขนาดกลับปกติ หรือกด Esc)' : 'ขยายหน้ารายละเอียดเต็มจอ (Full Screen)'}
+                  aria-label={isDetailFullscreen ? 'ออกจากโหมดเต็มจอ' : 'ขยายเต็มจอ'}
                 >
                   {isDetailFullscreen ? (
-                    <Minimize2 className="w-5 h-5" />
+                    <>
+                      <Minimize2 className="w-3.5 h-3.5 text-[#741b77]" />
+                      <span className="hidden sm:inline">ย่อขนาด</span>
+                    </>
                   ) : (
-                    <Maximize2 className="w-5 h-5" />
+                    <>
+                      <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
+                      <span className="hidden sm:inline">เต็มจอ</span>
+                    </>
                   )}
                 </button>
 
                 <button
                   onClick={() => setViewingTransformer(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ml-1"
                   title="ปิดหน้าต่าง"
                 >
                   <X className="w-5 h-5" />
@@ -4397,34 +4424,30 @@ export default function BackofficeDashboard() {
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setIsDetailFullscreen(prev => !prev)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-95 shadow-2xs border ${
-                    isDetailFullscreen
-                      ? 'bg-purple-50 hover:bg-purple-100 text-[#741b77] border-purple-200'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                  }`}
-                  title={isDetailFullscreen ? 'ย่อขนาดหน้าต่างปกติ' : 'ขยายขนาดหน้ารายละเอียดเต็มจอ (Full Screen)'}
-                >
-                  {isDetailFullscreen ? (
-                    <>
-                      <Minimize2 className="w-3.5 h-3.5 text-[#741b77]" />
-                      <span>ย่อขนาดปกติ</span>
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 className="w-3.5 h-3.5 text-slate-500" />
-                      <span>ขยายเต็มจอ</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
                   onClick={() => setDeletingPea(viewingTransformer.peaNo)}
                   className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-200 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-95 shadow-2xs"
                   title="ลบข้อมูลหม้อแปลงนี้และรูปภาพทั้งหมดใน Google Drive"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                   <span>ลบข้อมูลหม้อแปลงนี้</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleDetailFullscreen}
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-purple-50 text-slate-700 hover:text-[#741b77] border border-slate-200 hover:border-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-95 shadow-2xs"
+                  title={isDetailFullscreen ? 'ย่อขนาดหน้าต่างกลับปกติ' : 'ขยายหน้ารายละเอียดเต็มจอ (Full Screen)'}
+                >
+                  {isDetailFullscreen ? (
+                    <>
+                      <Minimize2 className="w-3.5 h-3.5 text-[#741b77]" />
+                      <span>ย่อขนาด</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
+                      <span>เต็มจอ</span>
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => setViewingTransformer(null)}
