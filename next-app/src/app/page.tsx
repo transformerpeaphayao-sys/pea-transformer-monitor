@@ -3090,13 +3090,13 @@ export default function BackofficeDashboard() {
       {/* 🌟 TRANSFORMER DETAILS & MEASUREMENT HISTORY MODAL (ประวัติการบันทึกโหลด) 🌟 */}
       {/* ========================================================================= */}
       {viewingTransformer && (
-        <div className={`fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center ${
+        <div className={`fixed left-0 right-0 bottom-0 top-[57px] sm:top-[69px] z-40 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center ${
           isDetailFullscreen ? 'p-0' : 'p-3 md:p-6'
         } overflow-y-auto animate-in fade-in duration-200`}>
           <div className={`bg-white ${
             isDetailFullscreen
               ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none my-0'
-              : 'rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[94vh] my-auto'
+              : 'rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-100px)] my-auto'
           } flex flex-col overflow-hidden transition-all duration-200`}>
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
