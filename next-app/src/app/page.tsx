@@ -3353,163 +3353,242 @@ export default function BackofficeDashboard() {
                 </div>
 
                 {viewingTransformer.violations && viewingTransformer.violations.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-                    {viewingTransformer.violations.map((v, vIdx) => {
-                      const isLegal = v.status === 'LEGAL_ACTION';
-                      const isResolved = v.status === 'RESOLVED';
-                      const isCleared = v.status === 'CLEARED';
-                      const isPending = v.status === 'PENDING';
-
-                      return (
-                        <div
-                          key={`${v.meterPeaNo}_${vIdx}`}
-                          className={`w-full max-w-[400px] p-3 sm:p-3.5 rounded-xl border shadow-xs hover:shadow-sm transition-all space-y-2.5 ${
-                            isCleared
-                              ? 'bg-gradient-to-br from-emerald-50/40 via-white to-slate-50/60 border-emerald-200/80 hover:border-emerald-300'
-                              : 'bg-gradient-to-br from-rose-50/30 via-white to-slate-50/60 border-rose-200/80 hover:border-rose-300'
-                          }`}
-                        >
-                          {/* Card Header: PEA No, Badge, and Action Buttons (Edit / Delete) */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="space-y-0.5 min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-mono text-xs sm:text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1">
-                                  {isCleared ? '🛡️ ' : ''}PEA {v.meterPeaNo}
-                                </span>
-                                <span
-                                  className={`px-2 py-0.5 rounded-full text-[10.5px] font-semibold inline-flex items-center gap-1 border shadow-2xs ${
-                                    isCleared
-                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200/90'
-                                      : 'bg-rose-50 text-rose-800 border-rose-200/90'
-                                  }`}
-                                >
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                      isCleared ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
-                                    }`}
-                                  />
-                                  <span className="truncate max-w-[140px] sm:max-w-[180px]">{v.violationType}</span>
-                                </span>
+                  <div className="rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden bg-white">
+                    <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                      <table className="w-full text-left text-xs border-collapse min-w-[1260px]">
+                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs font-semibold select-none">
+                          <tr className="border-b border-slate-200/80">
+                            <th className="py-2.5 px-3 text-center border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold w-[85px]">
+                              <div className="flex items-center justify-center gap-1">
+                                <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                                <span>วันที่</span>
                               </div>
-                              <p className="text-xs text-slate-600 flex items-center gap-1 mt-0.5 truncate">
-                                <User className="w-3 h-3 text-slate-400 shrink-0" />
-                                <span className="font-semibold text-slate-700">ผู้ใช้ไฟ:</span>
-                                <span className="truncate">{v.consumerName || '-'}</span>
-                                {v.location && <span className="text-slate-400 truncate">• {v.location}</span>}
-                              </p>
-                            </div>
-
-                            {/* Action Buttons: Edit & Delete */}
-                            <div className="flex items-center gap-0.5 shrink-0 bg-slate-100/70 p-0.5 rounded-lg border border-slate-200/60">
-                              <button
-                                type="button"
-                                onClick={() => handleEditViolation(v)}
-                                className="p-1 sm:p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-md transition-all shadow-2xs active:scale-95"
-                                title="แก้ไขข้อมูลมิเตอร์นี้"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteViolation(v.transformerPeaNo, v.meterPeaNo)}
-                                className="p-1 sm:p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-md transition-all shadow-2xs active:scale-95"
-                                title="ลบรายการนี้"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Compact Meta Row: Detected Date/Time & Inspector */}
-                          <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-white/90 rounded-lg border border-slate-100 text-[11px] shadow-2xs">
-                            <div className="flex items-center gap-1.5 text-slate-600 min-w-0">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                              <span className="text-slate-400">ตรวจพบ:</span>
-                              <span className="font-semibold font-mono text-slate-700 truncate">
-                                {v.detectedDate} {v.detectedTime}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-slate-600 shrink-0">
-                              <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                              <span className="text-slate-400">ผู้ตรวจ:</span>
-                              <span className="font-semibold text-slate-700 truncate max-w-[110px] sm:max-w-[140px]">
-                                {v.inspectorName || '-'}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Remarks / Details if available */}
-                          {v.remark && (
-                            <div
-                              className={`text-[11px] px-2.5 py-1.5 rounded-lg border leading-relaxed flex items-start gap-1.5 ${
-                                isCleared
-                                  ? 'bg-emerald-50/50 border-emerald-100/80 text-emerald-900'
-                                  : 'bg-amber-50/50 border-amber-100/80 text-slate-700'
-                              }`}
-                            >
-                              <Info className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                              <div className="min-w-0 flex-1">
-                                <span className="font-semibold">{isCleared ? 'ผลตรวจ: ' : 'หมายเหตุ: '}</span>
-                                <span>{v.remark}</span>
+                            </th>
+                            <th className="py-2.5 px-2.5 text-center border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold w-[75px]">
+                              <div className="flex items-center justify-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                <span>เวลา</span>
                               </div>
-                            </div>
-                          )}
-
-                          {/* Evidence Photos Thumbnail Strip */}
-                          {v.imageUrls && v.imageUrls.length > 0 && (
-                            <div className="flex items-center gap-2 pt-0.5">
-                              <span className="text-[10.5px] font-semibold text-slate-500 shrink-0">
-                                รูปถ่าย ({v.imageUrls.length}):
-                              </span>
-                              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-                                {v.imageUrls.map((imgUrl, imgIdx) => (
-                                  <a
-                                    key={imgIdx}
-                                    href={imgUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200/90 shrink-0 bg-slate-100 hover:ring-2 hover:ring-purple-400 transition-all shadow-2xs block"
-                                    title="คลิกเพื่อดูรูปขนาดเต็ม"
-                                  >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={imgUrl} alt="หลักฐาน" className="w-full h-full object-cover" />
-                                  </a>
-                                ))}
+                            </th>
+                            <th className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold w-[135px]">
+                              <div className="flex items-center gap-1">
+                                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                                <span>PEA มิเตอร์</span>
                               </div>
-                            </div>
-                          )}
+                            </th>
+                            <th className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold min-w-[160px]">
+                              <div className="flex items-center gap-1">
+                                <User className="w-3.5 h-3.5 text-slate-500" />
+                                <span>ผู้ใช้ไฟ</span>
+                              </div>
+                            </th>
+                            <th className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold min-w-[160px]">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                                <span>สถานที่ / จุดติดตั้ง</span>
+                              </div>
+                            </th>
+                            <th className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold min-w-[170px]">
+                              <div className="flex items-center gap-1">
+                                <AlertOctagon className="w-3.5 h-3.5 text-rose-500" />
+                                <span>ประเภทการละเมิด</span>
+                              </div>
+                            </th>
+                            <th className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold w-[130px]">
+                              <div className="flex items-center gap-1">
+                                <UserCheck className="w-3.5 h-3.5 text-slate-500" />
+                                <span>ผู้ตรวจพบ</span>
+                              </div>
+                            </th>
+                            <th className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold w-[165px]">
+                              <div className="flex items-center gap-1">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>สถานะดำเนินงาน</span>
+                              </div>
+                            </th>
+                            <th className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold min-w-[130px]">
+                              <div className="flex items-center gap-1">
+                                <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                <span>หมายเหตุ</span>
+                              </div>
+                            </th>
+                            <th className="py-2.5 px-3 text-center border-r border-slate-200 whitespace-nowrap bg-slate-100/70 text-slate-700 font-semibold w-[110px]">
+                              <div className="flex items-center justify-center gap-1">
+                                <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
+                                <span>รูปถ่าย</span>
+                              </div>
+                            </th>
+                            <th className="py-2.5 px-3 text-center whitespace-nowrap bg-slate-100 text-slate-700 font-semibold w-[85px] sticky right-0 z-20 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] border-l border-slate-200">
+                              <div className="flex items-center justify-center gap-1">
+                                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+                                <span>จัดการ</span>
+                              </div>
+                            </th>
+                          </tr>
+                        </thead>
 
-                          {/* Status Dropdown Footer */}
-                          <div className="pt-1.5 flex items-center justify-between gap-2 border-t border-slate-100/80">
-                            <span className="text-[11px] text-slate-500 font-medium">สถานะ:</span>
-                            <div className="relative">
-                              <select
-                                value={v.status || (isCleared ? 'CLEARED' : 'INVESTIGATING')}
-                                onChange={(e) => handleUpdateViolationStatus(v.transformerPeaNo, v.meterPeaNo, e.target.value as any)}
-                                className={`text-[11px] font-bold rounded-lg pl-2.5 pr-6 py-1 border transition-all cursor-pointer shadow-2xs appearance-none focus:outline-none focus:ring-1 focus:ring-purple-500 ${
-                                  isCleared
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100/60'
-                                    : isLegal
-                                    ? 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100/60'
-                                    : isResolved
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100/60'
-                                    : isPending
-                                    ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100/60'
-                                    : 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100/60'
+                        <tbody className="divide-y divide-slate-100">
+                          {viewingTransformer.violations.map((v, vIdx) => {
+                            const isLegal = v.status === 'LEGAL_ACTION';
+                            const isResolved = v.status === 'RESOLVED';
+                            const isCleared = v.status === 'CLEARED';
+                            const isPending = v.status === 'PENDING';
+
+                            return (
+                              <tr
+                                key={`${v.meterPeaNo}_${vIdx}`}
+                                className={`border-b border-slate-200/70 hover:bg-purple-50/25 transition-colors ${
+                                  isCleared ? 'bg-emerald-50/20' : vIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'
                                 }`}
                               >
-                                <option value="INVESTIGATING">กำลังตรวจสอบ</option>
-                                <option value="LEGAL_ACTION">ส่งฝ่ายกฎหมาย/ดำเนินคดี</option>
-                                <option value="RESOLVED">เปรียบเทียบปรับแล้ว</option>
-                                <option value="PENDING">รอตรวจซ้ำ</option>
-                                <option value="CLEARED">🛡️ ตรวจแล้วปกติ (Cleared)</option>
-                              </select>
-                              <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2" />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                                {/* 1. Date */}
+                                <td className="py-2.5 px-3 text-center border-r border-slate-200 whitespace-nowrap font-mono font-bold text-slate-800">
+                                  {v.detectedDate || '-'}
+                                </td>
+
+                                {/* 2. Time */}
+                                <td className="py-2.5 px-2.5 text-center border-r border-slate-200 whitespace-nowrap font-mono text-slate-600">
+                                  {v.detectedTime ? `${v.detectedTime} น.` : '-'}
+                                </td>
+
+                                {/* 3. Meter PEA No */}
+                                <td className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap font-mono font-bold text-slate-900">
+                                  {isCleared && <span className="mr-1" title="ตรวจแล้วปกติ">🛡️</span>}
+                                  <span>PEA {v.meterPeaNo}</span>
+                                </td>
+
+                                {/* 4. Consumer Name */}
+                                <td className="py-2.5 px-3 text-left border-r border-slate-200 font-semibold text-slate-800">
+                                  <div className="truncate max-w-[180px]" title={v.consumerName || '-'}>
+                                    {v.consumerName || '-'}
+                                  </div>
+                                </td>
+
+                                {/* 5. Location */}
+                                <td className="py-2.5 px-3 text-left border-r border-slate-200 text-slate-600 text-[11px]">
+                                  <div className="truncate max-w-[180px]" title={v.location || '-'}>
+                                    {v.location || '-'}
+                                  </div>
+                                </td>
+
+                                {/* 6. Violation Type */}
+                                <td className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10.5px] font-semibold inline-flex items-center gap-1.5 border shadow-2xs ${
+                                      isCleared
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : 'bg-rose-50 text-rose-800 border-rose-200'
+                                    }`}
+                                  >
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                        isCleared ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
+                                      }`}
+                                    />
+                                    <span className="truncate max-w-[160px]" title={v.violationType}>
+                                      {v.violationType}
+                                    </span>
+                                  </span>
+                                </td>
+
+                                {/* 7. Inspector Name */}
+                                <td className="py-2.5 px-3 text-left border-r border-slate-200 whitespace-nowrap font-medium text-slate-700">
+                                  <span className="truncate max-w-[120px] block" title={v.inspectorName || '-'}>
+                                    {v.inspectorName || '-'}
+                                  </span>
+                                </td>
+
+                                {/* 8. Status Select */}
+                                <td className="py-2 px-2.5 text-left border-r border-slate-200 whitespace-nowrap">
+                                  <div className="relative inline-block w-full min-w-[140px]">
+                                    <select
+                                      value={v.status || (isCleared ? 'CLEARED' : 'INVESTIGATING')}
+                                      onChange={(e) =>
+                                        handleUpdateViolationStatus(
+                                          v.transformerPeaNo,
+                                          v.meterPeaNo,
+                                          e.target.value as any
+                                        )
+                                      }
+                                      className={`text-[11px] font-bold rounded-lg pl-2 pr-6 py-1 border transition-all cursor-pointer shadow-2xs appearance-none focus:outline-none focus:ring-1 focus:ring-purple-500 w-full ${
+                                        isCleared
+                                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100/60'
+                                          : isLegal
+                                          ? 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100/60'
+                                          : isResolved
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100/60'
+                                          : isPending
+                                          ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100/60'
+                                          : 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100/60'
+                                      }`}
+                                    >
+                                      <option value="INVESTIGATING">กำลังตรวจสอบ</option>
+                                      <option value="LEGAL_ACTION">ส่งฝ่ายกฎหมาย/ดำเนินคดี</option>
+                                      <option value="RESOLVED">เปรียบเทียบปรับแล้ว</option>
+                                      <option value="PENDING">รอตรวจซ้ำ</option>
+                                      <option value="CLEARED">🛡️ ตรวจแล้วปกติ</option>
+                                    </select>
+                                    <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2" />
+                                  </div>
+                                </td>
+
+                                {/* 9. Remark */}
+                                <td className="py-2.5 px-3 text-left border-r border-slate-200 text-slate-600 text-[11px]">
+                                  <div className="truncate max-w-[180px]" title={v.remark || '-'}>
+                                    {v.remark || '-'}
+                                  </div>
+                                </td>
+
+                                {/* 10. Photos */}
+                                <td className="py-2 px-2.5 text-center border-r border-slate-200 whitespace-nowrap">
+                                  {v.imageUrls && v.imageUrls.length > 0 ? (
+                                    <div className="flex items-center justify-center gap-1 overflow-x-auto">
+                                      {v.imageUrls.map((imgUrl, imgIdx) => (
+                                        <a
+                                          key={imgIdx}
+                                          href={imgUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="w-7 h-7 rounded-md overflow-hidden border border-slate-200/90 shrink-0 bg-slate-100 hover:ring-2 hover:ring-purple-400 transition-all shadow-2xs block"
+                                          title="คลิกเพื่อดูรูปขนาดเต็ม"
+                                        >
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img src={imgUrl} alt="หลักฐาน" className="w-full h-full object-cover" />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-300">-</span>
+                                  )}
+                                </td>
+
+                                {/* 11. Actions */}
+                                <td className="py-2 px-2 text-center whitespace-nowrap bg-white sticky right-0 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] border-l border-slate-200">
+                                  <div className="inline-flex items-center gap-1 bg-slate-100/70 p-0.5 rounded-lg border border-slate-200/60 shadow-2xs">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditViolation(v)}
+                                      className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-md transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                      title="แก้ไขข้อมูลมิเตอร์นี้"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteViolation(v.transformerPeaNo, v.meterPeaNo)}
+                                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-md transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                      title="ลบรายการนี้"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-4 bg-slate-50/60 rounded-2xl border border-slate-200/70 flex items-center gap-2 text-xs text-slate-500">
