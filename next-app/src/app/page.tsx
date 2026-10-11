@@ -721,6 +721,20 @@ export default function BackofficeDashboard() {
     }
   }, [viewingTransformer]);
 
+  // Dynamically measure exact rendered height of Top Header Navigation to eliminate visual gaps
+  const [headerHeight, setHeaderHeight] = useState<number>(56);
+  useEffect(() => {
+    const updateH = () => {
+      const el = document.getElementById('top-app-header');
+      if (el) {
+        setHeaderHeight(Math.round(el.getBoundingClientRect().height));
+      }
+    };
+    updateH();
+    window.addEventListener('resize', updateH);
+    return () => window.removeEventListener('resize', updateH);
+  }, []);
+
   // Check active advanced filter count
   const activeAdvancedFilterCount = useMemo(() => {
     let count = 0;
@@ -3101,9 +3115,12 @@ export default function BackofficeDashboard() {
       {/* 🌟 TRANSFORMER DETAILS & MEASUREMENT HISTORY MODAL (ประวัติการบันทึกโหลด) 🌟 */}
       {/* ========================================================================= */}
       {viewingTransformer && (
-        <div className={`fixed left-0 right-0 bottom-0 top-[57px] sm:top-[69px] z-40 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center ${
-          isDetailFullscreen ? 'p-0' : 'p-3 md:p-6'
-        } overflow-hidden animate-in fade-in duration-200`}>
+        <div
+          style={{ top: `${headerHeight}px` }}
+          className={`fixed left-0 right-0 bottom-0 z-40 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center ${
+            isDetailFullscreen ? 'p-0' : 'p-3 md:p-6'
+          } overflow-hidden animate-in fade-in duration-200`}
+        >
           <div className={`bg-white ${
             isDetailFullscreen
               ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none my-0'

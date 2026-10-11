@@ -40,7 +40,7 @@ export default function TopNavbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] px-3.5 sm:px-6 py-2.5 sm:py-3 min-h-[53px] sm:min-h-[65px] flex items-center justify-between transition-all">
+    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] px-3.5 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between transition-all">
       {/* Brand & Logo */}
       <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
         <Link href="/?dashboard=1" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">

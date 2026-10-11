@@ -47,11 +47,14 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col bg-[#f8fafc] text-slate-800 antialiased font-sans" suppressHydrationWarning>
-        {/* PEA Brand Accent Stripe */}
-        <div className="h-1 bg-gradient-to-r from-[#741b77] via-[#8e24aa] to-[#f39c12]" />
+        {/* Top Header Navigation & Brand Stripe */}
+        <div id="top-app-header" className="sticky top-0 z-50 flex flex-col">
+          {/* PEA Brand Accent Stripe */}
+          <div className="h-1 bg-gradient-to-r from-[#741b77] via-[#8e24aa] to-[#f39c12]" />
 
-        {/* Top Header Navigation */}
-        <TopNavbar />
+          {/* Top Header Navigation */}
+          <TopNavbar />
+        </div>
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-h-0">{children}</main>
