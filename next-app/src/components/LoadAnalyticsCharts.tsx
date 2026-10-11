@@ -1543,6 +1543,12 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                                 {cluster.sub}
                               </span>
                             )}
+                            {15 <= harmonicChartScale && (
+                              <div className="flex items-center gap-1.5 text-[9.5px] font-mono text-rose-600/90 font-medium mt-0.5">
+                                <span className="w-2.5 border-b-2 border-dashed border-rose-400 inline-block" />
+                                <span>เกณฑ์เสี่ยง กฟภ. 15.0 A</span>
+                              </div>
+                            )}
                           </div>
                           <span
                             className={`text-[9.5px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap flex items-center gap-0.5 ${
@@ -1564,15 +1570,12 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                             {/* 15A PEA Guideline Marker Line inside pod frame */}
                             {15 <= harmonicChartScale && (
                               <div
-                                className="absolute left-0 right-0 border-b border-dashed border-rose-400/80 pointer-events-none z-10 flex items-center justify-end pr-1"
+                                className="absolute left-0 right-0 border-b border-dashed border-rose-400/80 pointer-events-none z-10"
                                 style={{
                                   bottom: `${Math.min(95, Math.max(5, (15 / harmonicChartScale) * 100))}%`,
                                 }}
-                              >
-                                <span className="text-[8px] font-mono font-bold text-rose-500 bg-rose-50/95 border border-rose-200 px-1.5 py-0.2 rounded -translate-y-1/2 shadow-2xs">
-                                  15A เกณฑ์ กฟภ.
-                                </span>
-                              </div>
+                                title="เกณฑ์เฝ้าระวังฮาร์มอนิก กฟภ. 15.0 A"
+                              />
                             )}
 
                             {/* Bar 1: In Measured (Dark Slate) */}
