@@ -11,6 +11,7 @@ import {
   parseDateToTimestamp,
   normalizeDateToYMD,
   formatYMDToThai,
+  getTransformerFiscalYears,
 } from '@/lib/domain/calculations';
 import {
   Zap,
@@ -62,6 +63,8 @@ import {
   User,
   Maximize2,
   Minimize2,
+  Send,
+  CheckSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AiReportViewer } from '@/components/AiReportViewer';
@@ -76,6 +79,14 @@ export default function BackofficeDashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Fiscal Year & 2570 Sampling Filter State (ปีงบประมาณ 2569 vs 2570)
+  const [fiscalYearFilter, setFiscalYearFilter] = useState<'ALL' | '2569' | '2570' | 'COMPARED' | 'TARGET_2570'>('ALL');
+
+  // Batch Task Selection State (สั่งตรวจซ้ำเป็นชุด)
+  const [selectedPeas, setSelectedPeas] = useState<Set<string>>(new Set());
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isSubmittingBatch, setIsSubmittingBatch] = useState(false);
 
   // View Mode: Summary Table vs Detailed Feeder Records
   const [tableViewMode, setTableViewMode] = useState<'summary' | 'detail'>('summary');
@@ -395,6 +406,158 @@ export default function BackofficeDashboard() {
     }
   };
 
+  const toggleSelectPea = (peaNo: string) => {
+    setSelectedPeas(prev => {
+      const next = new Set(prev);
+      if (next.has(peaNo)) next.delete(peaNo);
+      else next.add(peaNo);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAllFiltered = () => {
+    if (selectedPeas.size === filteredList.length && filteredList.length > 0) {
+      setSelectedPeas(new Set());
+    } else {
+      setSelectedPeas(new Set(filteredList.map(t => t.peaNo)));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedPeas(new Set());
+  };
+
+  const handleQuickSelectOverload = () => {
+    const list = filteredList.filter(t => t.engineeringStatus?.loadStatus === 'OVERLOAD');
+    setSelectedPeas(new Set(list.map(t => t.peaNo)));
+  };
+
+  const handleQuickSelectHarmonic = () => {
+    const list = filteredList.filter(t => (t.engineeringStatus?.harmonicCurrent || 0) >= 15);
+    setSelectedPeas(new Set(list.map(t => t.peaNo)));
+  };
+
+  const handleQuickSelectTarget2570 = () => {
+    const list = filteredList.filter(t => getTransformerFiscalYears(t).isTarget2570);
+    setSelectedPeas(new Set(list.map(t => t.peaNo)));
+  };
+
+  const handleConfirmBatchOrder = async () => {
+    if (selectedPeas.size === 0) return;
+    setIsSubmittingBatch(true);
+    setTaskErrorMsg(null);
+    setTaskSuccessMsg(null);
+    try {
+      const peaList = Array.from(selectedPeas);
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ peaNos: peaList, assigner: 'ผู้ดูแลระบบ (Admin)' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'เกิดข้อผิดพลาดในการสั่งตรวจซ้ำเป็นชุด');
+      }
+      setTaskSuccessMsg(`✅ สั่งตรวจซ้ำเป็นชุดสำเร็จจำนวน ${peaList.length} เครื่อง (หมุดบนแผนที่หน้างานเปลี่ยนเป็นสีส้มแล้ว)`);
+      setIsBatchModalOpen(false);
+      setSelectedPeas(new Set());
+      await fetchTransformers();
+      setTimeout(() => setTaskSuccessMsg(null), 6000);
+    } catch (err: unknown) {
+      setTaskErrorMsg(getErrorMessage(err) || 'เกิดข้อผิดพลาดในการสั่งตรวจซ้ำเป็นชุด');
+      setTimeout(() => setTaskErrorMsg(null), 6000);
+    } finally {
+      setIsSubmittingBatch(false);
+    }
+  };
+
+  const handleExportSamplingReport = (targetPeas?: string[]) => {
+    const exportItems = targetPeas && targetPeas.length > 0
+      ? transformers.filter(t => targetPeas.includes(t.peaNo))
+      : filteredList;
+
+    if (exportItems.length === 0) {
+      alert('ไม่มีรายการหม้อแปลงสำหรับส่งออกรายงาน');
+      return;
+    }
+
+    const headers = [
+      'ลำดับ',
+      'PEA NO',
+      'พิกัด kVA',
+      'ระบบเฟส',
+      'ยี่ห้อหม้อแปลง',
+      'สถานที่ติดตั้ง',
+      'สถานะปัจจุบัน',
+      'รอบตรวจวัดทั้งหมด',
+      'มีผลตรวจปี 2569',
+      'มีผลตรวจปี 2570',
+      'สถานะแผนสุ่มตรวจปี 2570',
+      'วัน-เวลาตรวจล่าสุด',
+      'กระแส Ia (A)',
+      'กระแส Ib (A)',
+      'กระแส Ic (A)',
+      'กระแส In วัดจริง (A)',
+      'กระแส In คำนวณ (A)',
+      'Harmonic แฝง (A)',
+      'ภาระโหลด %Load (UF)',
+      'สถานะโหลด กฟภ.',
+      'ความไม่สมดุล %Unbalance',
+      'ความเสี่ยง Harmonic',
+      'วัน-เวลาสั่งงานตรวจซ้ำ (Task Data)',
+    ];
+
+    const rows = exportItems.map((t, index) => {
+      const fy = getTransformerFiscalYears(t);
+      const samplingStatus = fy.has2570
+        ? 'ตรวจซ้ำปี 2570 แล้ว'
+        : t.statusColor === 'orange' || t.pendingTask
+        ? 'สั่งตรวจซ้ำแล้ว (Pending)'
+        : fy.isTarget2570
+        ? 'รอสุ่มตรวจซ้ำปี 2570'
+        : 'ยังไม่เคยตรวจ';
+
+      return [
+        index + 1,
+        `"${t.peaNo}"`,
+        t.kva,
+        t.system === '1' ? '1 Phase' : '3 Phase',
+        `"${t.brand || ''}"`,
+        `"${t.location || ''}"`,
+        t.statusColor === 'red' ? 'ยังไม่ตรวจ' : t.statusColor === 'orange' ? 'สั่งตรวจซ้ำ' : 'ตรวจแล้ว',
+        fy.roundCount,
+        fy.has2569 ? 'มี (2569)' : 'ไม่มี',
+        fy.has2570 ? 'มี (2570)' : 'ไม่มี',
+        `"${samplingStatus}"`,
+        t.latestSession ? `"${t.latestSession.date} ${t.latestSession.time}"` : '"-"',
+        t.latestSession?.total.currentA.toFixed(2) || '0',
+        t.latestSession?.total.currentB.toFixed(2) || '0',
+        t.latestSession?.total.currentC.toFixed(2) || '0',
+        t.latestSession?.total.currentN.toFixed(2) || '0',
+        t.engineeringStatus?.nTheoretical.toFixed(2) || '0',
+        t.engineeringStatus?.harmonicCurrent.toFixed(2) || '0',
+        t.engineeringStatus?.pctLoad.toFixed(2) || '0',
+        t.engineeringStatus?.loadStatus === 'OVERLOAD'
+          ? 'เกินพิกัด (>80%)'
+          : t.engineeringStatus?.loadStatus === 'WARNING'
+          ? 'เฝ้าระวัง (70-80%)'
+          : 'ปกติ (<=70%)',
+        t.engineeringStatus?.pctUnbalance.toFixed(2) || '0',
+        t.engineeringStatus?.isHarmonicRisk ? 'เสี่ยงสูง (≥15A)' : 'ปกติ (<15A)',
+        t.pendingTask?.orderDate ? `"${t.pendingTask.orderDate}"` : '"-"',
+      ];
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const nowStr = new Date().toISOString().slice(0, 10);
+    link.download = `PEA_Sampling_Inspection_Report_2570_${nowStr}.csv`;
+    link.click();
+  };
+
   const handleEditViolation = (v: MeterViolation) => {
     if (!viewingTransformer) return;
     setEditingViolation(v);
@@ -543,6 +706,24 @@ export default function BackofficeDashboard() {
     }
 
     return { total, completed, uninspected, pending, overload, criticalUnbalance, harmonicRisk, totalViolations, totalAuditCleared };
+  }, [transformers]);
+
+  // Fiscal Year Statistics across all transformers
+  const fiscalYearStats = useMemo(() => {
+    let count2569 = 0;
+    let count2570 = 0;
+    let countCompared = 0;
+    let countTarget2570 = 0;
+
+    for (const t of transformers) {
+      const fy = getTransformerFiscalYears(t);
+      if (fy.has2569) count2569++;
+      if (fy.has2570) count2570++;
+      if (fy.isCompared) countCompared++;
+      if (fy.isTarget2570) countTarget2570++;
+    }
+
+    return { count2569, count2570, countCompared, countTarget2570 };
   }, [transformers]);
 
   // Local Today & Yesterday in YYYY-MM-DD
@@ -760,6 +941,8 @@ export default function BackofficeDashboard() {
     setMinHarmonicCurrent('');
     setMaxHarmonicCurrent('');
     setFeederPhaseFilter('MAX');
+    setFiscalYearFilter('ALL');
+    setSelectedPeas(new Set());
   };
 
   // Filtered List with Date Filtering & Sorting (Latest date first by default)
@@ -791,6 +974,15 @@ export default function BackofficeDashboard() {
         const hasViolation = vList.some(v => v.status !== 'CLEARED');
         const hasCleared = vList.some(v => v.status === 'CLEARED') || Boolean(t.isAuditCleared);
         if (hasViolation || !hasCleared) return false;
+      }
+
+      // 2.5 Fiscal Year & 2570 Sampling Filter
+      if (fiscalYearFilter !== 'ALL') {
+        const fy = getTransformerFiscalYears(t);
+        if (fiscalYearFilter === '2569' && !fy.has2569) return false;
+        if (fiscalYearFilter === '2570' && !fy.has2570) return false;
+        if (fiscalYearFilter === 'COMPARED' && !fy.isCompared) return false;
+        if (fiscalYearFilter === 'TARGET_2570' && !fy.isTarget2570) return false;
       }
 
       // 3. Date Filter (e.g. today completed count, custom date, presets)
@@ -912,6 +1104,7 @@ export default function BackofficeDashboard() {
     maxHarmonicCurrent,
     localTodayYMD,
     localYesterdayYMD,
+    fiscalYearFilter,
   ]);
 
   // Detailed Feeder Records List (Flattened and sorted newest first)
@@ -1123,6 +1316,15 @@ export default function BackofficeDashboard() {
             >
               <Download className="w-3.5 h-3.5 text-[#741b77]" />
               <span>ส่งออก CSV</span>
+            </button>
+
+            <button
+              onClick={() => handleExportSamplingReport()}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white border border-purple-600/80 text-xs font-semibold flex items-center gap-2 transition-all shadow-xs active:scale-95"
+              title="ดาวน์โหลดรายงานสรุปผลการสุ่มตรวจหม้อแปลงปี 2570 (Excel/CSV สำหรับผู้บริหาร)"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-300" />
+              <span>รายงานสุ่มตรวจ 2570</span>
             </button>
 
             <button
@@ -1955,6 +2157,152 @@ export default function BackofficeDashboard() {
           </div>
         </div>
 
+        {/* Fiscal Year & 2570 Sampling Plan Toolbar */}
+        <div className="px-5 py-2.5 bg-slate-50/90 border-b border-slate-200/70 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 mr-1">
+              <Compass className="w-4 h-4 text-[#741b77]" />
+              <span>แผนงานปีงบประมาณ:</span>
+            </div>
+
+            {/* ทุกปี */}
+            <button
+              type="button"
+              onClick={() => setFiscalYearFilter('ALL')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                fiscalYearFilter === 'ALL'
+                  ? 'bg-[#741b77] text-white shadow-2xs font-bold'
+                  : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50'
+              }`}
+            >
+              ทุกปีงบประมาณ ({transformers.length})
+            </button>
+
+            {/* ปี 2569 */}
+            <button
+              type="button"
+              onClick={() => setFiscalYearFilter('2569')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                fiscalYearFilter === '2569'
+                  ? 'bg-purple-700 text-white shadow-2xs font-bold'
+                  : 'bg-white text-purple-700 border border-purple-200/90 hover:bg-purple-50/70'
+              }`}
+              title="หม้อแปลงที่มีผลตรวจวัดในปี พ.ศ. 2569 (ค.ศ. 2026)"
+            >
+              <span>🏛️ ปี 2569</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                fiscalYearFilter === '2569' ? 'bg-purple-900 text-purple-100' : 'bg-purple-100 text-purple-800'
+              }`}>
+                {fiscalYearStats.count2569}
+              </span>
+            </button>
+
+            {/* ปี 2570 */}
+            <button
+              type="button"
+              onClick={() => setFiscalYearFilter('2570')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                fiscalYearFilter === '2570'
+                  ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                  : 'bg-white text-emerald-700 border border-emerald-200/90 hover:bg-emerald-50/70'
+              }`}
+              title="หม้อแปลงที่มีผลตรวจวัดในปี พ.ศ. 2570 (ค.ศ. 2027)"
+            >
+              <span>🚀 ปี 2570</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                fiscalYearFilter === '2570' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                {fiscalYearStats.count2570}
+              </span>
+            </button>
+
+            {/* ตรวจทั้งสองปี (เปรียบเทียบผล) */}
+            <button
+              type="button"
+              onClick={() => setFiscalYearFilter('COMPARED')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                fiscalYearFilter === 'COMPARED'
+                  ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                  : 'bg-white text-indigo-700 border border-indigo-200/90 hover:bg-indigo-50/70'
+              }`}
+              title="หม้อแปลงที่มีผลตรวจวัดครบทั้งปี 2569 และ 2570 (เปรียบเทียบแนวโน้มได้)"
+            >
+              <span>🔄 ตรวจซ้ำแล้วทั้ง 2 ปี</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                fiscalYearFilter === 'COMPARED' ? 'bg-indigo-800 text-white' : 'bg-indigo-100 text-indigo-800'
+              }`}>
+                {fiscalYearStats.countCompared}
+              </span>
+            </button>
+
+            {/* เป้าหมายสุ่มตรวจปี 2570 (ตรวจปี 69 แล้ว ยังไม่ตรวจปี 70) */}
+            <button
+              type="button"
+              onClick={() => setFiscalYearFilter('TARGET_2570')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all active:scale-95 ${
+                fiscalYearFilter === 'TARGET_2570'
+                  ? 'bg-amber-500 text-slate-950 shadow-2xs font-extrabold ring-2 ring-amber-400/30'
+                  : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100/80'
+              }`}
+              title="หม้อแปลงที่ตรวจวัดเสร็จในปี 2569 แต่ยังไม่ได้สุ่มตรวจซ้ำในปี 2570 (กลุ่มเป้าหมายสุ่มตรวจ)"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span>🎯 เป้าหมายสุ่มตรวจปี 2570</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                fiscalYearFilter === 'TARGET_2570' ? 'bg-amber-600 text-white' : 'bg-amber-200 text-amber-900'
+              }`}>
+                {fiscalYearStats.countTarget2570} เครื่อง
+              </span>
+            </button>
+
+            {fiscalYearFilter !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => setFiscalYearFilter('ALL')}
+                className="text-xs text-rose-600 hover:text-rose-700 font-semibold px-2 py-0.5 rounded-lg border border-transparent hover:border-rose-200 transition-colors"
+              >
+                ล้างตัวกรองปี
+              </button>
+            )}
+          </div>
+
+          {/* Quick Selection Shortcuts for Batch Task Ordering */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-slate-400 font-semibold text-[11px] mr-1 hidden sm:inline">เลือกด่วน:</span>
+            <button
+              type="button"
+              onClick={handleToggleSelectAllFiltered}
+              className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[11px] transition-all shadow-2xs"
+            >
+              {selectedPeas.size === filteredList.length && filteredList.length > 0 ? 'ยกเลิกเลือก' : `เลือกทั้งหมด (${filteredList.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={handleQuickSelectOverload}
+              className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-semibold text-[11px] transition-all shadow-2xs"
+              title="เลือกเฉพาะหม้อแปลงที่ %Load เกิน 80%"
+            >
+              Overload (&gt;80%)
+            </button>
+            <button
+              type="button"
+              onClick={handleQuickSelectHarmonic}
+              className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-semibold text-[11px] transition-all shadow-2xs"
+              title="เลือกเฉพาะหม้อแปลงที่มี Harmonic แฝง ≥ 15 A"
+            >
+              Harmonic ≥15A
+            </button>
+            <button
+              type="button"
+              onClick={handleQuickSelectTarget2570}
+              className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 font-bold text-[11px] transition-all shadow-2xs"
+              title="เลือกเฉพาะหม้อแปลงที่เป็นเป้าหมายสุ่มตรวจปี 2570"
+            >
+              เป้าหมายปี 2570
+            </button>
+          </div>
+        </div>
+
         {/* Date Filter & Inspection Status Toolbar */}
         <div className="px-5 py-2.5 bg-gradient-to-r from-purple-50/40 via-white to-slate-50/60 border-b border-slate-200/70 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -2461,6 +2809,15 @@ export default function BackofficeDashboard() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 text-slate-500 border-b border-slate-200/80 text-[11px] font-semibold tracking-wider uppercase select-none">
               <tr>
+                <th className="py-3.5 px-3 text-center w-10">
+                  <input
+                    type="checkbox"
+                    checked={filteredList.length > 0 && selectedPeas.size === filteredList.length}
+                    onChange={handleToggleSelectAllFiltered}
+                    className="w-4 h-4 rounded border-slate-300 text-[#741b77] focus:ring-purple-500 cursor-pointer accent-[#741b77]"
+                    title="เลือก/ยกเลิกเลือกทั้งหมดที่แสดง"
+                  />
+                </th>
                 <th
                   className="py-3.5 px-5 cursor-pointer hover:bg-slate-100/90 transition-colors"
                   onClick={() => {
@@ -2599,7 +2956,7 @@ export default function BackofficeDashboard() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-16 text-slate-500">
+                  <td colSpan={10} className="text-center py-16 text-slate-500">
                     <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-3 text-[#741b77]" />
                     <p className="font-medium text-slate-700">กำลังดึงข้อมูลหม้อแปลงจาก Google Sheets...</p>
                     <p className="text-[11px] text-slate-400 mt-1">เชื่อมต่อฐานข้อมูล MasterData &amp; Record Data</p>
@@ -2607,7 +2964,7 @@ export default function BackofficeDashboard() {
                 </tr>
               ) : filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-16 text-slate-500">
+                  <td colSpan={10} className="text-center py-16 text-slate-500">
                     <Info className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                     <p className="font-semibold text-slate-700">ไม่พบรายการหม้อแปลงที่ตรงกับเงื่อนไขตัวกรอง</p>
                     {(dateFilterMode === 'TODAY' || statusFilter === 'TODAY') && (
@@ -2638,12 +2995,24 @@ export default function BackofficeDashboard() {
                       key={t.peaNo}
                       onClick={() => setViewingTransformer(t)}
                       className={`cursor-pointer transition-colors duration-150 group ${
-                        isAltRow
+                        selectedPeas.has(t.peaNo)
+                          ? 'bg-purple-50/80 hover:bg-purple-100/60 ring-1 ring-purple-300/60'
+                          : isAltRow
                           ? 'bg-slate-50/75 hover:bg-purple-50/50'
                           : 'bg-white hover:bg-purple-50/30'
                       }`}
                       title="คลิกเพื่อดูประวัติบันทึกข้อมูลโหลดและรายละเอียดหม้อแปลง"
                     >
+                      {/* Checkbox for batch task ordering */}
+                      <td className="py-3.5 px-3 text-center w-10" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedPeas.has(t.peaNo)}
+                          onChange={() => toggleSelectPea(t.peaNo)}
+                          className="w-4 h-4 rounded border-slate-300 text-[#741b77] focus:ring-purple-500 cursor-pointer accent-[#741b77]"
+                        />
+                      </td>
+
                       {/* PEA NO */}
                       <td className="py-3.5 px-5 font-semibold text-slate-900 flex items-center gap-2.5">
                         <span
@@ -2663,6 +3032,23 @@ export default function BackofficeDashboard() {
                             {historyCount} รอบ
                           </span>
                         )}
+                        {(() => {
+                          const fy = getTransformerFiscalYears(t);
+                          if (fy.has2570) {
+                            return (
+                              <span className="px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9.5px] font-bold">
+                                ปี 70
+                              </span>
+                            );
+                          } else if (fy.has2569) {
+                            return (
+                              <span className="px-1.5 py-0.2 rounded-full bg-purple-50 text-purple-700 border border-purple-200 text-[9.5px] font-medium">
+                                ปี 69
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                         {(() => {
                           const vList = t.violations || [];
                           const activeViolations = vList.filter(v => v.status !== 'CLEARED');
@@ -4752,6 +5138,186 @@ export default function BackofficeDashboard() {
           initialAuditType={violationModalMode}
           editingViolation={editingViolation}
         />
+      )}
+
+      {/* ⚡ Floating Batch Action Bar (ปรากฏเมื่อมีการเลือกหม้อแปลงอย่างน้อย 1 เครื่อง) */}
+      {selectedPeas.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white border border-purple-500/30 shadow-2xl rounded-2xl px-5 py-3 flex flex-wrap items-center justify-between gap-4 max-w-[95vw] md:max-w-2xl animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-3">
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-[#741b77]"></span>
+            </span>
+            <div className="text-sm font-semibold">
+              เลือกอยู่ <span className="text-amber-400 font-extrabold text-base px-1">{selectedPeas.size}</span> เครื่อง
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsBatchModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-[#741b77] hover:from-purple-500 hover:to-[#8a228e] text-white text-xs font-bold shadow-md hover:shadow-purple-500/25 transition-all active:scale-95 cursor-pointer"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>สั่งตรวจซ้ำพร้อมกัน ({selectedPeas.size})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleExportSamplingReport(Array.from(selectedPeas))}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md hover:shadow-emerald-500/25 transition-all active:scale-95 cursor-pointer"
+              title="ส่งออกรายงานสรุปสุ่มตรวจเฉพาะหม้อแปลงที่เลือกเป็น Excel / CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>ส่งออกที่เลือก</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
+              title="ยกเลิกการเลือกทั้งหมด"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 📋 Batch Task Confirmation Modal */}
+      {isBatchModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-purple-100 max-w-2xl w-full p-6 space-y-5 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-[#741b77] border border-purple-200">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    ยืนยันการเปิดใบงานตรวจซ้ำเป็นชุด (Batch Task Ordering)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    สั่งตรวจซ้ำหม้อแปลงพร้อมกันจำนวน <span className="font-bold text-[#741b77]">{selectedPeas.size} เครื่อง</span> สำหรับแผนงานสุ่มตรวจปี 2570
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBatchModalOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Metrics of Selection */}
+            {(() => {
+              const selectedList = transformers.filter(t => selectedPeas.has(t.peaNo));
+              const overloadCount = selectedList.filter(t => (t.engineeringStatus?.pctLoad || 0) >= 100 || t.engineeringStatus?.loadStatus === 'OVERLOAD').length;
+              const harmonicCount = selectedList.filter(t => (t.engineeringStatus?.harmonicCurrent || 0) >= 15).length;
+              const unbalanceCount = selectedList.filter(t => (t.engineeringStatus?.pctUnbalance || 0) >= 30).length;
+              const target2570Count = selectedList.filter(t => getTransformerFiscalYears(t).isTarget2570).length;
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100 text-center">
+                    <div className="text-[10px] text-purple-700 font-medium">เป้าหมายปี 2570</div>
+                    <div className="text-lg font-extrabold text-[#741b77]">{target2570Count}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-100 text-center">
+                    <div className="text-[10px] text-rose-700 font-medium">Overload (&gt;100%)</div>
+                    <div className="text-lg font-extrabold text-rose-700">{overloadCount}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-100 text-center">
+                    <div className="text-[10px] text-amber-700 font-medium">Harmonic (&ge;15A)</div>
+                    <div className="text-lg font-extrabold text-amber-700">{harmonicCount}</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-orange-50/70 border border-orange-100 text-center">
+                    <div className="text-[10px] text-orange-700 font-medium">Unbalance (&gt;30%)</div>
+                    <div className="text-lg font-extrabold text-orange-700">{unbalanceCount}</div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Selected Transformer List (Scrollable) */}
+            <div className="flex-1 overflow-y-auto max-h-60 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3 space-y-2">
+              <div className="text-xs font-semibold text-slate-600 mb-1 flex items-center justify-between">
+                <span>รายชื่อหม้อแปลงที่เลือก:</span>
+                <span className="text-[11px] text-slate-400">แสดงทั้งหมด {selectedPeas.size} รายการ</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from(selectedPeas).map(pNo => {
+                  const t = transformers.find(item => item.peaNo === pNo);
+                  const fy = t ? getTransformerFiscalYears(t) : null;
+                  return (
+                    <div
+                      key={pNo}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-purple-200/70 text-slate-800 text-xs shadow-2xs"
+                    >
+                      <span className="font-bold text-[#741b77]">{pNo}</span>
+                      {t && <span className="text-[10px] text-slate-500">({t.kva} kVA)</span>}
+                      {fy?.has2569 && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-purple-100 text-purple-700 font-semibold">
+                          ปี 69
+                        </span>
+                      )}
+                      {fy?.has2570 && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-700 font-semibold">
+                          ปี 70
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Notice / Warning Box */}
+            <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-xs text-amber-900 flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold">ข้อชี้แจงการทำงานของระบบสั่งงานตรวจซ้ำเป็นชุด:</p>
+                <p className="text-[11px] leading-relaxed text-amber-800">
+                  ระบบจะบันทึกคำสั่งงานลง Google Sheets ในแท็บ <strong>&quot;Task Data&quot;</strong> โดยระบุสถานะเป็น <strong>&quot;Pending&quot;</strong> และผู้สั่งงานเป็น &quot;ผู้ดูแลระบบ (Admin)&quot; ช่างในพื้นที่มองเห็นหมุดสีส้มบนแผนที่ในแท็บหน้างาน (Mobile / Field) ทันที
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={isSubmittingBatch}
+                onClick={() => setIsBatchModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingBatch}
+                onClick={handleConfirmBatchOrder}
+                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-[#741b77] hover:from-purple-700 hover:to-[#5e1560] text-white text-xs font-bold shadow-md hover:shadow-purple-500/25 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {isSubmittingBatch ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                    <span>กำลังบันทึกคำสั่งงาน {selectedPeas.size} เครื่อง...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>ยืนยันสั่งตรวจซ้ำพร้อมกัน ({selectedPeas.size} เครื่อง)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

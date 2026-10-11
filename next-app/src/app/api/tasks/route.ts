@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CreateTaskInputSchema, CancelTaskInputSchema, getErrorMessage } from '@/lib/domain/types';
-import { createTask, cancelTask } from '@/lib/adapters/google-sheets';
+import { createTask, createBatchTasks, cancelTask } from '@/lib/adapters/google-sheets';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/tasks
- * Orders a re-inspection task for a transformer (adds to Task Data in Google Sheets)
+ * Orders re-inspection task(s) for transformer(s) (adds to Task Data in Google Sheets)
+ * Supports single peaNo or batch peaNos
  */
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +25,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await createTask(parseResult.data);
+    if (parseResult.data.peaNos && parseResult.data.peaNos.length > 0) {
+      const result = await createBatchTasks(parseResult.data.peaNos, parseResult.data.assigner);
+      return NextResponse.json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    }
+
+    const result = await createTask({
+      peaNo: parseResult.data.peaNo!,
+      assigner: parseResult.data.assigner,
+      note: parseResult.data.note,
+    });
     return NextResponse.json({
       success: true,
       message: result.message,
