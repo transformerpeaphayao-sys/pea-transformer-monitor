@@ -4464,24 +4464,6 @@ export default function BackofficeDashboard() {
                   <span>ลบข้อมูลหม้อแปลงนี้</span>
                 </button>
                 <button
-                  type="button"
-                  onClick={toggleDetailFullscreen}
-                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-purple-50 text-slate-700 hover:text-[#741b77] border border-slate-200 hover:border-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active:scale-95 shadow-2xs"
-                  title={isDetailFullscreen ? 'ย่อขนาดหน้าต่างกลับปกติ' : 'ขยายหน้ารายละเอียดเต็มจอ (Full Screen)'}
-                >
-                  {isDetailFullscreen ? (
-                    <>
-                      <Minimize2 className="w-3.5 h-3.5 text-[#741b77]" />
-                      <span>ย่อขนาด</span>
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
-                      <span>เต็มจอ</span>
-                    </>
-                  )}
-                </button>
-                <button
                   onClick={() => setViewingTransformer(null)}
                   className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold transition-all duration-150 active:scale-95 shadow-2xs"
                 >
