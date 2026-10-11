@@ -1403,7 +1403,11 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
               </div>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-xl font-extrabold font-mono text-amber-950">
-                  {maxHarmonicFeeder ? `F${maxHarmonicFeeder.name}` : '-'}
+                  {maxHarmonicFeeder
+                    ? maxHarmonicFeeder.name.startsWith('F') || maxHarmonicFeeder.name.startsWith('f')
+                      ? maxHarmonicFeeder.name
+                      : `F${maxHarmonicFeeder.name}`
+                    : '-'}
                 </span>
                 <span className="text-xs font-mono font-bold text-amber-700">
                   {maxHarmonicFeeder ? `${maxHarmonicFeeder.harmonic.toFixed(2)} A` : ''}
