@@ -112,12 +112,13 @@ export default function BackofficeDashboard() {
   const [isDetailFullscreen, setIsDetailFullscreen] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem('pea_detail_fullscreen') === 'true';
+        const saved = localStorage.getItem('pea_detail_fullscreen');
+        return saved !== null ? saved === 'true' : true;
       } catch {
-        return false;
+        return true;
       }
     }
-    return false;
+    return true;
   });
 
   const toggleDetailFullscreen = () => {
@@ -713,6 +714,7 @@ export default function BackofficeDashboard() {
   // Lock background body scroll when viewingTransformer is active (Fixed/Static Layout)
   useEffect(() => {
     if (viewingTransformer) {
+      setIsDetailFullscreen(true);
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => {
@@ -3117,9 +3119,15 @@ export default function BackofficeDashboard() {
       {viewingTransformer && (
         <div
           style={{ top: `${headerHeight}px` }}
-          className="fixed left-0 right-0 bottom-0 z-40 bg-white flex flex-col overflow-hidden animate-in fade-in duration-150"
+          className={`fixed left-0 right-0 bottom-0 z-40 bg-white flex flex-col items-center justify-center ${
+            isDetailFullscreen ? 'p-0' : 'p-2 md:p-3'
+          } overflow-hidden animate-in fade-in duration-150`}
         >
-          <div className="w-full h-full bg-white flex flex-col overflow-hidden">
+          <div className={`bg-white ${
+            isDetailFullscreen
+              ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none my-0'
+              : 'w-full h-full rounded-2xl border border-slate-200 shadow-lg max-w-[98vw] 2xl:max-w-[1700px] my-auto'
+          } flex flex-col overflow-hidden transition-all duration-150`}>
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
               <div className="flex items-center gap-3">
