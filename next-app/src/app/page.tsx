@@ -710,6 +710,17 @@ export default function BackofficeDashboard() {
     };
   }, []);
 
+  // Lock background body scroll when viewingTransformer is active (Fixed/Static Layout)
+  useEffect(() => {
+    if (viewingTransformer) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [viewingTransformer]);
+
   // Check active advanced filter count
   const activeAdvancedFilterCount = useMemo(() => {
     let count = 0;
@@ -3092,11 +3103,11 @@ export default function BackofficeDashboard() {
       {viewingTransformer && (
         <div className={`fixed left-0 right-0 bottom-0 top-[57px] sm:top-[69px] z-40 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center ${
           isDetailFullscreen ? 'p-0' : 'p-3 md:p-6'
-        } overflow-y-auto animate-in fade-in duration-200`}>
+        } overflow-hidden animate-in fade-in duration-200`}>
           <div className={`bg-white ${
             isDetailFullscreen
               ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none my-0'
-              : 'rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-100px)] my-auto'
+              : 'rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-100px)] h-full my-auto'
           } flex flex-col overflow-hidden transition-all duration-200`}>
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
@@ -3257,7 +3268,7 @@ export default function BackofficeDashboard() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-700">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 text-slate-700 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
               {/* Transformer Spec & Location Bar */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 bg-slate-50/70 rounded-2xl border border-slate-200/80 text-xs">
                 <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs">
