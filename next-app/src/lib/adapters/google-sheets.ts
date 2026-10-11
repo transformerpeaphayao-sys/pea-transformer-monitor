@@ -144,30 +144,59 @@ export async function getTransformersWithStatus(): Promise<TransformerWithStatus
   if (masterRows.length <= 1) return [];
 
   const masterHeaders = masterRows[0].map(h => String(h).trim());
-  const peaIdx = masterHeaders.indexOf('PEANO หม้อแปลง');
-  const sysIdx = masterHeaders.indexOf('ระบบ');
-  const kvaIdx = masterHeaders.indexOf('ค่าพิกัด kVA หม้อแปลง');
-  const brandIdx = masterHeaders.indexOf('ยี่ห้อของหม้อแปลง');
-  const locIdx = masterHeaders.indexOf('สถานที่');
-  const latIdx = masterHeaders.indexOf('LATITUDE');
-  const lngIdx = masterHeaders.indexOf('LONGITUDE');
+  const peaIdx = masterHeaders.indexOf('PEANO หม้อแปลง') !== -1
+    ? masterHeaders.indexOf('PEANO หม้อแปลง')
+    : masterHeaders.findIndex(h => h.includes('PEANO') || h.includes('PEA NO') || h.includes('PEA'));
+
+  const sysIdx = masterHeaders.indexOf('ระบบเฟส') !== -1
+    ? masterHeaders.indexOf('ระบบเฟส')
+    : masterHeaders.indexOf('ระบบ') !== -1
+    ? masterHeaders.indexOf('ระบบ')
+    : masterHeaders.findIndex(h => h.includes('เฟส') || h.includes('Phase') || h.includes('ระบบ'));
+
+  const kvaIdx = masterHeaders.indexOf('ค่าพิกัด kVA หม้อแปลง') !== -1
+    ? masterHeaders.indexOf('ค่าพิกัด kVA หม้อแปลง')
+    : masterHeaders.findIndex(h => h.includes('kVA') || h.includes('KVA') || h.includes('พิกัด'));
+
+  const brandIdx = masterHeaders.indexOf('ยี่ห้อของหม้อแปลง') !== -1
+    ? masterHeaders.indexOf('ยี่ห้อของหม้อแปลง')
+    : masterHeaders.indexOf('เจ้าของหม้อแปลง') !== -1
+    ? masterHeaders.indexOf('เจ้าของหม้อแปลง')
+    : masterHeaders.findIndex(h => h.includes('ยี่ห้อ') || h.includes('เจ้าของ') || h.includes('Brand'));
+
+  const locIdx = masterHeaders.indexOf('สถานที่') !== -1
+    ? masterHeaders.indexOf('สถานที่')
+    : masterHeaders.findIndex(h => h.includes('สถานที่') || h.includes('Location'));
+
+  const latIdx = masterHeaders.indexOf('LATITUDE') !== -1
+    ? masterHeaders.indexOf('LATITUDE')
+    : masterHeaders.findIndex(h => h.toUpperCase().includes('LAT'));
+
+  const lngIdx = masterHeaders.indexOf('LONGITUDE') !== -1
+    ? masterHeaders.indexOf('LONGITUDE')
+    : masterHeaders.findIndex(h => h.toUpperCase().includes('LON') || h.toUpperCase().includes('LNG'));
 
   // Parse MasterData
   const transformers: Map<string, TransformerMaster> = new Map();
   for (let i = 1; i < masterRows.length; i++) {
     const row = masterRows[i];
-    const peaNo = String(row[peaIdx] || '').trim();
+    const peaNo = peaIdx !== -1 ? String(row[peaIdx] || '').trim() : '';
     if (!peaNo) continue;
 
-    const latVal = safeFloat(row[latIdx], NaN);
-    const lngVal = safeFloat(row[lngIdx], NaN);
+    const latVal = latIdx !== -1 ? safeFloat(row[latIdx], NaN) : NaN;
+    const lngVal = lngIdx !== -1 ? safeFloat(row[lngIdx], NaN) : NaN;
+
+    // Detect 1 Phase vs 3 Phase robustly
+    const rawSys = sysIdx !== -1 ? String(row[sysIdx] || '').trim() : '3';
+    const is1Phase = rawSys === '1' || rawSys.includes('1 Phase') || rawSys.includes('1Phase') || rawSys.includes('1เฟส') || rawSys.includes('1 เฟส') || rawSys.startsWith('1');
+    const parsedSystem: '1' | '3' = is1Phase ? '1' : '3';
 
     transformers.set(peaNo, {
       peaNo,
-      system: String(row[sysIdx] || '3').trim() === '1' ? '1' : '3',
-      kva: safeFloat(row[kvaIdx], 100),
-      brand: String(row[brandIdx] || '').trim(),
-      location: String(row[locIdx] || '').trim(),
+      system: parsedSystem,
+      kva: kvaIdx !== -1 ? safeFloat(row[kvaIdx], 100) : 100,
+      brand: brandIdx !== -1 ? String(row[brandIdx] || '').trim() : '',
+      location: locIdx !== -1 ? String(row[locIdx] || '').trim() : '',
       lat: isNaN(latVal) ? null : latVal,
       lng: isNaN(lngVal) ? null : lngVal,
     });
@@ -1006,7 +1035,7 @@ export async function registerNewTransformer(
     if (h === 'PEANO หม้อแปลง') return cleanPeaNo;
     if (h === 'ระบบ' || h === 'ระบบเฟส') return input.system === '1' ? '1' : '3';
     if (h === 'ค่าพิกัด kVA หม้อแปลง') return input.kva;
-    if (h === 'ยี่ห้อของหม้อแปลง') return input.brand ? input.brand.trim() : '';
+    if (h === 'ยี่ห้อของหม้อแปลง' || h === 'เจ้าของหม้อแปลง') return input.brand ? input.brand.trim() : '';
     if (h === 'สถานที่') return input.location ? input.location.trim() : '';
     if (h === 'LATITUDE') return input.lat != null && !isNaN(input.lat) ? input.lat : '';
     if (h === 'LONGITUDE') return input.lng != null && !isNaN(input.lng) ? input.lng : '';
