@@ -212,12 +212,9 @@ export const DriveImageQuerySchema = z.object({
 export type DriveImageQuery = z.infer<typeof DriveImageQuerySchema>;
 
 export const CreateTaskInputSchema = z.object({
-  peaNo: z.string().trim().optional(),
-  peaNos: z.array(z.string().trim()).optional(),
+  peaNo: z.string().trim().min(1, 'กรุณาระบุรหัส PEANO หม้อแปลง'),
   assigner: z.string().optional().default('ผู้ดูแลระบบ (Admin)'),
   note: z.string().optional().default(''),
-}).refine(data => Boolean(data.peaNo || (data.peaNos && data.peaNos.length > 0)), {
-  message: 'กรุณาระบุรหัส PEANO หม้อแปลง',
 });
 export type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>;
 

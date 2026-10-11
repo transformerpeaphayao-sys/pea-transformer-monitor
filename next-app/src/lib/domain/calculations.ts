@@ -1,4 +1,4 @@
-import { EngineeringStatus, FeederRecord, TransformerWithStatus } from './types';
+import { EngineeringStatus, FeederRecord } from './types';
 
 /**
  * Pure engineering calculations module for PEA Transformer Load Monitoring
@@ -364,54 +364,5 @@ export function formatYMDToThai(ymd: string): string {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
   return ymd;
-}
-
-/**
- * Analyzes transformer inspection history across fiscal years:
- * - FY 2569 (CE 2026)
- * - FY 2570 (CE 2027)
- */
-export function getTransformerFiscalYears(t: TransformerWithStatus): {
-  has2569: boolean;
-  has2570: boolean;
-  isCompared: boolean;
-  isTarget2570: boolean;
-  roundCount: number;
-} {
-  const sessions = t.historySessions && t.historySessions.length > 0
-    ? t.historySessions
-    : t.latestSession ? [t.latestSession] : [];
-
-  let has2569 = false;
-  let has2570 = false;
-
-  for (const s of sessions) {
-    if (!s.date) continue;
-    const ymd = normalizeDateToYMD(s.date);
-    if (!ymd) continue;
-    const year = parseInt(ymd.split('-')[0], 10);
-    if (year === 2026 || s.date.includes('2569')) {
-      has2569 = true;
-    } else if (year === 2027 || s.date.includes('2570')) {
-      has2570 = true;
-    }
-  }
-
-  // If transformer status is 'done' (completed) but no year detected or legacy date, consider it 2569 baseline
-  if (!has2569 && !has2570 && t.statusColor === 'done') {
-    has2569 = true;
-  }
-
-  const isCompared = has2569 && has2570;
-  // เป้าหมายสุ่มตรวจปี 2570: ตรวจปี 2569 แล้ว แต่ยังไม่มีผลตรวจของปี 2570
-  const isTarget2570 = has2569 && !has2570;
-
-  return {
-    has2569,
-    has2570,
-    isCompared,
-    isTarget2570,
-    roundCount: sessions.length,
-  };
 }
 
