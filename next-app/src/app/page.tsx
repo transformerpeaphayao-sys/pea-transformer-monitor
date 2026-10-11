@@ -3117,15 +3117,9 @@ export default function BackofficeDashboard() {
       {viewingTransformer && (
         <div
           style={{ top: `${headerHeight}px` }}
-          className={`fixed left-0 right-0 bottom-0 z-40 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center ${
-            isDetailFullscreen ? 'p-0' : 'p-3 md:p-6'
-          } overflow-hidden animate-in fade-in duration-200`}
+          className="fixed left-0 right-0 bottom-0 z-40 bg-white flex flex-col overflow-hidden animate-in fade-in duration-150"
         >
-          <div className={`bg-white ${
-            isDetailFullscreen
-              ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-none my-0'
-              : 'rounded-3xl border border-slate-200 shadow-2xl max-w-[96vw] 2xl:max-w-[1600px] w-full max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-100px)] h-full my-auto'
-          } flex flex-col overflow-hidden transition-all duration-200`}>
+          <div className="w-full h-full bg-white flex flex-col overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
               <div className="flex items-center gap-3">
