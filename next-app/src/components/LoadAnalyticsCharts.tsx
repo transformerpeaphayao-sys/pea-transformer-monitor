@@ -1498,10 +1498,18 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
             </div>
 
             {/* Custom High-Precision Clustered Bar Chart Container */}
-            <div className="relative pt-4 pb-4 px-3 sm:px-5 bg-gradient-to-b from-slate-50/80 via-white to-slate-50/60 rounded-2xl border border-slate-200/90 shadow-2xs overflow-x-auto">
-              <div className="min-w-[560px] flex flex-col justify-end">
-                {/* Cluster Pods Grid */}
-                <div className="flex items-stretch justify-center gap-4 sm:gap-6 lg:gap-8 flex-wrap sm:flex-nowrap px-1 sm:px-4">
+            <div className="relative pt-5 pb-5 px-3 sm:px-6 bg-gradient-to-b from-slate-50/80 via-white to-slate-50/60 rounded-2xl border border-slate-200/90 shadow-2xs w-full">
+              <div className="w-full flex flex-col">
+                {/* Cluster Pods Grid - Perfectly expands to fill the entire frame container */}
+                <div
+                  className={`grid grid-cols-1 ${
+                    allHarmonicClusters.length === 2
+                      ? 'sm:grid-cols-2'
+                      : allHarmonicClusters.length === 4
+                      ? 'sm:grid-cols-2 lg:grid-cols-4'
+                      : 'sm:grid-cols-2 lg:grid-cols-3'
+                  } gap-4 sm:gap-5 w-full`}
+                >
                   {allHarmonicClusters.map((cluster, cIdx) => {
                     const hInVal = Math.max(3, Math.min(100, (cluster.inVal / harmonicChartScale) * 100));
                     const hInTheory = Math.max(3, Math.min(100, (cluster.inTheory / harmonicChartScale) * 100));
@@ -1514,7 +1522,7 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                     return (
                       <div
                         key={cIdx}
-                        className={`flex flex-col justify-between w-40 sm:w-48 md:w-52 flex-shrink-0 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 border ${
+                        className={`flex flex-col justify-between w-full rounded-2xl p-4 sm:p-5 transition-all duration-300 border ${
                           cluster.isTotal
                             ? 'bg-gradient-to-b from-purple-50/60 via-white to-purple-50/40 border-2 border-purple-300 shadow-sm ring-1 ring-purple-500/10'
                             : 'bg-white/90 backdrop-blur-xs border-slate-200/80 shadow-2xs hover:border-slate-300 hover:shadow-xs'
@@ -1524,20 +1532,20 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                         <div className="w-full flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
                           <div className="flex flex-col min-w-0">
                             <span
-                              className={`text-[11.5px] font-bold truncate ${
+                              className={`text-[12px] sm:text-xs font-bold truncate ${
                                 cluster.isTotal ? 'text-[#741b77]' : 'text-slate-800'
                               }`}
                             >
                               {cluster.isTotal ? '🏢 รวมทั้งหม้อแปลง' : cluster.name}
                             </span>
                             {cluster.sub && !cluster.isTotal && (
-                              <span className="text-[9px] font-mono text-slate-400 truncate">
+                              <span className="text-[9.5px] font-mono text-slate-400 truncate">
                                 {cluster.sub}
                               </span>
                             )}
                           </div>
                           <span
-                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border whitespace-nowrap flex items-center gap-0.5 ${
+                            className={`text-[9.5px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap flex items-center gap-0.5 ${
                               cluster.isSevere
                                 ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse font-extrabold'
                                 : cluster.harmonic > 0
@@ -1550,72 +1558,72 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                         </div>
 
                         {/* Clustered Bars Area */}
-                        <div className="w-full flex-1 flex flex-col justify-end pt-2 pb-1">
+                        <div className="w-full flex-1 flex flex-col justify-end pt-3 pb-1">
                           {/* Inner Bar Tracks Frame */}
-                          <div className="relative h-36 sm:h-40 w-full flex items-end justify-center gap-2 sm:gap-3">
+                          <div className="relative h-44 sm:h-48 md:h-52 w-full flex items-end justify-center gap-3 sm:gap-5 md:gap-7 px-2 sm:px-4">
                             {/* 15A PEA Guideline Marker Line inside pod frame */}
                             {15 <= harmonicChartScale && (
                               <div
-                                className="absolute left-0 right-0 border-b border-dashed border-rose-400/80 pointer-events-none z-10 flex items-center justify-end pr-0.5"
+                                className="absolute left-0 right-0 border-b border-dashed border-rose-400/80 pointer-events-none z-10 flex items-center justify-end pr-1"
                                 style={{
                                   bottom: `${Math.min(95, Math.max(5, (15 / harmonicChartScale) * 100))}%`,
                                 }}
                               >
-                                <span className="text-[7.5px] font-mono font-bold text-rose-500 bg-rose-50/95 border border-rose-200 px-1 rounded -translate-y-1/2">
-                                  15A
+                                <span className="text-[8px] font-mono font-bold text-rose-500 bg-rose-50/95 border border-rose-200 px-1.5 py-0.2 rounded -translate-y-1/2 shadow-2xs">
+                                  15A เกณฑ์ กฟภ.
                                 </span>
                               </div>
                             )}
 
                             {/* Bar 1: In Measured (Dark Slate) */}
-                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[34px] group relative z-20">
-                              <div className="mb-1 opacity-90 group-hover:opacity-100 transition-opacity">
-                                <span className="bg-slate-800 text-white font-mono text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs block text-center leading-none">
+                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[56px] sm:max-w-[64px] group relative z-20">
+                              <div className="mb-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-slate-800 text-white font-mono text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-md shadow-2xs block text-center leading-none">
                                   {cluster.inVal.toFixed(1)}
                                 </span>
                               </div>
                               <div
-                                className="w-full bg-slate-100/80 rounded-t-lg flex items-end overflow-hidden border-t border-x border-slate-200/50 shadow-2xs"
+                                className="w-full bg-slate-100/90 rounded-t-xl flex items-end overflow-hidden border-t border-x border-slate-200/60 shadow-2xs"
                                 style={{ height: '100%' }}
                                 title={`${cluster.name} - In วัดจริง: ${cluster.inVal.toFixed(2)} A`}
                               >
                                 <div
-                                  className="w-full bg-gradient-to-t from-slate-900 via-slate-800 to-slate-700 rounded-t-lg transition-all duration-500 shadow-2xs group-hover:brightness-110"
+                                  className="w-full bg-gradient-to-t from-slate-900 via-slate-800 to-slate-700 rounded-t-xl transition-all duration-500 shadow-2xs group-hover:brightness-110"
                                   style={{ height: `${hInVal}%` }}
                                 />
                               </div>
-                              <span className="text-[8.5px] font-semibold text-slate-500 mt-1 whitespace-nowrap">
+                              <span className="text-[9.5px] sm:text-[10px] font-semibold text-slate-600 mt-1.5 whitespace-nowrap">
                                 In จริง
                               </span>
                             </div>
 
                             {/* Bar 2: In Vector Theoretical (Sky Blue) */}
-                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[34px] group relative z-20">
-                              <div className="mb-1 opacity-90 group-hover:opacity-100 transition-opacity">
-                                <span className="bg-sky-600 text-white font-mono text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs block text-center leading-none">
+                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[56px] sm:max-w-[64px] group relative z-20">
+                              <div className="mb-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-sky-600 text-white font-mono text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-md shadow-2xs block text-center leading-none">
                                   {cluster.inTheory.toFixed(1)}
                                 </span>
                               </div>
                               <div
-                                className="w-full bg-slate-100/80 rounded-t-lg flex items-end overflow-hidden border-t border-x border-slate-200/50 shadow-2xs"
+                                className="w-full bg-slate-100/90 rounded-t-xl flex items-end overflow-hidden border-t border-x border-slate-200/60 shadow-2xs"
                                 style={{ height: '100%' }}
                                 title={`${cluster.name} - In คำนวณเวกเตอร์: ${cluster.inTheory.toFixed(2)} A`}
                               >
                                 <div
-                                  className="w-full bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-400 rounded-t-lg transition-all duration-500 shadow-2xs group-hover:brightness-110"
+                                  className="w-full bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-400 rounded-t-xl transition-all duration-500 shadow-2xs group-hover:brightness-110"
                                   style={{ height: `${hInTheory}%` }}
                                 />
                               </div>
-                              <span className="text-[8.5px] font-semibold text-slate-500 mt-1 whitespace-nowrap">
+                              <span className="text-[9.5px] sm:text-[10px] font-semibold text-slate-600 mt-1.5 whitespace-nowrap">
                                 In คำนวณ
                               </span>
                             </div>
 
                             {/* Bar 3: Harmonic Current (Purple / Rose) */}
-                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[34px] group relative z-20">
-                              <div className="mb-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[56px] sm:max-w-[64px] group relative z-20">
+                              <div className="mb-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
                                 <span
-                                  className={`font-mono text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs block text-center leading-none ${
+                                  className={`font-mono text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-md shadow-2xs block text-center leading-none ${
                                     cluster.isSevere
                                       ? 'bg-gradient-to-r from-rose-600 to-amber-500 text-white font-extrabold animate-pulse'
                                       : cluster.harmonic > 0
@@ -1627,14 +1635,14 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                                 </span>
                               </div>
                               <div
-                                className="w-full bg-slate-100/80 rounded-t-lg flex items-end overflow-hidden border-t border-x border-slate-200/50 shadow-2xs"
+                                className="w-full bg-slate-100/90 rounded-t-xl flex items-end overflow-hidden border-t border-x border-slate-200/60 shadow-2xs"
                                 style={{ height: '100%' }}
                                 title={`${cluster.name} - Harmonic แฝง: ${cluster.harmonic.toFixed(2)} A`}
                               >
                                 <div
-                                  className={`w-full rounded-t-lg transition-all duration-500 group-hover:brightness-110 ${
+                                  className={`w-full rounded-t-xl transition-all duration-500 group-hover:brightness-110 ${
                                     cluster.isSevere
-                                      ? 'bg-gradient-to-t from-rose-600 via-rose-500 to-amber-400 shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse'
+                                      ? 'bg-gradient-to-t from-rose-600 via-rose-500 to-amber-400 shadow-[0_0_12px_rgba(244,63,94,0.4)] animate-pulse'
                                       : cluster.harmonic > 0
                                       ? 'bg-gradient-to-t from-[#741b77] via-purple-600 to-indigo-500 shadow-2xs'
                                       : 'h-1.5 bg-emerald-400 rounded-full w-full'
@@ -1643,7 +1651,7 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                                 />
                               </div>
                               <span
-                                className={`text-[8.5px] font-semibold mt-1 whitespace-nowrap ${
+                                className={`text-[9.5px] sm:text-[10px] font-semibold mt-1.5 whitespace-nowrap ${
                                   cluster.isSevere
                                     ? 'text-rose-600 font-bold'
                                     : cluster.harmonic > 0
@@ -1658,9 +1666,9 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                         </div>
 
                         {/* Pod Footer Summary */}
-                        <div className="w-full pt-2 mt-2 border-t border-slate-100 flex flex-col items-center gap-1">
+                        <div className="w-full pt-2.5 mt-2.5 border-t border-slate-100 flex flex-col items-center gap-1.5">
                           <span
-                            className={`text-[9.5px] font-bold px-2 py-0.5 rounded-md block w-full text-center truncate ${
+                            className={`text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-lg block w-full text-center truncate ${
                               cluster.isSevere
                                 ? 'bg-rose-50 text-rose-700 border border-rose-200 font-extrabold shadow-2xs'
                                 : cluster.harmonic > 0
