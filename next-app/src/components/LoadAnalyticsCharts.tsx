@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Radio,
+  Info,
 } from 'lucide-react';
 
 interface LoadAnalyticsChartsProps {
@@ -1473,146 +1474,205 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
           </div>
 
           {/* Section 1: Feeder Harmonic & Neutral Breakdown Bar Chart */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="space-y-4">
+            {/* Section Header with PEA Threshold status */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div>
                 <h6 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Waves className="w-4 h-4 text-purple-600" />
                   <span>การกระจายตัวของกระแสนิวตรอลและฮาร์มอนิกแฝงรายฟีดเดอร์</span>
                 </h6>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  เปรียบเทียบระหว่าง In วัดจริง, In คำนวณตามทฤษฎี และค่า Harmonic แฝงแยกตามฟีดเดอร์
+                  เปรียบเทียบระหว่าง In วัดจริง, In คำนวณตามทฤษฎีเวกเตอร์ 3 เฟส และค่า Harmonic แฝงแยกตามฟีดเดอร์
                 </p>
               </div>
-              <span className="text-[10.5px] font-mono text-slate-400 hidden sm:inline-block">
-                Max Scale: {harmonicChartScale.toFixed(1)} A
-              </span>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  พิกัดสเกล: {harmonicChartScale.toFixed(1)} A
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                  <span>เกณฑ์เสี่ยง กฟภ. 15.0 A</span>
+                </span>
+              </div>
             </div>
 
             {/* Custom High-Precision Clustered Bar Chart Container */}
-            <div className="relative pt-6 pb-4 px-3 sm:px-4 bg-slate-50/70 rounded-xl border border-slate-200/80 overflow-x-auto">
-              <div className="min-w-[500px] flex flex-col justify-end">
-                {/* 15A PEA Guideline Marker Line across the entire chart */}
-                {15 <= harmonicChartScale && (
-                  <div
-                    className="absolute left-0 right-0 border-b border-dashed border-rose-400/90 pointer-events-none z-10 flex items-center justify-start pl-2 sm:pl-3"
-                    style={{ bottom: `${(15 / harmonicChartScale) * 115 + 46}px` }}
-                  >
-                    <span className="bg-rose-50 border border-rose-200 text-rose-700 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow-2xs -translate-y-1/2 backdrop-blur-xs">
-                      เกณฑ์เสี่ยง กฟภ. 15.0 A
-                    </span>
-                  </div>
-                )}
-
-                {/* Plot Area: Clustered Columns */}
-                <div className="relative h-40 w-full flex items-end justify-around gap-4 sm:gap-6 px-12 sm:px-16 z-20">
+            <div className="relative pt-4 pb-4 px-3 sm:px-5 bg-gradient-to-b from-slate-50/80 via-white to-slate-50/60 rounded-2xl border border-slate-200/90 shadow-2xs overflow-x-auto">
+              <div className="min-w-[560px] flex flex-col justify-end">
+                {/* Cluster Pods Grid */}
+                <div className="flex items-stretch justify-center gap-4 sm:gap-6 lg:gap-8 flex-wrap sm:flex-nowrap px-1 sm:px-4">
                   {allHarmonicClusters.map((cluster, cIdx) => {
-                    const hInVal = Math.max(2, Math.min(100, (cluster.inVal / harmonicChartScale) * 100));
-                    const hInTheory = Math.max(2, Math.min(100, (cluster.inTheory / harmonicChartScale) * 100));
+                    const hInVal = Math.max(3, Math.min(100, (cluster.inVal / harmonicChartScale) * 100));
+                    const hInTheory = Math.max(3, Math.min(100, (cluster.inTheory / harmonicChartScale) * 100));
+                    const displayHarmonic = Math.max(0, cluster.harmonic);
                     const hHarmonic = Math.max(
-                      2,
-                      Math.min(100, (Math.max(0, cluster.harmonic) / harmonicChartScale) * 100)
+                      3,
+                      Math.min(100, (displayHarmonic / harmonicChartScale) * 100)
                     );
 
                     return (
                       <div
                         key={cIdx}
-                        className={`flex flex-col items-center justify-end h-full flex-1 max-w-[120px] ${
-                          cluster.isTotal ? 'border-l border-dashed border-slate-300 pl-3 sm:pl-5' : ''
+                        className={`flex flex-col justify-between w-40 sm:w-48 md:w-52 flex-shrink-0 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 border ${
+                          cluster.isTotal
+                            ? 'bg-gradient-to-b from-purple-50/60 via-white to-purple-50/40 border-2 border-purple-300 shadow-sm ring-1 ring-purple-500/10'
+                            : 'bg-white/90 backdrop-blur-xs border-slate-200/80 shadow-2xs hover:border-slate-300 hover:shadow-xs'
                         }`}
                       >
-                        {/* Clustered Bars for this feeder */}
-                        <div className="flex items-end justify-center gap-1.5 sm:gap-2 w-full h-full pb-1">
-                          {/* Bar 1: In Measured (Dark Slate) */}
-                          <div className="flex flex-col items-center justify-end h-full">
-                            <span className="font-mono text-[9.5px] font-bold text-slate-700 leading-none mb-1">
-                              {cluster.inVal.toFixed(1)}
-                            </span>
-                            <div
-                              className="w-5 sm:w-6 bg-slate-200/50 rounded-t-md flex items-end overflow-hidden"
-                              style={{ height: '100%' }}
-                              title={`${cluster.name} - In วัดจริง: ${cluster.inVal.toFixed(2)} A`}
-                            >
-                              <div
-                                className="w-full bg-gradient-to-t from-slate-700 to-slate-500 rounded-t-md transition-all duration-500 shadow-2xs"
-                                style={{ height: `${hInVal}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Bar 2: In Theoretical Vector (Sky Blue) */}
-                          <div className="flex flex-col items-center justify-end h-full">
-                            <span className="font-mono text-[9.5px] font-bold text-sky-700 leading-none mb-1">
-                              {cluster.inTheory.toFixed(1)}
-                            </span>
-                            <div
-                              className="w-5 sm:w-6 bg-slate-200/50 rounded-t-md flex items-end overflow-hidden"
-                              style={{ height: '100%' }}
-                              title={`${cluster.name} - In คำนวณเวกเตอร์: ${cluster.inTheory.toFixed(2)} A`}
-                            >
-                              <div
-                                className="w-full bg-gradient-to-t from-sky-600 to-sky-400 rounded-t-md transition-all duration-500 shadow-2xs"
-                                style={{ height: `${hInTheory}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Bar 3: Harmonic Current (Purple / Rose) */}
-                          <div className="flex flex-col items-center justify-end h-full">
+                        {/* Pod Header */}
+                        <div className="w-full flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                          <div className="flex flex-col min-w-0">
                             <span
-                              className={`font-mono text-[9.5px] font-bold leading-none mb-1 ${
-                                cluster.isSevere
-                                  ? 'text-rose-600'
-                                  : cluster.harmonic > 0
-                                  ? 'text-[#741b77]'
-                                  : 'text-slate-400'
+                              className={`text-[11.5px] font-bold truncate ${
+                                cluster.isTotal ? 'text-[#741b77]' : 'text-slate-800'
                               }`}
                             >
-                              {cluster.harmonic.toFixed(1)}
+                              {cluster.isTotal ? '🏢 รวมทั้งหม้อแปลง' : cluster.name}
                             </span>
-                            <div
-                              className="w-5 sm:w-6 bg-slate-200/50 rounded-t-md flex items-end overflow-hidden"
-                              style={{ height: '100%' }}
-                              title={`${cluster.name} - Harmonic แฝง: ${cluster.harmonic.toFixed(2)} A`}
-                            >
+                            {cluster.sub && !cluster.isTotal && (
+                              <span className="text-[9px] font-mono text-slate-400 truncate">
+                                {cluster.sub}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border whitespace-nowrap flex items-center gap-0.5 ${
+                              cluster.isSevere
+                                ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse font-extrabold'
+                                : cluster.harmonic > 0
+                                ? 'bg-purple-50 text-[#741b77] border-purple-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            {cluster.isSevere ? '⚠️ ≥15A' : cluster.harmonic > 0 ? 'แฝง' : 'สมดุล'}
+                          </span>
+                        </div>
+
+                        {/* Clustered Bars Area */}
+                        <div className="w-full flex-1 flex flex-col justify-end pt-2 pb-1">
+                          {/* Inner Bar Tracks Frame */}
+                          <div className="relative h-36 sm:h-40 w-full flex items-end justify-center gap-2 sm:gap-3">
+                            {/* 15A PEA Guideline Marker Line inside pod frame */}
+                            {15 <= harmonicChartScale && (
                               <div
-                                className={`w-full rounded-t-md transition-all duration-500 shadow-2xs ${
+                                className="absolute left-0 right-0 border-b border-dashed border-rose-400/80 pointer-events-none z-10 flex items-center justify-end pr-0.5"
+                                style={{
+                                  bottom: `${Math.min(95, Math.max(5, (15 / harmonicChartScale) * 100))}%`,
+                                }}
+                              >
+                                <span className="text-[7.5px] font-mono font-bold text-rose-500 bg-rose-50/95 border border-rose-200 px-1 rounded -translate-y-1/2">
+                                  15A
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Bar 1: In Measured (Dark Slate) */}
+                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[34px] group relative z-20">
+                              <div className="mb-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-slate-800 text-white font-mono text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs block text-center leading-none">
+                                  {cluster.inVal.toFixed(1)}
+                                </span>
+                              </div>
+                              <div
+                                className="w-full bg-slate-100/80 rounded-t-lg flex items-end overflow-hidden border-t border-x border-slate-200/50 shadow-2xs"
+                                style={{ height: '100%' }}
+                                title={`${cluster.name} - In วัดจริง: ${cluster.inVal.toFixed(2)} A`}
+                              >
+                                <div
+                                  className="w-full bg-gradient-to-t from-slate-900 via-slate-800 to-slate-700 rounded-t-lg transition-all duration-500 shadow-2xs group-hover:brightness-110"
+                                  style={{ height: `${hInVal}%` }}
+                                />
+                              </div>
+                              <span className="text-[8.5px] font-semibold text-slate-500 mt-1 whitespace-nowrap">
+                                In จริง
+                              </span>
+                            </div>
+
+                            {/* Bar 2: In Vector Theoretical (Sky Blue) */}
+                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[34px] group relative z-20">
+                              <div className="mb-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-sky-600 text-white font-mono text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs block text-center leading-none">
+                                  {cluster.inTheory.toFixed(1)}
+                                </span>
+                              </div>
+                              <div
+                                className="w-full bg-slate-100/80 rounded-t-lg flex items-end overflow-hidden border-t border-x border-slate-200/50 shadow-2xs"
+                                style={{ height: '100%' }}
+                                title={`${cluster.name} - In คำนวณเวกเตอร์: ${cluster.inTheory.toFixed(2)} A`}
+                              >
+                                <div
+                                  className="w-full bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-400 rounded-t-lg transition-all duration-500 shadow-2xs group-hover:brightness-110"
+                                  style={{ height: `${hInTheory}%` }}
+                                />
+                              </div>
+                              <span className="text-[8.5px] font-semibold text-slate-500 mt-1 whitespace-nowrap">
+                                In คำนวณ
+                              </span>
+                            </div>
+
+                            {/* Bar 3: Harmonic Current (Purple / Rose) */}
+                            <div className="flex flex-col items-center justify-end h-full flex-1 max-w-[34px] group relative z-20">
+                              <div className="mb-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                                <span
+                                  className={`font-mono text-[9px] font-bold px-1.5 py-0.2 rounded shadow-2xs block text-center leading-none ${
+                                    cluster.isSevere
+                                      ? 'bg-gradient-to-r from-rose-600 to-amber-500 text-white font-extrabold animate-pulse'
+                                      : cluster.harmonic > 0
+                                      ? 'bg-[#741b77] text-white'
+                                      : 'bg-emerald-600 text-white'
+                                  }`}
+                                >
+                                  {cluster.harmonic > 0 ? cluster.harmonic.toFixed(1) : '0.0'}
+                                </span>
+                              </div>
+                              <div
+                                className="w-full bg-slate-100/80 rounded-t-lg flex items-end overflow-hidden border-t border-x border-slate-200/50 shadow-2xs"
+                                style={{ height: '100%' }}
+                                title={`${cluster.name} - Harmonic แฝง: ${cluster.harmonic.toFixed(2)} A`}
+                              >
+                                <div
+                                  className={`w-full rounded-t-lg transition-all duration-500 group-hover:brightness-110 ${
+                                    cluster.isSevere
+                                      ? 'bg-gradient-to-t from-rose-600 via-rose-500 to-amber-400 shadow-[0_0_10px_rgba(244,63,94,0.4)] animate-pulse'
+                                      : cluster.harmonic > 0
+                                      ? 'bg-gradient-to-t from-[#741b77] via-purple-600 to-indigo-500 shadow-2xs'
+                                      : 'h-1.5 bg-emerald-400 rounded-full w-full'
+                                  }`}
+                                  style={{ height: `${cluster.harmonic > 0 ? `${hHarmonic}%` : '4px'}` }}
+                                />
+                              </div>
+                              <span
+                                className={`text-[8.5px] font-semibold mt-1 whitespace-nowrap ${
                                   cluster.isSevere
-                                    ? 'bg-gradient-to-t from-rose-600 to-amber-500 animate-pulse'
+                                    ? 'text-rose-600 font-bold'
                                     : cluster.harmonic > 0
-                                    ? 'bg-gradient-to-t from-[#741b77] to-purple-500'
-                                    : 'bg-slate-300'
+                                    ? 'text-[#741b77]'
+                                    : 'text-emerald-600'
                                 }`}
-                                style={{ height: `${hHarmonic}%` }}
-                              />
+                              >
+                                Harmonic
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Cluster Baseline Label & Status Pill */}
-                        <div className="w-full pt-2 border-t border-slate-200/80 flex flex-col items-center text-center">
+                        {/* Pod Footer Summary */}
+                        <div className="w-full pt-2 mt-2 border-t border-slate-100 flex flex-col items-center gap-1">
                           <span
-                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold block whitespace-nowrap shadow-2xs ${
-                              cluster.isTotal
-                                ? 'bg-purple-100 text-[#741b77] border border-purple-200'
-                                : 'bg-white text-slate-800 border border-slate-200'
-                            }`}
-                          >
-                            {cluster.name}
-                          </span>
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded mt-1 block whitespace-nowrap ${
+                            className={`text-[9.5px] font-bold px-2 py-0.5 rounded-md block w-full text-center truncate ${
                               cluster.isSevere
-                                ? 'bg-rose-100 text-rose-700 font-extrabold'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200 font-extrabold shadow-2xs'
                                 : cluster.harmonic > 0
-                                ? 'text-purple-700 bg-purple-50'
-                                : 'text-slate-400'
+                                ? 'text-purple-700 bg-purple-50/80 border border-purple-100'
+                                : 'text-emerald-700 bg-emerald-50/80 border border-emerald-100'
                             }`}
                           >
                             {cluster.isSevere
-                              ? '⚠️ เกิน 15A'
+                              ? `⚠️ แฝง +${cluster.harmonic.toFixed(1)} A (เกิน 15A)`
                               : cluster.harmonic > 0
-                              ? `แฝง +${cluster.harmonic.toFixed(1)}A`
-                              : 'ปกติ (ไม่มีแฝง)'}
+                              ? `แฝง +${cluster.harmonic.toFixed(1)} A`
+                              : '🛡️ โหลดสมดุล (ไม่มีแฝง)'}
                           </span>
                         </div>
                       </div>
@@ -1621,22 +1681,39 @@ export const LoadAnalyticsCharts: React.FC<LoadAnalyticsChartsProps> = ({
                 </div>
 
                 {/* Sub-Legend at Bottom of Bar Chart */}
-                <div className="flex flex-wrap items-center justify-center gap-5 pt-3 mt-1 border-t border-slate-200/60 text-[10.5px]">
+                <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-3.5 mt-3 border-t border-slate-200/60 text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-slate-700" />
+                    <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-t from-slate-900 to-slate-700 shadow-2xs" />
                     <span className="text-slate-600 font-medium">In วัดจริง (นิวตรอลหน้างาน)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-sky-500" />
+                    <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-t from-sky-600 to-cyan-400 shadow-2xs" />
                     <span className="text-slate-600 font-medium">In คำนวณ (ทฤษฎีเวกเตอร์ 3 เฟส)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-[#741b77]" />
-                    <span className="text-[#741b77] font-semibold">Harmonic แฝง (In จริง - In คำนวณ)</span>
+                    <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-t from-[#741b77] to-purple-500 shadow-2xs" />
+                    <span className="text-[#741b77] font-semibold">Harmonic แฝง (ปกติ &lt; 15 A)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 animate-pulse" />
-                    <span className="text-rose-600 font-semibold">เกินเกณฑ์เสี่ยง กฟภ. (≥ 15 A)</span>
+                    <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-t from-rose-600 to-amber-500 shadow-2xs animate-pulse" />
+                    <span className="text-rose-600 font-bold">Harmonic แฝงสูง (≥ 15 A เกณฑ์ กฟภ.)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 border-b-2 border-dashed border-rose-400" />
+                    <span className="text-rose-600 font-semibold">เกณฑ์เสี่ยง กฟภ. (15 A)</span>
+                  </div>
+                </div>
+
+                {/* Engineering Info Callout */}
+                <div className="mt-3 bg-purple-50/50 rounded-xl border border-purple-100 p-2.5 sm:p-3 flex items-start gap-2.5 text-[11px] text-slate-600">
+                  <Info className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-slate-800">
+                      เกณฑ์วิเคราะห์ฮาร์มอนิกแฝงของ กฟภ. (Triplen Harmonics & In Unbalance):
+                    </p>
+                    <p className="text-slate-500 leading-relaxed">
+                      คำนวณจาก In(วัดจริง) ลบ In(เวกเตอร์ 3 เฟสตามทฤษฎี) หากค่าสูงกว่า <span className="font-semibold text-rose-600">15.0 A</span> แสดงว่ามีฮาร์มอนิกลำดับที่ 3, 9 สะสมในสายนิวตรอลจากอุปกรณ์ไม่เชิงเส้น เช่น แอร์อินเวอร์เตอร์ โหลดสวิตชิ่ง หรือแท่นขุดบิตคอยน์ เสี่ยงต่อสายนิวตรอลและหม้อแปลงร้อนจัดผิดปกติ
+                    </p>
                   </div>
                 </div>
               </div>
