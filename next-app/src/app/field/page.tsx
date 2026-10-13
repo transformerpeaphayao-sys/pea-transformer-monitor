@@ -803,7 +803,7 @@ export default function FieldInspectionPage() {
             />
 
             {/* Floating Quick Action Island on Map (Ultra-compact Mobile-First Minimalist Card) */}
-            {showMapActionCard && selectedTransformer && (
+            {showMapActionCard && selectedTransformer && !fieldViolationModal && (
               <div className="absolute bottom-2 left-2 right-2 sm:left-3 sm:right-auto sm:w-[350px] z-[1000] bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.12),0_2px_6px_rgba(15,23,42,0.06)] p-2 sm:p-2.5 transition-all animate-in slide-in-from-bottom-2 duration-200">
                 {/* Close Button at Top-Right Corner */}
                 <button
