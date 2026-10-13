@@ -172,6 +172,7 @@ export default function FieldInspectionPage() {
   const [recordMode, setRecordMode] = useState<'full' | 'quick'>('full');
   const [selectedFeederNames, setSelectedFeederNames] = useState<string[]>(['F1']);
   const [feedersMap, setFeedersMap] = useState<Record<string, FeederRecord>>(() => createInitialFeedersMap());
+  const [feederRawInputs, setFeederRawInputs] = useState<Record<string, Record<string, string>>>({});
   const [expandedEndOfLine, setExpandedEndOfLine] = useState<Record<string, boolean>>({});
   const [globalNote, setGlobalNote] = useState('');
   const [uploadedPhotos, setUploadedPhotos] = useState<{ name: string; url: string }[]>([]);
@@ -186,25 +187,11 @@ export default function FieldInspectionPage() {
     setTap('3');
     setSelectedFeederNames(['F1']);
     setFeedersMap(createInitialFeedersMap());
+    setFeederRawInputs({});
     setExpandedEndOfLine({});
     setGlobalNote('');
     setUploadedPhotos([]);
   }, []);
-
-  const currentPeaRef = useRef<string | null>(null);
-
-  // Automatically reset form data when switching to a different transformer
-  useEffect(() => {
-    if (selectedTransformer?.peaNo) {
-      if (currentPeaRef.current && currentPeaRef.current !== selectedTransformer.peaNo) {
-        // Switched to a new transformer -> reset old measurements cleanly
-        resetFormState();
-      }
-      currentPeaRef.current = selectedTransformer.peaNo;
-    } else {
-      currentPeaRef.current = null;
-    }
-  }, [selectedTransformer?.peaNo, resetFormState]);
 
   // Active Feeders computed list
   const activeFeeders = useMemo(() => {
@@ -238,18 +225,18 @@ export default function FieldInspectionPage() {
       currentN: totN,
       note: globalNote,
       cableSize: '',
-      vt_ab: activeFeeders[0]?.vt_ab || 0,
-      vt_bc: activeFeeders[0]?.vt_bc || 0,
-      vt_ca: activeFeeders[0]?.vt_ca || 0,
+      vt_ab: activeFeeders.find(f => f.vt_ab > 0)?.vt_ab || 0,
+      vt_bc: activeFeeders.find(f => f.vt_bc > 0)?.vt_bc || 0,
+      vt_ca: activeFeeders.find(f => f.vt_ca > 0)?.vt_ca || 0,
       vt_an: vAn,
       vt_bn: vBn,
       vt_cn: vCn,
-      ve_ab: activeFeeders[0]?.ve_ab || 0,
-      ve_bc: activeFeeders[0]?.ve_bc || 0,
-      ve_ca: activeFeeders[0]?.ve_ca || 0,
-      ve_an: activeFeeders[0]?.ve_an || 0,
-      ve_bn: activeFeeders[0]?.ve_bn || 0,
-      ve_cn: activeFeeders[0]?.ve_cn || 0,
+      ve_ab: activeFeeders.find(f => f.ve_ab > 0)?.ve_ab || 0,
+      ve_bc: activeFeeders.find(f => f.ve_bc > 0)?.ve_bc || 0,
+      ve_ca: activeFeeders.find(f => f.ve_ca > 0)?.ve_ca || 0,
+      ve_an: activeFeeders.find(f => f.ve_an > 0)?.ve_an || 0,
+      ve_bn: activeFeeders.find(f => f.ve_bn > 0)?.ve_bn || 0,
+      ve_cn: activeFeeders.find(f => f.ve_cn > 0)?.ve_cn || 0,
     };
   }, [activeFeeders, globalNote]);
 
@@ -271,17 +258,38 @@ export default function FieldInspectionPage() {
     });
   };
 
+  const getFeederInputValue = (fName: string, field: keyof FeederRecord, numVal: number): string => {
+    const raw = feederRawInputs[fName]?.[field];
+    if (raw !== undefined) return raw;
+    return numVal ? String(numVal) : '';
+  };
+
   const updateFeederMap = (fName: string, field: keyof FeederRecord, value: unknown) => {
+    if (typeof value === 'string' && field !== 'note' && field !== 'cableSize' && field !== 'name') {
+      const normalized = value.replace(/,/g, '.');
+      setFeederRawInputs(prev => ({
+        ...prev,
+        [fName]: {
+          ...(prev[fName] || {}),
+          [field]: normalized,
+        },
+      }));
+      const parsed = parseFloat(normalized);
+      const numericVal = Number.isFinite(parsed) ? parsed : 0;
+      setFeedersMap(prev => ({
+        ...prev,
+        [fName]: {
+          ...(prev[fName] || createDefaultFeederRecord(fName)),
+          [field]: numericVal,
+        },
+      }));
+      return;
+    }
+
     setFeedersMap(prev => ({
       ...prev,
       [fName]: {
-        ...(prev[fName] || {
-          name: fName,
-          currentA: 0, currentB: 0, currentC: 0, currentN: 0,
-          note: '', cableSize: '',
-          vt_ab: 0, vt_bc: 0, vt_ca: 0, vt_an: 0, vt_bn: 0, vt_cn: 0,
-          ve_ab: 0, ve_bc: 0, ve_ca: 0, ve_an: 0, ve_bn: 0, ve_cn: 0,
-        }),
+        ...(prev[fName] || createDefaultFeederRecord(fName)),
         [field]: value,
       },
     }));
@@ -437,27 +445,30 @@ export default function FieldInspectionPage() {
       time,
       tap,
       mode: recordMode,
-      feeders: activeFeeders.map(f => ({
-        name: f.name,
-        currentA: safeFloat(f.currentA),
-        currentB: safeFloat(f.currentB),
-        currentC: safeFloat(f.currentC),
-        currentN: safeFloat(f.currentN),
-        note: f.note || '',
-        cableSize: f.cableSize || '',
-        vt_ab: safeFloat(f.vt_ab),
-        vt_bc: safeFloat(f.vt_bc),
-        vt_ca: safeFloat(f.vt_ca),
-        vt_an: safeFloat(f.vt_an),
-        vt_bn: safeFloat(f.vt_bn),
-        vt_cn: safeFloat(f.vt_cn),
-        ve_ab: safeFloat(f.ve_ab),
-        ve_bc: safeFloat(f.ve_bc),
-        ve_ca: safeFloat(f.ve_ca),
-        ve_an: safeFloat(f.ve_an),
-        ve_bn: safeFloat(f.ve_bn),
-        ve_cn: safeFloat(f.ve_cn),
-      })),
+      feeders: activeFeeders.map(f => {
+        const raw = feederRawInputs[f.name] || {};
+        return {
+          name: f.name,
+          currentA: safeFloat(raw.currentA ?? f.currentA),
+          currentB: safeFloat(raw.currentB ?? f.currentB),
+          currentC: safeFloat(raw.currentC ?? f.currentC),
+          currentN: safeFloat(raw.currentN ?? f.currentN),
+          note: f.note || '',
+          cableSize: f.cableSize || '',
+          vt_ab: safeFloat(raw.vt_ab ?? f.vt_ab),
+          vt_bc: safeFloat(raw.vt_bc ?? f.vt_bc),
+          vt_ca: safeFloat(raw.vt_ca ?? f.vt_ca),
+          vt_an: safeFloat(raw.vt_an ?? f.vt_an),
+          vt_bn: safeFloat(raw.vt_bn ?? f.vt_bn),
+          vt_cn: safeFloat(raw.vt_cn ?? f.vt_cn),
+          ve_ab: safeFloat(raw.ve_ab ?? f.ve_ab),
+          ve_bc: safeFloat(raw.ve_bc ?? f.ve_bc),
+          ve_ca: safeFloat(raw.ve_ca ?? f.ve_ca),
+          ve_an: safeFloat(raw.ve_an ?? f.ve_an),
+          ve_bn: safeFloat(raw.ve_bn ?? f.ve_bn),
+          ve_cn: safeFloat(raw.ve_cn ?? f.ve_cn),
+        };
+      }),
       total: {
         name: 'รวม',
         currentA: safeFloat(liveTotal.currentA),
@@ -1416,8 +1427,9 @@ export default function FieldInspectionPage() {
                                     type="number"
                                     inputMode="decimal"
                                     step="0.1"
-                                    value={f.vt_ab || ''}
-                                    onChange={e => updateFeederMap(fName, 'vt_ab', parseFloat(e.target.value) || 0)}
+                                    value={getFeederInputValue(fName, 'vt_ab', f.vt_ab)}
+                                    onChange={e => updateFeederMap(fName, 'vt_ab', e.target.value)}
+                                    onWheel={e => e.currentTarget.blur()}
                                     className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                                   />
                                 </div>
@@ -1432,8 +1444,9 @@ export default function FieldInspectionPage() {
                                     type="number"
                                     inputMode="decimal"
                                     step="0.1"
-                                    value={f.vt_bc || ''}
-                                    onChange={e => updateFeederMap(fName, 'vt_bc', parseFloat(e.target.value) || 0)}
+                                    value={getFeederInputValue(fName, 'vt_bc', f.vt_bc)}
+                                    onChange={e => updateFeederMap(fName, 'vt_bc', e.target.value)}
+                                    onWheel={e => e.currentTarget.blur()}
                                     className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                                   />
                                 </div>
@@ -1448,8 +1461,9 @@ export default function FieldInspectionPage() {
                                     type="number"
                                     inputMode="decimal"
                                     step="0.1"
-                                    value={f.vt_ca || ''}
-                                    onChange={e => updateFeederMap(fName, 'vt_ca', parseFloat(e.target.value) || 0)}
+                                    value={getFeederInputValue(fName, 'vt_ca', f.vt_ca)}
+                                    onChange={e => updateFeederMap(fName, 'vt_ca', e.target.value)}
+                                    onWheel={e => e.currentTarget.blur()}
                                     className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                                   />
                                 </div>
@@ -1477,8 +1491,9 @@ export default function FieldInspectionPage() {
                                     type="number"
                                     inputMode="decimal"
                                     step="0.1"
-                                    value={f.vt_an || ''}
-                                    onChange={e => updateFeederMap(fName, 'vt_an', parseFloat(e.target.value) || 0)}
+                                    value={getFeederInputValue(fName, 'vt_an', f.vt_an)}
+                                    onChange={e => updateFeederMap(fName, 'vt_an', e.target.value)}
+                                    onWheel={e => e.currentTarget.blur()}
                                     className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                                   />
                                 </div>
@@ -1494,8 +1509,9 @@ export default function FieldInspectionPage() {
                                     type="number"
                                     inputMode="decimal"
                                     step="0.1"
-                                    value={f.vt_bn || ''}
-                                    onChange={e => updateFeederMap(fName, 'vt_bn', parseFloat(e.target.value) || 0)}
+                                    value={getFeederInputValue(fName, 'vt_bn', f.vt_bn)}
+                                    onChange={e => updateFeederMap(fName, 'vt_bn', e.target.value)}
+                                    onWheel={e => e.currentTarget.blur()}
                                     className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                                   />
                                 </div>
@@ -1511,8 +1527,9 @@ export default function FieldInspectionPage() {
                                     type="number"
                                     inputMode="decimal"
                                     step="0.1"
-                                    value={f.vt_cn || ''}
-                                    onChange={e => updateFeederMap(fName, 'vt_cn', parseFloat(e.target.value) || 0)}
+                                    value={getFeederInputValue(fName, 'vt_cn', f.vt_cn)}
+                                    onChange={e => updateFeederMap(fName, 'vt_cn', e.target.value)}
+                                    onWheel={e => e.currentTarget.blur()}
                                     className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                                   />
                                 </div>
@@ -1566,8 +1583,9 @@ export default function FieldInspectionPage() {
                                         type="number"
                                         inputMode="decimal"
                                         step="0.1"
-                                        value={f.ve_ab || ''}
-                                        onChange={e => updateFeederMap(fName, 've_ab', parseFloat(e.target.value) || 0)}
+                                        value={getFeederInputValue(fName, 've_ab', f.ve_ab)}
+                                        onChange={e => updateFeederMap(fName, 've_ab', e.target.value)}
+                                        onWheel={e => e.currentTarget.blur()}
                                         className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm focus:outline-none"
                                       />
                                     </div>
@@ -1581,8 +1599,9 @@ export default function FieldInspectionPage() {
                                         type="number"
                                         inputMode="decimal"
                                         step="0.1"
-                                        value={f.ve_bc || ''}
-                                        onChange={e => updateFeederMap(fName, 've_bc', parseFloat(e.target.value) || 0)}
+                                        value={getFeederInputValue(fName, 've_bc', f.ve_bc)}
+                                        onChange={e => updateFeederMap(fName, 've_bc', e.target.value)}
+                                        onWheel={e => e.currentTarget.blur()}
                                         className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm focus:outline-none"
                                       />
                                     </div>
@@ -1596,8 +1615,9 @@ export default function FieldInspectionPage() {
                                         type="number"
                                         inputMode="decimal"
                                         step="0.1"
-                                        value={f.ve_ca || ''}
-                                        onChange={e => updateFeederMap(fName, 've_ca', parseFloat(e.target.value) || 0)}
+                                        value={getFeederInputValue(fName, 've_ca', f.ve_ca)}
+                                        onChange={e => updateFeederMap(fName, 've_ca', e.target.value)}
+                                        onWheel={e => e.currentTarget.blur()}
                                         className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm focus:outline-none"
                                       />
                                     </div>
@@ -1623,8 +1643,9 @@ export default function FieldInspectionPage() {
                                         type="number"
                                         inputMode="decimal"
                                         step="0.1"
-                                        value={f.ve_an || ''}
-                                        onChange={e => updateFeederMap(fName, 've_an', parseFloat(e.target.value) || 0)}
+                                        value={getFeederInputValue(fName, 've_an', f.ve_an)}
+                                        onChange={e => updateFeederMap(fName, 've_an', e.target.value)}
+                                        onWheel={e => e.currentTarget.blur()}
                                         className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm focus:outline-none"
                                       />
                                     </div>
@@ -1639,8 +1660,9 @@ export default function FieldInspectionPage() {
                                         type="number"
                                         inputMode="decimal"
                                         step="0.1"
-                                        value={f.ve_bn || ''}
-                                        onChange={e => updateFeederMap(fName, 've_bn', parseFloat(e.target.value) || 0)}
+                                        value={getFeederInputValue(fName, 've_bn', f.ve_bn)}
+                                        onChange={e => updateFeederMap(fName, 've_bn', e.target.value)}
+                                        onWheel={e => e.currentTarget.blur()}
                                         className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm focus:outline-none"
                                       />
                                     </div>
@@ -1655,8 +1677,9 @@ export default function FieldInspectionPage() {
                                         type="number"
                                         inputMode="decimal"
                                         step="0.1"
-                                        value={f.ve_cn || ''}
-                                        onChange={e => updateFeederMap(fName, 've_cn', parseFloat(e.target.value) || 0)}
+                                        value={getFeederInputValue(fName, 've_cn', f.ve_cn)}
+                                        onChange={e => updateFeederMap(fName, 've_cn', e.target.value)}
+                                        onWheel={e => e.currentTarget.blur()}
                                         className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm focus:outline-none"
                                       />
                                     </div>
@@ -1684,8 +1707,9 @@ export default function FieldInspectionPage() {
                               type="number"
                               inputMode="decimal"
                               step="0.1"
-                              value={f.currentN || ''}
-                              onChange={e => updateFeederMap(fName, 'currentN', parseFloat(e.target.value) || 0)}
+                              value={getFeederInputValue(fName, 'currentN', f.currentN)}
+                              onChange={e => updateFeederMap(fName, 'currentN', e.target.value)}
+                              onWheel={e => e.currentTarget.blur()}
                               className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                             />
                           </div>
@@ -1700,8 +1724,9 @@ export default function FieldInspectionPage() {
                               type="number"
                               inputMode="decimal"
                               step="0.1"
-                              value={f.currentA || ''}
-                              onChange={e => updateFeederMap(fName, 'currentA', parseFloat(e.target.value) || 0)}
+                              value={getFeederInputValue(fName, 'currentA', f.currentA)}
+                              onChange={e => updateFeederMap(fName, 'currentA', e.target.value)}
+                              onWheel={e => e.currentTarget.blur()}
                               className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                             />
                           </div>
@@ -1716,8 +1741,9 @@ export default function FieldInspectionPage() {
                               type="number"
                               inputMode="decimal"
                               step="0.1"
-                              value={f.currentB || ''}
-                              onChange={e => updateFeederMap(fName, 'currentB', parseFloat(e.target.value) || 0)}
+                              value={getFeederInputValue(fName, 'currentB', f.currentB)}
+                              onChange={e => updateFeederMap(fName, 'currentB', e.target.value)}
+                              onWheel={e => e.currentTarget.blur()}
                               className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                             />
                           </div>
@@ -1732,8 +1758,9 @@ export default function FieldInspectionPage() {
                               type="number"
                               inputMode="decimal"
                               step="0.1"
-                              value={f.currentC || ''}
-                              onChange={e => updateFeederMap(fName, 'currentC', parseFloat(e.target.value) || 0)}
+                              value={getFeederInputValue(fName, 'currentC', f.currentC)}
+                              onChange={e => updateFeederMap(fName, 'currentC', e.target.value)}
+                              onWheel={e => e.currentTarget.blur()}
                               className="w-full bg-white py-1.5 px-1 text-slate-900 font-mono font-bold text-center text-sm sm:text-base focus:outline-none"
                             />
                           </div>
