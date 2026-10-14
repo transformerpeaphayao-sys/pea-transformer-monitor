@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { TransformerWithStatus, FeederRecord, OfflineRecordItem, getErrorMessage } from '@/lib/domain/types';
-import { calculateEngineeringStatus, safeFloat } from '@/lib/domain/calculations';
+import { calculateEngineeringStatus, safeFloat, calculateKvaLoad, calculateUf, VoltageBasisConfig } from '@/lib/domain/calculations';
 import {
   MapPin,
   Plus,
@@ -95,7 +95,20 @@ export default function FieldInspectionPage() {
   const [syncingOffline, setSyncingOffline] = useState<boolean>(false);
   const [showMapActionCard, setShowMapActionCard] = useState<boolean>(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState<boolean>(false);
+  const [voltageBasis, setVoltageBasis] = useState<'400' | '230' | '220' | 'ACTUAL'>('400');
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Initialize voltage basis from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('pea_voltage_basis');
+        if (saved === '400' || saved === '230' || saved === '220' || saved === 'ACTUAL') {
+          setVoltageBasis(saved);
+        }
+      } catch {}
+    }
+  }, []);
 
   // Fullscreen Toggle Handler (Universal CSS Fullscreen - 100% compatible with iOS Safari & Android)
   const toggleMapFullscreen = () => {
@@ -245,6 +258,31 @@ export default function FieldInspectionPage() {
     if (!selectedTransformer) return null;
     return calculateEngineeringStatus(liveTotal, selectedTransformer.kva, selectedTransformer.system);
   }, [liveTotal, selectedTransformer]);
+
+  // Compute Live kVA based on user-selected Voltage Basis (400V, 230V, 220V, or Actual)
+  const liveKva = useMemo(() => {
+    if (!selectedTransformer) return 0;
+    const config: VoltageBasisConfig =
+      voltageBasis === 'ACTUAL'
+        ? { mode: 'ACTUAL', nominalVoltage: 400 }
+        : { mode: 'NOMINAL', nominalVoltage: parseInt(voltageBasis, 10) || 400 };
+    return calculateKvaLoad(
+      liveTotal.currentA,
+      liveTotal.currentB,
+      liveTotal.currentC,
+      liveTotal.vt_an,
+      liveTotal.vt_bn,
+      liveTotal.vt_cn,
+      config,
+      selectedTransformer.system
+    );
+  }, [liveTotal, selectedTransformer, voltageBasis]);
+
+  // Compute Live %UF
+  const liveUf = useMemo(() => {
+    if (!selectedTransformer || selectedTransformer.kva <= 0) return 0;
+    return calculateUf(liveKva, selectedTransformer.kva);
+  }, [liveKva, selectedTransformer]);
 
   // Feeder mutations
   const toggleFeederSelection = (name: string) => {
@@ -1840,6 +1878,38 @@ export default function FieldInspectionPage() {
                   </div>
                 </div>
 
+                {/* Voltage Basis Selector Strip */}
+                <div className="flex flex-wrap items-center justify-between gap-1.5 mb-2 px-2.5 py-1.5 bg-slate-50/90 rounded-xl border border-slate-200/80">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Zap className="w-3.5 h-3.5 text-[#f39c12] shrink-0" />
+                    <span className="text-[10.5px] font-bold text-slate-700 whitespace-nowrap">เกณฑ์แรงดันคิด kVA:</span>
+                  </div>
+                  <div className="flex items-center gap-0.5 p-0.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                    {[
+                      { id: '400', label: '400V (มป.1)' },
+                      { id: '230', label: '230V' },
+                      { id: '220', label: '220V' },
+                      { id: 'ACTUAL', label: 'วัดจริง' },
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setVoltageBasis(opt.id as any);
+                          try { localStorage.setItem('pea_voltage_basis', opt.id); } catch {}
+                        }}
+                        className={`px-2 py-0.5 rounded-md text-[10px] transition-all select-none ${
+                          voltageBasis === opt.id
+                            ? 'bg-[#741b77] text-white font-bold shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900 font-medium'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* 3 Main Metrics */}
                 {liveStatus && (
                   <div className="grid grid-cols-3 gap-2">
@@ -1847,31 +1917,33 @@ export default function FieldInspectionPage() {
                     <div className="p-2.5 bg-gradient-to-b from-purple-50/50 to-white rounded-xl border border-purple-100/90 shadow-2xs text-center">
                       <span className="text-slate-600 font-bold block text-[10px]">โหลดรวม (kVA)</span>
                       <b className="text-xs sm:text-sm font-mono font-bold text-purple-950 mt-0.5 block">
-                        {(((liveTotal.currentA * (liveTotal.vt_an || 230) + liveTotal.currentB * (liveTotal.vt_bn || 230) + liveTotal.currentC * (liveTotal.vt_cn || 230))) / 1000).toFixed(2)}
+                        {liveKva.toFixed(2)}
                       </b>
-                      <span className="text-[8.5px] text-purple-600/80 font-medium">กิโลโวลต์-แอมป์</span>
+                      <span className="text-[8.5px] text-purple-700 font-semibold block truncate">
+                        {voltageBasis === 'ACTUAL' ? 'แรงดันวัดจริง' : `พิกัด ${voltageBasis}V`}
+                      </span>
                     </div>
 
                     {/* %UF */}
                     <div className={`p-2.5 rounded-xl border shadow-2xs text-center transition-colors ${
-                      liveStatus.pctLoad > 80 
+                      liveUf > 80 
                         ? 'bg-rose-50/70 border-rose-200' 
                         : 'bg-emerald-50/50 border-emerald-100'
                     }`}>
                       <span className={`font-bold block text-[10px] ${
-                        liveStatus.pctLoad > 80 ? 'text-rose-700' : 'text-emerald-800'
+                        liveUf > 80 ? 'text-rose-700' : 'text-emerald-800'
                       }`}>
                         %UF (% โหลด)
                       </span>
                       <b className={`text-xs sm:text-sm font-mono font-bold mt-0.5 block ${
-                        liveStatus.pctLoad > 80 ? 'text-rose-600' : 'text-emerald-600'
+                        liveUf > 80 ? 'text-rose-600' : 'text-emerald-600'
                       }`}>
-                        {liveStatus.pctLoad.toFixed(1)}%
+                        {liveUf.toFixed(1)}%
                       </b>
                       <span className={`text-[8.5px] font-semibold ${
-                        liveStatus.pctLoad > 80 ? 'text-rose-600' : 'text-emerald-600'
+                        liveUf > 80 ? 'text-rose-600' : 'text-emerald-600'
                       }`}>
-                        {liveStatus.pctLoad > 80 ? 'เกินพิกัด (>80%)' : 'ปกติ (≤80%)'}
+                        {liveUf > 80 ? 'เกินพิกัด (>80%)' : 'ปกติ (≤80%)'}
                       </span>
                     </div>
 

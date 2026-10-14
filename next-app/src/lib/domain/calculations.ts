@@ -18,6 +18,18 @@ export function safeFloat(val: unknown, defaultValue: number = 0.0): number {
   return defaultValue;
 }
 
+export type VoltageBasisMode = 'ACTUAL' | 'NOMINAL';
+
+export interface VoltageBasisConfig {
+  mode: VoltageBasisMode;
+  nominalVoltage: number; // e.g. 400, 380, 230, 220
+}
+
+export const DEFAULT_VOLTAGE_CONFIG: VoltageBasisConfig = {
+  mode: 'NOMINAL',
+  nominalVoltage: 400,
+};
+
 /**
  * Calculates rated maximum current for a 3-phase 400V transformer
  * I_max = (kVA * 1000) / (sqrt(3) * 400)
@@ -29,6 +41,71 @@ export function calculateIMax(kva: number, system: '1' | '3' = '3'): number {
     return (safeKva * 1000) / 230;
   }
   return (safeKva * 1000) / (Math.sqrt(3) * 400);
+}
+
+/**
+ * Calculates kVA load for a feeder or transformer total based on selected voltage mode:
+ * - 'NOMINAL':
+ *     - 400 V (มป.1/2555 standard): sqrt(3) * 0.4 * I_avg
+ *     - 380 V: sqrt(3) * 0.38 * I_avg
+ *     - 230 V: 3 * 0.23 * I_avg
+ *     - 220 V: 3 * 0.22 * I_avg
+ * - 'ACTUAL':
+ *     - sum(I_phase * V_phase) / 1000 (falls back to 230V if V <= 0)
+ */
+export function calculateKvaLoad(
+  ia: number,
+  ib: number,
+  ic: number,
+  van: number = 0,
+  vbn: number = 0,
+  vcn: number = 0,
+  config: VoltageBasisConfig = DEFAULT_VOLTAGE_CONFIG,
+  system: '1' | '3' = '3'
+): number {
+  const a = safeFloat(ia);
+  const b = safeFloat(ib);
+  const c = safeFloat(ic);
+
+  if (system === '1') {
+    const v = config.mode === 'ACTUAL' && van > 0 ? van : (config.nominalVoltage > 0 ? config.nominalVoltage : 230);
+    return (a * v) / 1000;
+  }
+
+  if (config.mode === 'ACTUAL') {
+    const va = van > 0 ? van : 230;
+    const vb = vbn > 0 ? vbn : 230;
+    const vc = vcn > 0 ? vcn : 230;
+    return (a * va + b * vb + c * vc) / 1000;
+  }
+
+  // NOMINAL Mode:
+  const nomV = config.nominalVoltage || 400;
+  const avgI = (a + b + c) / 3;
+
+  if (nomV === 400) {
+    // Standard PEA มป.1(น1/2555)
+    return Math.sqrt(3) * 0.4 * avgI;
+  } else if (nomV === 380) {
+    return Math.sqrt(3) * 0.38 * avgI;
+  } else if (nomV === 230) {
+    return 3 * 0.23 * avgI;
+  } else if (nomV === 220) {
+    return 3 * 0.22 * avgI;
+  } else if (nomV > 300) {
+    return Math.sqrt(3) * (nomV / 1000) * avgI;
+  } else {
+    return 3 * (nomV / 1000) * avgI;
+  }
+}
+
+/**
+ * Calculates Utilization Factor (%UF)
+ */
+export function calculateUf(kvaLoad: number, kvaRated: number): number {
+  const safeKvaRated = safeFloat(kvaRated);
+  if (safeKvaRated <= 0) return 0;
+  return (safeFloat(kvaLoad) / safeKvaRated) * 100;
 }
 
 /**

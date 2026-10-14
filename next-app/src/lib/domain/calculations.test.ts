@@ -13,6 +13,8 @@ import {
   parseDateToTimestamp,
   normalizeDateToYMD,
   formatYMDToThai,
+  calculateKvaLoad,
+  calculateUf,
 } from './calculations';
 import {
   FeederRecord,
@@ -345,6 +347,36 @@ describe('Matt Pocock Defensive Engineering: Boundary Invariants & Zero Division
 
     expect(formatYMDToThai('2026-07-25')).toBe('25/07/2026');
     expect(formatYMDToThai('')).toBe('');
+  });
+
+  it('calculateKvaLoad: supports 400V (มป.1/2555), 380V, 230V, 220V, and Actual Measured Voltage modes', () => {
+    // 3-Phase load: Ia=60A, Ib=70A, Ic=80A -> I_avg = 70A
+    const ia = 60;
+    const ib = 70;
+    const ic = 80;
+    const avgI = 70;
+
+    // 1. 400V (มป.1/2555): sqrt(3) * 0.4 * 70 = 48.4974 kVA
+    const kva400 = calculateKvaLoad(ia, ib, ic, 0, 0, 0, { mode: 'NOMINAL', nominalVoltage: 400 });
+    expect(kva400).toBeCloseTo(Math.sqrt(3) * 0.4 * avgI, 3);
+    expect(calculateUf(kva400, 100)).toBeCloseTo(48.5, 1);
+
+    // 2. 230V: 3 * 0.23 * 70 = 48.3 kVA
+    const kva230 = calculateKvaLoad(ia, ib, ic, 0, 0, 0, { mode: 'NOMINAL', nominalVoltage: 230 });
+    expect(kva230).toBeCloseTo(3 * 0.23 * avgI, 3);
+
+    // 3. 220V: 3 * 0.22 * 70 = 46.2 kVA
+    const kva220 = calculateKvaLoad(ia, ib, ic, 0, 0, 0, { mode: 'NOMINAL', nominalVoltage: 220 });
+    expect(kva220).toBeCloseTo(3 * 0.22 * avgI, 3);
+
+    // 4. Actual Measured: Van=240, Vbn=244, Vcn=243
+    // (60*240 + 70*244 + 80*243)/1000 = (14400 + 17080 + 19440)/1000 = 50.92 kVA
+    const kvaActual = calculateKvaLoad(ia, ib, ic, 240, 244, 243, { mode: 'ACTUAL', nominalVoltage: 400 });
+    expect(kvaActual).toBeCloseTo(50.92, 2);
+
+    // 5. 1-Phase load: Ia=50A
+    const kva1P_230 = calculateKvaLoad(50, 0, 0, 0, 0, 0, { mode: 'NOMINAL', nominalVoltage: 230 }, '1');
+    expect(kva1P_230).toBeCloseTo(11.5, 2); // 50 * 0.23 = 11.5 kVA
   });
 });
 
